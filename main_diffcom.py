@@ -114,16 +114,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         input_image, names = batch
         input_image = input_image.to(device)
         config.batch_size = input_image.shape[0]
-        
-        # --- 通信処理: エンコードとチャネルシミュレーション ---
-        # operator.observe_and_transpose は、
-        # 1. 入力画像 (input_image) をエンコードする
-        # 2. 伝送シンボルをチャネルに通す (ノイズ付加)
-        # 3. チャネル出力をデコードし、ベースライン再構成画像 (x_mse) を得る
-        # これらの処理を一括で行う
         measurement = operator.observe_and_transpose(input_image)
-        # --- 通信処理 End ---
-        
         torch.manual_seed(config.seed + 1)
         if torch.cuda.is_available():
             torch.cuda.manual_seed(config.seed + 1)
@@ -138,7 +129,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             logger.info(f"batch{idx + 1:->4d}--> cof_gt: {measurement['cof_gt'].cpu().numpy()[..., :2]}")
             logger.info(f"batch{idx + 1:->4d}--> 【Init】 cof_est: {measurement['cof_est'].cpu().numpy()[..., :2]}")
 
-        # ベースラインデコーダによる再構成画像（拡散モデル開始前の基準）を保存
         util.mkdir(config.save_path + '/measurement')
         util.imsave_batch(util.tensor2uint_batch(measurement['x_mse']), names, config.save_path + '/measurement',
                           f"measurement_")
@@ -151,7 +141,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             f"DISTS: {baseline_metric['dists']:.4f}, "
             f"MSSSIM: {baseline_metric['msssim']:.4f}")
 
-        # 拡散モデルの開始点 x_init を設定 (ベースライン再構成画像 x_mse からノイズを加えて初期化)
         x_init = noise_schedule.sqrt_alphas_cumprod[noise_schedule.t_start] * (2 * measurement['x_mse'] - 1) + \
                  noise_schedule.sqrt_1m_alphas_cumprod[
                      noise_schedule.t_start] * torch.randn_like(input_image)
@@ -205,15 +194,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         L_m_list = []
         H_loss_list = []
         L_c_list = []
-        
-        # --- 拡散モデルによる逆拡散（サンプリング）ループ ---
+        # reverse diffusion for one image from random noise
         pbar = tqdm(range(len(seq)), ncols=140)
         for i in pbar:
-            # cond_method: DiffComの核となるステップ。
-            # x_t (現在のノイズ画像) と cof_t (チャネル推定値) を更新する。
-            # 内部で、更新された x_0_hat が通信モデルの制約 (measurement) を満たすよう、
-            # operator.forward (エンコード＆チャネルシミュレーション) と
-            # operator.decode (デコード) が使われる。
+            # curr_sigma = sigmas[seq[i]].cpu().numpy()
             x_0_hat, h_0_hat, x_t, h_t, norm = cond_method(config, i, noise_schedule,
                                                            x_init if i == 0 else x_t,
                                                            cof_init if i == 0 else h_t,
@@ -265,7 +249,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     # cof_gt = measurement['cof_gt'][0, 0, :ofdm_config.L].cpu().numpy()
                     # cof_gt_real = cof_gt.real
                     # cof_gt_imag = cof_gt.imag
-                    # plt.scatter(cof_gt_real, cof_hat_imag, marker='x', label='$h^*$')
+                    # plt.scatter(cof_gt_real, cof_gt_imag, marker='x', label='$h^*$')
                     plt.xlim(-0.6, 0.6)
                     plt.ylim(-0.6, 0.6)
                     plt.xticks(np.arange(-0.6, 0.7, 0.2))
@@ -278,9 +262,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             # calculate metrics
             metrics = metric_wrapper((x_0_hat / 2 + 0.5).detach(), input_image)
 
-            if i > 100 and metrics['psnr'] < 6:
-                print('Failed to converge, Please check the reverse diffusion process.')
-                break
+            # if i > 100 and metrics['psnr'] < 6:
+            #     print('Failed to converge, Please check the reverse diffusion process.')
+            #     break
 
             message = {'t_step': seq[i],
                        'H_dist': 0.0,
@@ -305,8 +289,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             psnr_list.append(metrics['psnr'])
             lpips_list.append(metrics['lpips'])
             dists_list.append(metrics['dists'])
-
-        # --- 拡散モデルによる逆拡散（サンプリング）ループ End ---
 
         # --------------------------------
         # plot and save results
@@ -460,7 +442,6 @@ def main():
         attention_resolutions="8,16,32",
     )
     args = utils_model.create_argparser(model_config).parse_args([])
-    # 拡散モデル (U-Net) と拡散スケジュールを生成
     unet, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys()))
     unet.load_state_dict(torch.load(args.model_path, map_location="cpu"))
@@ -471,20 +452,14 @@ def main():
     # save config
     shutil.copyfile(config.opt, os.path.join(config.save_path, os.path.basename('config.yaml')))
 
-    # --- 通信モデルのセットアップ ---
-    # operator: エンコーダとデコーダ（DeepJSCC/NTSCC）およびチャネルシミュレーションを統合したオブジェクト
+    # get operator
     operator = get_operator(config.operator_name, config=config, logger=logger, device=device)
-    operator.model = operator.model.to(device) # モデルをGPUに転送
-    # --- 通信モデルのセットアップ End ---
-    
-    # ノイズスケジュール (拡散過程のステップ情報) を設定
+    operator.model = operator.model.to(device)
     ns = NoiseSchedule(config, logger, device)
 
-    # 条件付きサンプリングのロジック (DiffCom/HiFi-DiffCom/Blind-DiffCom) を取得
     cond_method = get_conditioning_method(name=config.conditioning_method)
 
     cond_method = cond_method.conditioning
-    # 拡散モデルと通信モデルを用いたメインのサンプリング処理を実行
     p_sample_loop(config, ns, unet, diffusion, operator, cond_method, dataloader, device, logger)
 
 

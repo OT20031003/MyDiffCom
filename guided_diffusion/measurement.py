@@ -10,7 +10,7 @@ import torch.nn as nn
 from torchvision import torch
 
 from _djscc.network import ADJSCC
-from _ntsccp.net.ntscc import CompatibleNTSCC_plus, NTSCC_plus
+#from _ntsccp.net.ntscc import CompatibleNTSCC_plus, NTSCC_plus
 from channel.channel import Channel
 from channel.ofdm_channel import LMMSE_channel_est, LS_channel_est, MMSE_equalization, OFDM, ZF_equalization
 from utils.util import Config
