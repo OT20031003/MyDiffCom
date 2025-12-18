@@ -194,7 +194,7 @@ class BlindDiffCom(DiffCom):
 
                 # (a) Variance Calculation [B, 1, H, W]
                 preds_stack = torch.stack(preds) 
-                V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
+                V_t = torch.var(preds_stack, dim=0) # meanを削除してRGBを保つ
                 
                 # (b) Spatial Smoothing (AvgPool)
                 U_t = F.avg_pool2d(V_t, kernel_size=self.k_s, stride=self.k_s)
