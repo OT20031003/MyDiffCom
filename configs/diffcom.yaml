@@ -72,9 +72,9 @@ diffcom_series:
   blind_diffcom:
     lr_schedule: constant
     learning_rate: 1.0
-    zeta: 1.0
+    zeta: 0.3
     gamma: 0.0
-    h_lr: 0.2
+    h_lr: 0.1
 
 seed: 22
 gpu_id: 0
