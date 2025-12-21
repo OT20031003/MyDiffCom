@@ -164,7 +164,7 @@ class CheckpointFunction(th.autograd.Function):
             output_grads,
             allow_unused=True,
         )
-        del ctx.input_tensors
-        del ctx.input_params
-        del output_tensors
+        # del ctx.input_tensors
+        # del ctx.input_params
+        # del output_tensors
         return (None, None) + input_grads

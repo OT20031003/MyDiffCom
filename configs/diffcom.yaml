@@ -1,4 +1,4 @@
-conditioning_method: 'blind_diffcom'  # 'diffcom', 'hifi_diffcom', 'blind_diffcom'
+conditioning_method: 'hifi_diffcom'  # 'diffcom', 'hifi_diffcom', 'blind_diffcom'
 
 # config forward operator
 operator_name: 'djscc'  # 'ntscc', 'swinjscc'
@@ -18,7 +18,7 @@ djscc:
 #  q_level: 3 # 0-99, fine adjustment, larger for higher bandwidth consumption
 
 #channel_type: 'awgn' # 'ofdm_tdl', 'awgn'
-channel_type: 'ofdm_tdl'
+channel_type: 'awgn'
 CSNR: 10
 ofdm_tdl:
   P: 1
@@ -48,7 +48,7 @@ testset_name: ffhq_demo
 
 # config hyperparameters for posterior sampling
 
-CSNR_adapt_t_start: False  # whether to accelerate sampling with adaptive initialization, only works for diffcom and hifi_diffcom
+CSNR_adapt_t_start: True  # whether to accelerate sampling with adaptive initialization, only works for diffcom and hifi_diffcom
 N: 1.0 # scaling factor to adjust the total rounds of reverse sampling steps. More rounds will lead to better performance but slower speed.
 
 diffcom_series:
@@ -66,8 +66,8 @@ diffcom_series:
     lr_schedule: constant
     lr_min: 0.3
     learning_rate: 1.0
-    zeta: 0.25
-    gamma: 0.25
+    zeta: 0.3
+    gamma: 0.3
 
   blind_diffcom:
     lr_schedule: constant

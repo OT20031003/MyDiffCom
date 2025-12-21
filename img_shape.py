@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # Windowsの例: r"C:\Users\Name\Pictures\Input"
     # Mac/Linuxの例: "/Users/Name/Pictures/Input"
     
-    INPUT_FOLDER = "testsets/ffhq_demo/"  # 元画像のフォルダ
-    OUTPUT_FOLDER = "testsets/resized"  # 保存先のフォルダ
+    OUTPUT_FOLDER = "testsets/ffhq_demo/"  # 元画像のフォルダ
+    INPUT_FOLDER = "testsets/resized"  # 保存先のフォルダ
 
     resize_images(INPUT_FOLDER, OUTPUT_FOLDER)
