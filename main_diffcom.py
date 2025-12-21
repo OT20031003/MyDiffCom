@@ -38,7 +38,7 @@ def evaluate_correlations(uncertainty_map, x_recon, input_image, operator):
 
     results = {}
     u_map = uncertainty_map.detach().cpu() # [1, 3, 32, 32]
-
+    print(f"u_map = {u_map.shape}")
     # --- Helper: Pearson Correlation Calculation ---
     def calc_corr(u_flat, e_flat):
         if np.std(u_flat) == 0 or np.std(e_flat) == 0:
@@ -102,7 +102,7 @@ def evaluate_correlations(uncertainty_map, x_recon, input_image, operator):
         u_map_pix = torch.nn.functional.interpolate(u_map, size=target_size_pix, mode='bilinear', align_corners=False)
     else:
         u_map_pix = u_map
-
+    print(f"u_map_pix = {u_map_pix.shape}")
     # (A) Pixel Mean (Compare U_mean with Pixel_Error_Mean)
     e_mean_pix = torch.mean(pixel_error_map_3c, dim=1).flatten().numpy()
     u_mean_pix = torch.mean(u_map_pix, dim=1).flatten().numpy()
@@ -348,6 +348,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 )
                 
                 if corr_dict:
+                    print(f"main_diffcom.py : u_map.shape={u_map.shape}")
                     # Log Correlations
                     # format: "latent_mean=0.2, pixel_R=0.4..."
                     log_corr_str = ", ".join([f"{k}={v:.4f}" for k, v in corr_dict.items()])
