@@ -6,3 +6,6 @@ password.txt
 *.pt
 ofdm_tdl_10dB
 testsets
+results_retrans_hard
+results_retrans_pixel
+results_retrans
