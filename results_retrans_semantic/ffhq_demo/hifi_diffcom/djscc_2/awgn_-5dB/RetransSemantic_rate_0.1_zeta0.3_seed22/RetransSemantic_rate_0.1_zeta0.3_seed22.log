@@ -1,0 +1,14 @@
+25-12-22 00:19:52.149 : 【Channel】: Built awgn channel, SNR -5 dB
+25-12-22 00:19:52.381 : Start from timestep 256 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-22 00:19:52.381 : 【Config】: Retransmission Mode: rate, Value: 0.1
+25-12-22 00:19:54.584 : Batch 1/100: Phase 1 (Initial Reconstruction)...
+25-12-22 00:21:11.254 :   -> Phase 1 Results | PSNR: 15.11dB | LPIPS: 0.4529 | DISTS: 0.2859
+25-12-22 00:21:11.272 :   -> [Diagnosis] Init JSCC | PSNR: 18.68dB | LPIPS: 0.3240
+25-12-22 00:21:11.272 : Batch 1/100: Processing Semantic Retransmission...
+25-12-22 00:21:11.285 :   -> Retransmission Ratio: 9.99% (Target=0.1)
+25-12-22 00:21:11.314 :   -> [Diagnosis] After Signal Update | PSNR: 19.47dB (+0.79dB)
+25-12-22 00:21:11.314 : Batch 1/100: Phase 2 (Refinement)...
+25-12-22 00:22:28.474 :   -> Phase 2 Results | PSNR: 17.75dB | LPIPS: 0.3524 | DISTS: 0.2352
+25-12-22 00:22:28.475 :   -> Gain vs Phase 1 | PSNR: +2.63dB | LPIPS: -0.1005
+25-12-22 00:22:28.679 : --------------------------------------------
+25-12-22 00:22:28.697 : Batch 2/100: Phase 1 (Initial Reconstruction)...

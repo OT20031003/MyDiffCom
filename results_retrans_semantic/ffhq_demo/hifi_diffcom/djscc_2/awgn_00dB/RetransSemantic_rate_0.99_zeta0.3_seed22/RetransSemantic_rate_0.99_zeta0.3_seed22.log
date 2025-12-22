@@ -1,0 +1,80 @@
+25-12-21 23:32:49.859 : 【Channel】: Built awgn channel, SNR 0 dB
+25-12-21 23:32:50.099 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-21 23:32:50.099 : 【Config】: Retransmission Mode: rate, Value: 0.99
+25-12-21 23:32:52.512 : Batch 1/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:34:09.484 :   -> Phase 1 Results | PSNR: 20.77dB | LPIPS: 0.1650 | DISTS: 0.1789
+25-12-21 23:34:09.499 :   -> [Diagnosis] Init JSCC | PSNR: 22.82dB | LPIPS: 0.1946
+25-12-21 23:34:09.499 : Batch 1/100: Processing Semantic Retransmission...
+25-12-21 23:34:09.531 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:34:09.560 :   -> [Diagnosis] After Signal Update | PSNR: 20.00dB (+-2.81dB)
+25-12-21 23:34:09.560 : Batch 1/100: Phase 2 (Refinement)...
+25-12-21 23:35:26.280 :   -> Phase 2 Results | PSNR: 22.00dB | LPIPS: 0.1784 | DISTS: 0.2002
+25-12-21 23:35:26.281 :   -> Gain vs Phase 1 | PSNR: +1.23dB | LPIPS: 0.0134
+25-12-21 23:35:26.456 : --------------------------------------------
+25-12-21 23:35:26.474 : Batch 2/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:36:43.551 :   -> Phase 1 Results | PSNR: 20.70dB | LPIPS: 0.2294 | DISTS: 0.1711
+25-12-21 23:36:43.566 :   -> [Diagnosis] Init JSCC | PSNR: 23.17dB | LPIPS: 0.2440
+25-12-21 23:36:43.566 : Batch 2/100: Processing Semantic Retransmission...
+25-12-21 23:36:43.577 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:36:43.605 :   -> [Diagnosis] After Signal Update | PSNR: 20.41dB (+-2.76dB)
+25-12-21 23:36:43.605 : Batch 2/100: Phase 2 (Refinement)...
+25-12-21 23:38:00.038 :   -> Phase 2 Results | PSNR: 22.84dB | LPIPS: 0.1967 | DISTS: 0.1755
+25-12-21 23:38:00.038 :   -> Gain vs Phase 1 | PSNR: +2.13dB | LPIPS: -0.0327
+25-12-21 23:38:00.235 : --------------------------------------------
+25-12-21 23:38:00.252 : Batch 3/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:39:17.702 :   -> Phase 1 Results | PSNR: 23.04dB | LPIPS: 0.1878 | DISTS: 0.1638
+25-12-21 23:39:17.718 :   -> [Diagnosis] Init JSCC | PSNR: 24.97dB | LPIPS: 0.2994
+25-12-21 23:39:17.718 : Batch 3/100: Processing Semantic Retransmission...
+25-12-21 23:39:17.729 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:39:17.757 :   -> [Diagnosis] After Signal Update | PSNR: 22.72dB (+-2.24dB)
+25-12-21 23:39:17.757 : Batch 3/100: Phase 2 (Refinement)...
+25-12-21 23:39:57.680 : 【Channel】: Built awgn channel, SNR 0 dB
+25-12-21 23:39:57.957 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-21 23:39:57.958 : 【Config】: Retransmission Mode: rate, Value: 0.99
+25-12-21 23:40:00.247 : Batch 1/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:41:16.442 :   -> Phase 1 Results | PSNR: 20.77dB | LPIPS: 0.1650 | DISTS: 0.1783
+25-12-21 23:41:16.457 :   -> [Diagnosis] Init JSCC | PSNR: 22.82dB | LPIPS: 0.1946
+25-12-21 23:41:16.457 : Batch 1/100: Processing Semantic Retransmission...
+25-12-21 23:41:16.469 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:41:16.497 :   -> [Diagnosis] After Signal Update | PSNR: 24.05dB (+1.23dB)
+25-12-21 23:41:16.497 : Batch 1/100: Phase 2 (Refinement)...
+25-12-21 23:42:33.362 :   -> Phase 2 Results | PSNR: 23.22dB | LPIPS: 0.1385 | DISTS: 0.1700
+25-12-21 23:42:33.362 :   -> Gain vs Phase 1 | PSNR: +2.45dB | LPIPS: -0.0264
+25-12-21 23:42:33.552 : --------------------------------------------
+25-12-21 23:42:33.570 : Batch 2/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:43:51.780 :   -> Phase 1 Results | PSNR: 20.71dB | LPIPS: 0.2294 | DISTS: 0.1708
+25-12-21 23:43:51.810 :   -> [Diagnosis] Init JSCC | PSNR: 23.17dB | LPIPS: 0.2440
+25-12-21 23:43:51.810 : Batch 2/100: Processing Semantic Retransmission...
+25-12-21 23:43:51.823 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:43:51.852 :   -> [Diagnosis] After Signal Update | PSNR: 24.32dB (+1.16dB)
+25-12-21 23:43:51.852 : Batch 2/100: Phase 2 (Refinement)...
+25-12-21 23:45:09.373 :   -> Phase 2 Results | PSNR: 23.86dB | LPIPS: 0.1514 | DISTS: 0.1617
+25-12-21 23:45:09.373 :   -> Gain vs Phase 1 | PSNR: +3.15dB | LPIPS: -0.0779
+25-12-21 23:45:09.591 : --------------------------------------------
+25-12-21 23:45:09.610 : Batch 3/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:46:26.217 :   -> Phase 1 Results | PSNR: 23.04dB | LPIPS: 0.1878 | DISTS: 0.1636
+25-12-21 23:46:26.232 :   -> [Diagnosis] Init JSCC | PSNR: 24.97dB | LPIPS: 0.2994
+25-12-21 23:46:26.232 : Batch 3/100: Processing Semantic Retransmission...
+25-12-21 23:46:26.244 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:46:26.271 :   -> [Diagnosis] After Signal Update | PSNR: 26.25dB (+1.28dB)
+25-12-21 23:46:26.271 : Batch 3/100: Phase 2 (Refinement)...
+25-12-21 23:47:05.302 : 【Channel】: Built awgn channel, SNR 0 dB
+25-12-21 23:47:05.547 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-21 23:47:05.548 : 【Config】: Retransmission Mode: rate, Value: 0.99
+25-12-21 23:47:07.753 : Batch 1/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:48:23.686 :   -> Phase 1 Results | PSNR: 20.77dB | LPIPS: 0.1650 | DISTS: 0.1783
+25-12-21 23:48:23.701 :   -> [Diagnosis] Init JSCC | PSNR: 22.82dB | LPIPS: 0.1946
+25-12-21 23:48:23.701 : Batch 1/100: Processing Semantic Retransmission...
+25-12-21 23:48:23.713 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:48:23.740 :   -> [Diagnosis] After Signal Update | PSNR: 24.05dB (+1.23dB)
+25-12-21 23:48:23.740 : Batch 1/100: Phase 2 (Refinement)...
+25-12-21 23:49:40.094 :   -> Phase 2 Results | PSNR: 23.22dB | LPIPS: 0.1385 | DISTS: 0.1702
+25-12-21 23:49:40.094 :   -> Gain vs Phase 1 | PSNR: +2.45dB | LPIPS: -0.0265
+25-12-21 23:49:40.285 : --------------------------------------------
+25-12-21 23:49:40.302 : Batch 2/100: Phase 1 (Initial Reconstruction)...
+25-12-21 23:50:57.057 :   -> Phase 1 Results | PSNR: 20.70dB | LPIPS: 0.2296 | DISTS: 0.1707
+25-12-21 23:50:57.072 :   -> [Diagnosis] Init JSCC | PSNR: 23.17dB | LPIPS: 0.2440
+25-12-21 23:50:57.073 : Batch 2/100: Processing Semantic Retransmission...
+25-12-21 23:50:57.085 :   -> Retransmission Ratio: 99.00% (Target=0.99)
+25-12-21 23:50:57.114 :   -> [Diagnosis] After Signal Update | PSNR: 24.32dB (+1.16dB)
+25-12-21 23:50:57.114 : Batch 2/100: Phase 2 (Refinement)...

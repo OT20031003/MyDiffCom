@@ -11,6 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision
 import yaml
 from tqdm.auto import tqdm
@@ -27,78 +28,167 @@ from utils.util import Config, MetricWrapper, DictAverageMeter
 from utils import util, utils_logger, utils_model
 
 # =========================================================================
-# 提案法: ピクセルベース再送シミュレーション関数 (Patch & Re-encode)
+# 提案法: 意味的再送シミュレーション関数 (Signal Replacement)
 # =========================================================================
-def simulate_pixel_retransmission(operator, input_image, measurement, uncertainty_map, 
-                                  mode='rate', value=0.1, logger=None):
+def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
+                                     mode='rate', value=0.1, logger=None):
     """
-    ピクセルベースの再送シミュレーション (Patch & Re-encode)
+    不確かさマップに基づく信号置換 (Signal Replacement)
+    修正版: 電力スケーリングのバグ(*2.0)を修正
     """
     device = input_image.device
     
-    # 1. 現在の復元画像
-    x_current = measurement['x_mse']
+    # -------------------------------------------------------------------------
+    # 1. 送信時の状態(State)の復元
+    # -------------------------------------------------------------------------
+    channel_wrapper = operator.channel
     
-    # 2. マスクの生成 (Pixel空間)
+    if not hasattr(channel_wrapper, 'shuffled_indices') or channel_wrapper.shuffled_indices is None:
+        if logger: logger.warning("Channel indices not found. Is this run after observe? Skipping.")
+        return measurement, 0.0, None
+
+    # インデックスをGPUへ
+    saved_indices = channel_wrapper.shuffled_indices.to(device)
+    saved_avg_pwr = channel_wrapper.avg_pwr
+    
+    # -------------------------------------------------------------------------
+    # 2. 理想的な受信信号 (y_clean) の生成
+    # -------------------------------------------------------------------------
+    with torch.no_grad():
+        # (A) エンコード: 画像 -> 潜在特徴量
+        s_raw = operator.encode(input_image) 
+        B, N_s = s_raw.shape
+        
+        # (B) シャッフル: 送信時と同じインデックスを適用
+        if saved_indices.dim() == 1:
+            indices_expanded = saved_indices.unsqueeze(0).expand(B, -1)
+        else:
+            indices_expanded = saved_indices
+            
+        s_shuffled = torch.gather(s_raw, 1, indices_expanded)
+        
+        # (C) 電力スケーリング 【修正箇所】
+        # 元コードにあった (* 2.0) を削除。
+        # saved_avg_pwr は送信時に計算された電力そのものなので、そのまま使用して正規化する。
+        pwr_tensor = torch.as_tensor(saved_avg_pwr, device=device).float()
+        
+        # ゼロ除算回避
+        if pwr_tensor.numel() == 1 and pwr_tensor.item() == 0:
+            pwr_tensor = torch.tensor(1.0, device=device)
+            
+        y_clean = s_shuffled / torch.sqrt(pwr_tensor)
+
+    # 実際の受信信号
+    y_dirty = measurement['ofdm_sig']
+
+    # -------------------------------------------------------------------------
+    # 3. 再送マスクの生成 (Pixel -> Latent)
+    # -------------------------------------------------------------------------
+    mask_vis = None
+    
     if mode == 'oracle':
-        # Oracle: 画素ごとの誤差が大きい場所
-        diff = torch.abs(x_current - input_image).mean(dim=1, keepdim=True)
-        B = diff.shape[0]
+        # Oracleモード: 実際のノイズ振幅に基づく
+        if y_dirty.shape != y_clean.shape:
+             y_clean = y_clean.view(y_dirty.shape)
+        diff = torch.abs(y_dirty - y_clean)
         diff_flat = diff.view(B, -1)
         k = int(diff_flat.shape[1] * value)
         if k < 1: k = 1
-        
         top_val, _ = torch.topk(diff_flat, k, dim=1)
-        thresh = top_val[:, -1].view(B, 1, 1, 1)
-        mask = (diff >= thresh).float()
+        thresh = top_val[:, -1].view(B, *([1]*(len(diff.shape)-1)))
+        mask_for_y = (diff >= thresh).float()
+        mask_vis = torch.zeros(B, 1, input_image.shape[2], input_image.shape[3]).to(device)
         
     else:
-        # Uncertainty Map利用
+        # 通常モード: 不確かさマップに基づく
         if uncertainty_map is None:
-             return measurement, 0.0, torch.zeros_like(x_current[:, :1])
-             
-        u_map = uncertainty_map.to(device)
+            return measurement, 0.0, None
+
+        u_map = uncertainty_map.to(device) # [B, 1, H, W]
         
+        # 3-1. Latentサイズの取得
+        if hasattr(operator, 's_shape'):
+            # [B, C, H_lat, W_lat]
+            latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
+            C_feat = operator.s_shape[1]
+        else:
+            # 簡易推定 (DeepJSCCは通常 1/16)
+            latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
+            C_feat = s_raw.shape[1] // (latent_H * latent_W)
+
+        # 3-2. ダウンサンプリング
+        u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
+        
+        # 3-3. マスク生成 (空間方向 1xHxW)
         if mode == 'rate':
-            B = u_map.shape[0]
-            u_flat = u_map.view(B, -1)
-            k = int(u_flat.shape[1] * value)
+            u_flat = u_map_lat.view(B, -1)
+            k = int(u_flat.shape[1] * value) # 上位 k%
             if k < 1: k = 1
             top_val, _ = torch.topk(u_flat, k, dim=1)
             thresh = top_val[:, -1].view(B, 1, 1, 1)
-            mask = (u_map >= thresh).float()
+            mask_lat_spatial = (u_map_lat >= thresh).float()
         else: # threshold
-            mask = (u_map > value).float()
+            mask_lat_spatial = (u_map_lat > value).float()
 
-    mask_vis = mask
-    retransmission_ratio = mask.mean().item()
-
-    # 3. 画像のパッチング
-    x_patched = x_current * (1 - mask) + input_image * mask
-
-    # 4. 観測値の更新
-    new_measurement = copy.deepcopy(measurement)
-    new_measurement['x_mse'] = x_patched
-    
-    with torch.no_grad():
-        s_new = operator.encode(x_patched)
+        # 可視化用 (Latentマスクを元のサイズに戻して保存)
+        mask_vis = F.interpolate(mask_lat_spatial, size=input_image.shape[-2:], mode='nearest')
         
-        if hasattr(operator, 'channel'):
-            avg_pwr = operator.channel.avg_pwr if hasattr(operator.channel, 'avg_pwr') else 1.0
-            channel_type = operator.channel.channel_type if hasattr(operator.channel, 'channel_type') else 'awgn'
-            
-            pwr_tensor = torch.as_tensor(avg_pwr * 2.0, device=device).float()
-            
-            if channel_type == 'awgn':
-                 y_clean = s_new / torch.sqrt(pwr_tensor)
-                 new_measurement['ofdm_sig'] = y_clean
+        # 3-4. チャネル方向への拡張
+        # [B, 1, h, w] -> [B, C, h, w]
+        mask_expanded = mask_lat_spatial.repeat(1, C_feat, 1, 1)
+        
+        # 3-5. フラット化とシャッフル (信号 y に対応させる)
+        mask_flat = mask_expanded.view(B, -1)
+        
+        # サイズチェックと補正
+        target_len = indices_expanded.shape[1]
+        current_len = mask_flat.shape[1]
+        
+        if current_len != target_len:
+            if logger: logger.warning(f"Resizing mask from {current_len} to {target_len}")
+            if current_len < target_len:
+                padding = torch.zeros(B, target_len - current_len, device=device)
+                mask_flat = torch.cat([mask_flat, padding], dim=1)
             else:
-                 new_measurement['ofdm_sig'] = s_new
-        else:
-            new_measurement['ofdm_sig'] = s_new
+                mask_flat = mask_flat[:, :target_len]
 
-        if new_measurement.get('cof_est') is not None:
-             new_measurement['cof_est'] = torch.ones_like(new_measurement['cof_est'])
+        # 送信時と同じ順序でシャッフル
+        mask_shuffled = torch.gather(mask_flat, 1, indices_expanded)
+        mask_for_y = mask_shuffled.view(y_dirty.shape)
+
+    retransmission_ratio = mask_for_y.float().mean().item()
+
+    # -------------------------------------------------------------------------
+    # 4. 観測値の更新 (Signal Replacement)
+    # -------------------------------------------------------------------------
+    new_measurement = copy.deepcopy(measurement)
+    
+    # (A) 受信信号 y の更新
+    # マスク部分(1)をy_cleanに、それ以外(0)をy_dirtyのままにする
+    # y_cleanの形状が合わない場合の安全策
+    if y_clean.shape != y_dirty.shape:
+        y_clean = y_clean.view(y_dirty.shape)
+        
+    y_new = (1 - mask_for_y) * y_dirty + mask_for_y * y_clean
+    new_measurement['ofdm_sig'] = y_new
+    
+    # (B) チャネル推定値 H の更新
+    # 再送部分はチャネル歪みなし(Identity)とする
+    h_dirty = measurement.get('cof_est', None)
+    if h_dirty is not None:
+         # h_dirtyがスカラーやベクトルの場合もあるため、形状を確認して適用
+         if h_dirty.shape == y_dirty.shape:
+             h_new = (1 - mask_for_y) * h_dirty + mask_for_y * torch.ones_like(h_dirty)
+             new_measurement['cof_est'] = h_new
+         # AWGNの場合はhがNoneまたはスカラなので、通常は更新不要
+
+    # (C) ガイド画像 x_mse の更新 (更新された信号をデコード)
+    with torch.no_grad():
+        cof_for_transpose = new_measurement.get('cof_est', None)
+        # transposeでデシャッフル -> decode
+        s_hat_new = operator.transpose(y_new, cof_for_transpose)
+        x_mse_new = operator.decode(s_hat_new)
+        new_measurement['x_mse'] = x_mse_new
 
     return new_measurement, retransmission_ratio, mask_vis
 
@@ -128,7 +218,7 @@ def parse_args_and_config():
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
     config.testsets = os.path.join(config.cwd, 'testsets')
     # フォルダ名を区別
-    config.results = os.path.join(config.cwd, 'results_retrans_hard') 
+    config.results = os.path.join(config.cwd, 'results_retrans_semantic') 
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
 
@@ -137,7 +227,7 @@ def parse_args_and_config():
     
     config.results = os.path.join(config.results, f'{config.channel_type}_{config.CSNR.__str__().zfill(2)}dB')
     
-    config.result_name = f'RetransPixel_{config.retrans_mode}_{config.retrans_value}'
+    config.result_name = f'RetransSemantic_{config.retrans_mode}_{config.retrans_value}'
     config.result_name += f'_zeta{conditioning_method.zeta}_seed{config.seed}'
     
     config.model_path = os.path.join(config.model_zoo, config.model_name + '.pt')
@@ -154,8 +244,10 @@ def parse_args_and_config():
 
 
 def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, cond_method, 
-                          measurement, input_image, device, phase_name="Phase1", 
-                          hard_mask=None):
+                          measurement, input_image, device, phase_name="Phase1"):
+    # Semantic Retransmissionの場合はHard Mask (Inpainting) は使用しない
+    # 更新されたmeasurement (x_mse, ofdm_sig) がConsistency Lossを通じてガイドする
+    
     ofdm_config = Config(config.ofdm_tdl)
     metric_wrapper = MetricWrapper().to(device)
     
@@ -199,27 +291,13 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
             last_timestep=(seq[i] == seq[-1])
         )
         
-        # 2. Hard Inpainting (Replacement) Step
-        if hard_mask is not None:
-            x_ref_norm = 2 * x_ref - 1
-            noise = torch.randn_like(x_ref_norm)
-            
-            if i < len(seq) - 1:
-                t_next = seq[i+1]
-                sqrt_alpha_next = noise_schedule.sqrt_alphas_cumprod[t_next]
-                sqrt_1m_alpha_next = noise_schedule.sqrt_1m_alphas_cumprod[t_next]
-                x_known_next = sqrt_alpha_next * x_ref_norm + sqrt_1m_alpha_next * noise
-                
-                # 上書き
-                x_t_prev = x_t_prev * (1 - hard_mask) + x_known_next * hard_mask
-            else:
-                x_t_prev = x_t_prev * (1 - hard_mask) + x_ref_norm * hard_mask
-
+        # Semantic Mode: Hard Replacementは行わない (信号が更新されているため)
+        
         # 変数更新
         x_t = x_t_prev
         h_t = h_t_prev
         
-        # メトリクス計算と表示 (LPIPS追加)
+        # メトリクス計算と表示
         with torch.no_grad():
             metrics_inter = metric_wrapper((x_0_hat / 2 + 0.5).detach(), input_image)
         
@@ -273,18 +351,18 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         )
         
         metrics_p1 = metric_wrapper(x_recon_p1.detach(), input_image)
-        # main_diffcom風のログ出力
         logger.info(f"  -> Phase 1 Results | PSNR: {metrics_p1['psnr']:.2f}dB | LPIPS: {metrics_p1['lpips']:.4f} | DISTS: {metrics_p1['dists']:.4f}")
 
         # Phase 1 JSCC精度
         metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
         logger.info(f"  -> [Diagnosis] Init JSCC | PSNR: {metrics_jscc_p1['psnr']:.2f}dB | LPIPS: {metrics_jscc_p1['lpips']:.4f}")
 
-        # Step 2: Retransmission (Pixel-based)
-        logger.info(f"Batch {idx+1}/{len(dataloader)}: Processing Pixel-based Retransmission...")
+        # Step 2: Retransmission (Semantic / Signal Based)
+        logger.info(f"Batch {idx+1}/{len(dataloader)}: Processing Semantic Retransmission...")
         
         if config.retrans_mode == 'oracle' or uncertainty_map_p1 is not None:
-            measurement_phase2, ret_ratio, mask_vis = simulate_pixel_retransmission(
+            # Semantic Retransmission 関数を使用
+            measurement_phase2, ret_ratio, mask_vis = simulate_semantic_retransmission(
                 operator, input_image, measurement_phase1, 
                 uncertainty_map_p1, 
                 mode=config.retrans_mode,
@@ -293,30 +371,26 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             )
             logger.info(f"  -> Retransmission Ratio: {ret_ratio:.2%} (Target={config.retrans_value})")
             
+            # 診断: 信号置換後のデコード精度
             metrics_jscc_p2 = metric_wrapper(measurement_phase2['x_mse'].detach(), input_image)
             jscc_gain = metrics_jscc_p2['psnr'] - metrics_jscc_p1['psnr']
-            logger.info(f"  -> [Diagnosis] After Patching | PSNR: {metrics_jscc_p2['psnr']:.2f}dB (+{jscc_gain:.2f}dB)")
+            logger.info(f"  -> [Diagnosis] After Signal Update | PSNR: {metrics_jscc_p2['psnr']:.2f}dB (+{jscc_gain:.2f}dB)")
             
-            hard_mask_for_phase2 = mask_vis 
-
         else:
             logger.warning("  -> No uncertainty map found! Skipping retransmission.")
             measurement_phase2 = measurement_phase1
             ret_ratio = 0.0
             mask_vis = torch.zeros_like(input_image[:, :1, :, :])
-            hard_mask_for_phase2 = None
 
-        # Step 3: Phase 2 (Refinement with Hard Constraint)
+        # Step 3: Phase 2 (Refinement guided by updated signal)
         logger.info(f"Batch {idx+1}/{len(dataloader)}: Phase 2 (Refinement)...")
         
         x_recon_p2, _ = run_diffusion_process(
             config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-            measurement_phase2, input_image, device, phase_name="Phase2",
-            hard_mask=hard_mask_for_phase2
+            measurement_phase2, input_image, device, phase_name="Phase2"
         )
         
         metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
-        # main_diffcom風のログ出力
         logger.info(f"  -> Phase 2 Results | PSNR: {metrics_p2['psnr']:.2f}dB | LPIPS: {metrics_p2['lpips']:.4f} | DISTS: {metrics_p2['dists']:.4f}")
         logger.info(f"  -> Gain vs Phase 1 | PSNR: +{metrics_p2['psnr'] - metrics_p1['psnr']:.2f}dB | LPIPS: {metrics_p2['lpips'] - metrics_p1['lpips']:.4f}")
         
@@ -335,7 +409,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         util.mkdir(save_dir)
         torchvision.utils.save_image(input_image[0].cpu(), os.path.join(save_dir, '0_GT.png'))
         torchvision.utils.save_image(measurement_phase1['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Init.png'))
-        torchvision.utils.save_image(measurement_phase2['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Patched.png'))
+        torchvision.utils.save_image(measurement_phase2['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Updated.png'))
         torchvision.utils.save_image(x_recon_p1[0].cpu(), os.path.join(save_dir, '2_Phase1_Recon.png'))
         torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, '3_Phase2_Refined.png'))
         
