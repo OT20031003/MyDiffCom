@@ -64,7 +64,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             indices_expanded = saved_indices.unsqueeze(0).expand(B, -1)
         else:
             indices_expanded = saved_indices
-            
+        print(f"indices_expanded = {indices_expanded}")
         s_shuffled = torch.gather(s_raw, 1, indices_expanded)
         
         # (C) 電力スケーリング 【修正箇所】
