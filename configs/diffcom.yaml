@@ -18,7 +18,7 @@ djscc:
 #  q_level: 3 # 0-99, fine adjustment, larger for higher bandwidth consumption
 
 #channel_type: 'awgn' # 'ofdm_tdl', 'awgn'
-channel_type: 'awgn'
+channel_type: 'ofdm_tdl'
 CSNR: 0
 ofdm_tdl:
   P: 1

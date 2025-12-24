@@ -7,6 +7,7 @@ from utils import utils_model
 __CONDITIONING_METHOD__ = {}
 
 # 評価・可視化用に不確実性マップを一時保存するグローバル変数
+# 変更: Tensor単体ではなく {'raw': ..., 'smoothed': ...} の辞書を保持する
 latest_uncertainty_map = None
 
 
@@ -166,8 +167,11 @@ class DiffCom(nn.Module):
                 else:
                     U_t = V_t
                 
-                # グローバル変数に保存 (評価・可視化用)
-                latest_uncertainty_map = U_t.detach().cpu()
+                # 【変更】グローバル変数に Raw と Smoothed の両方を保存 (評価・相関分析用)
+                latest_uncertainty_map = {
+                    'raw': V_t.detach().cpu(),
+                    'smoothed': U_t.detach().cpu()
+                }
 
                 # Mask Generation (マスク生成) - 再送判定用
                 # 正規化: [0, 1]
@@ -289,8 +293,11 @@ class HiFiDiffCom(DiffCom):
                 else:
                     U_t = V_t
                 
-                # グローバル変数に保存 (評価・可視化用)
-                latest_uncertainty_map = U_t.detach().cpu()
+                # 【変更】グローバル変数に Raw と Smoothed の両方を保存 (評価・相関分析用)
+                latest_uncertainty_map = {
+                    'raw': V_t.detach().cpu(),
+                    'smoothed': U_t.detach().cpu()
+                }
 
                 # Mask Generation (マスク生成)
                 # 正規化: [0, 1]
