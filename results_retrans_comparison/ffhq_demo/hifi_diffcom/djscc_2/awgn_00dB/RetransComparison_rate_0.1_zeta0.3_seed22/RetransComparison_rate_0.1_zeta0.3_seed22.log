@@ -1,1105 +1,452 @@
-25-12-23 15:06:17.194 : 【Channel】: Built awgn channel, SNR 0 dB
-25-12-23 15:06:17.443 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
-25-12-23 15:06:17.443 : 【Config】: Retransmission Mode: rate, Value: 0.1
-25-12-23 15:06:19.685 : Batch 1/100: Phase 1 (Initial)...
-25-12-23 15:07:34.124 :   -> Phase 1 | PSNR: 20.77dB | LPIPS: 0.1649 | DISTS: 0.1784
-25-12-23 15:07:34.139 :   -> [Base JSCC] Init | PSNR: 22.82dB | LPIPS: 0.1946 | DISTS: 0.2209
-25-12-23 15:07:34.219 :   -> [Corr] Smoothed: 0.5126 | Raw: 0.5080
-25-12-23 15:07:34.396 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:07:34.436 :      [Smooth JSCC] PSNR: 23.44dB | LPIPS: 0.1852 | DISTS: 0.2192
-25-12-23 15:08:49.294 :      [Smooth] Ratio: 9.99% | PSNR: 21.03dB | LPIPS: 0.1986 | DISTS: 0.1847
-25-12-23 15:08:49.343 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:08:49.383 :      [Raw JSCC   ] PSNR: 23.65dB | LPIPS: 0.1772 | DISTS: 0.2167
-25-12-23 15:10:04.593 :      [Raw   ] Ratio: 9.99% | PSNR: 20.95dB | LPIPS: 0.1963 | DISTS: 0.1790
-25-12-23 15:10:04.642 : --------------------------------------------
-25-12-23 15:10:04.658 : Batch 2/100: Phase 1 (Initial)...
-25-12-23 15:11:19.789 :   -> Phase 1 | PSNR: 20.19dB | LPIPS: 0.2316 | DISTS: 0.1671
-25-12-23 15:11:19.804 :   -> [Base JSCC] Init | PSNR: 22.53dB | LPIPS: 0.2484 | DISTS: 0.2390
-25-12-23 15:11:19.820 :   -> [Corr] Smoothed: 0.3878 | Raw: 0.3931
-25-12-23 15:11:20.008 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:11:20.057 :      [Smooth JSCC] PSNR: 23.08dB | LPIPS: 0.2403 | DISTS: 0.2245
-25-12-23 15:12:35.096 :      [Smooth] Ratio: 9.99% | PSNR: 20.44dB | LPIPS: 0.2429 | DISTS: 0.1923
-25-12-23 15:12:35.151 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:12:35.190 :      [Raw JSCC   ] PSNR: 23.28dB | LPIPS: 0.2423 | DISTS: 0.2306
-25-12-23 15:13:51.682 :      [Raw   ] Ratio: 9.99% | PSNR: 20.77dB | LPIPS: 0.1980 | DISTS: 0.1781
-25-12-23 15:13:51.745 : --------------------------------------------
-25-12-23 15:13:51.760 : Batch 3/100: Phase 1 (Initial)...
-25-12-23 15:15:07.371 :   -> Phase 1 | PSNR: 22.69dB | LPIPS: 0.1817 | DISTS: 0.1694
-25-12-23 15:15:07.388 :   -> [Base JSCC] Init | PSNR: 24.95dB | LPIPS: 0.2949 | DISTS: 0.2371
-25-12-23 15:15:07.410 :   -> [Corr] Smoothed: 0.4040 | Raw: 0.3236
-25-12-23 15:15:07.578 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:15:07.623 :      [Smooth JSCC] PSNR: 25.20dB | LPIPS: 0.2895 | DISTS: 0.2372
-25-12-23 15:16:22.734 :      [Smooth] Ratio: 9.99% | PSNR: 22.69dB | LPIPS: 0.1695 | DISTS: 0.1771
-25-12-23 15:16:22.783 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:16:22.823 :      [Raw JSCC   ] PSNR: 25.28dB | LPIPS: 0.2861 | DISTS: 0.2344
-25-12-23 15:17:37.946 :      [Raw   ] Ratio: 9.99% | PSNR: 22.67dB | LPIPS: 0.1602 | DISTS: 0.1621
-25-12-23 15:17:38.005 : --------------------------------------------
-25-12-23 15:17:38.022 : Batch 4/100: Phase 1 (Initial)...
-25-12-23 15:18:52.174 :   -> Phase 1 | PSNR: 22.52dB | LPIPS: 0.1935 | DISTS: 0.1740
-25-12-23 15:18:52.189 :   -> [Base JSCC] Init | PSNR: 24.96dB | LPIPS: 0.3445 | DISTS: 0.2789
-25-12-23 15:18:52.207 :   -> [Corr] Smoothed: 0.4217 | Raw: 0.3083
-25-12-23 15:18:52.370 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:18:52.410 :      [Smooth JSCC] PSNR: 25.19dB | LPIPS: 0.3525 | DISTS: 0.2839
-25-12-23 15:20:08.309 :      [Smooth] Ratio: 9.99% | PSNR: 22.54dB | LPIPS: 0.1936 | DISTS: 0.1767
-25-12-23 15:20:08.362 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:20:08.401 :      [Raw JSCC   ] PSNR: 25.21dB | LPIPS: 0.3572 | DISTS: 0.2848
-25-12-23 15:21:24.666 :      [Raw   ] Ratio: 9.99% | PSNR: 22.77dB | LPIPS: 0.1883 | DISTS: 0.1763
-25-12-23 15:21:24.728 : --------------------------------------------
-25-12-23 15:21:24.746 : Batch 5/100: Phase 1 (Initial)...
-25-12-23 15:22:39.759 :   -> Phase 1 | PSNR: 22.00dB | LPIPS: 0.1731 | DISTS: 0.1757
-25-12-23 15:22:39.773 :   -> [Base JSCC] Init | PSNR: 24.20dB | LPIPS: 0.2522 | DISTS: 0.2286
-25-12-23 15:22:39.797 :   -> [Corr] Smoothed: 0.4131 | Raw: 0.3625
-25-12-23 15:22:39.977 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:22:40.016 :      [Smooth JSCC] PSNR: 24.37dB | LPIPS: 0.2456 | DISTS: 0.2269
-25-12-23 15:23:55.975 :      [Smooth] Ratio: 9.99% | PSNR: 22.07dB | LPIPS: 0.1628 | DISTS: 0.1555
-25-12-23 15:23:56.030 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:23:56.069 :      [Raw JSCC   ] PSNR: 24.46dB | LPIPS: 0.2455 | DISTS: 0.2267
-25-12-23 15:25:12.315 :      [Raw   ] Ratio: 9.99% | PSNR: 22.07dB | LPIPS: 0.1630 | DISTS: 0.1541
-25-12-23 15:25:12.375 : --------------------------------------------
-25-12-23 15:25:12.390 : Batch 6/100: Phase 1 (Initial)...
-25-12-23 15:26:27.762 :   -> Phase 1 | PSNR: 19.37dB | LPIPS: 0.3261 | DISTS: 0.1952
-25-12-23 15:26:27.777 :   -> [Base JSCC] Init | PSNR: 21.52dB | LPIPS: 0.3883 | DISTS: 0.2889
-25-12-23 15:26:27.797 :   -> [Corr] Smoothed: 0.4399 | Raw: 0.3957
-25-12-23 15:26:27.947 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:26:27.985 :      [Smooth JSCC] PSNR: 21.63dB | LPIPS: 0.3931 | DISTS: 0.2801
-25-12-23 15:27:44.195 :      [Smooth] Ratio: 9.99% | PSNR: 19.46dB | LPIPS: 0.3227 | DISTS: 0.2016
-25-12-23 15:27:44.242 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:27:44.280 :      [Raw JSCC   ] PSNR: 21.82dB | LPIPS: 0.3834 | DISTS: 0.2851
-25-12-23 15:28:59.005 :      [Raw   ] Ratio: 9.99% | PSNR: 19.69dB | LPIPS: 0.3088 | DISTS: 0.2030
-25-12-23 15:28:59.061 : --------------------------------------------
-25-12-23 15:28:59.078 : Batch 7/100: Phase 1 (Initial)...
-25-12-23 15:30:14.538 :   -> Phase 1 | PSNR: 20.21dB | LPIPS: 0.2902 | DISTS: 0.1953
-25-12-23 15:30:14.561 :   -> [Base JSCC] Init | PSNR: 21.83dB | LPIPS: 0.3658 | DISTS: 0.2590
-25-12-23 15:30:14.578 :   -> [Corr] Smoothed: 0.3080 | Raw: 0.2890
-25-12-23 15:30:14.737 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:30:14.775 :      [Smooth JSCC] PSNR: 22.23dB | LPIPS: 0.3568 | DISTS: 0.2482
-25-12-23 15:31:29.071 :      [Smooth] Ratio: 9.99% | PSNR: 20.48dB | LPIPS: 0.2904 | DISTS: 0.1904
-25-12-23 15:31:29.128 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:31:29.166 :      [Raw JSCC   ] PSNR: 22.36dB | LPIPS: 0.3575 | DISTS: 0.2471
-25-12-23 15:32:44.172 :      [Raw   ] Ratio: 9.99% | PSNR: 20.29dB | LPIPS: 0.3032 | DISTS: 0.2167
-25-12-23 15:32:44.232 : --------------------------------------------
-25-12-23 15:32:44.258 : Batch 8/100: Phase 1 (Initial)...
-25-12-23 15:33:59.978 :   -> Phase 1 | PSNR: 23.89dB | LPIPS: 0.1382 | DISTS: 0.1776
-25-12-23 15:33:59.992 :   -> [Base JSCC] Init | PSNR: 26.65dB | LPIPS: 0.2666 | DISTS: 0.2587
-25-12-23 15:34:00.024 :   -> [Corr] Smoothed: 0.4293 | Raw: 0.3462
-25-12-23 15:34:00.201 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:34:00.244 :      [Smooth JSCC] PSNR: 26.66dB | LPIPS: 0.2682 | DISTS: 0.2635
-25-12-23 15:35:14.755 :      [Smooth] Ratio: 9.99% | PSNR: 23.89dB | LPIPS: 0.1626 | DISTS: 0.1848
-25-12-23 15:35:14.810 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:35:14.849 :      [Raw JSCC   ] PSNR: 26.78dB | LPIPS: 0.2619 | DISTS: 0.2591
-25-12-23 15:36:29.411 :      [Raw   ] Ratio: 9.99% | PSNR: 23.52dB | LPIPS: 0.1669 | DISTS: 0.1836
-25-12-23 15:36:29.470 : --------------------------------------------
-25-12-23 15:36:29.504 : Batch 9/100: Phase 1 (Initial)...
-25-12-23 15:37:44.967 :   -> Phase 1 | PSNR: 21.47dB | LPIPS: 0.2569 | DISTS: 0.1919
-25-12-23 15:37:44.981 :   -> [Base JSCC] Init | PSNR: 23.55dB | LPIPS: 0.3945 | DISTS: 0.2684
-25-12-23 15:37:45.005 :   -> [Corr] Smoothed: 0.3385 | Raw: 0.2505
-25-12-23 15:37:45.171 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:37:45.210 :      [Smooth JSCC] PSNR: 23.78dB | LPIPS: 0.3937 | DISTS: 0.2721
-25-12-23 15:39:00.197 :      [Smooth] Ratio: 9.99% | PSNR: 21.42dB | LPIPS: 0.2507 | DISTS: 0.1541
-25-12-23 15:39:00.250 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:39:00.289 :      [Raw JSCC   ] PSNR: 23.96dB | LPIPS: 0.3886 | DISTS: 0.2616
-25-12-23 15:40:16.605 :      [Raw   ] Ratio: 9.99% | PSNR: 21.53dB | LPIPS: 0.2165 | DISTS: 0.1523
-25-12-23 15:40:16.664 : --------------------------------------------
-25-12-23 15:40:16.690 : Batch 10/100: Phase 1 (Initial)...
-25-12-23 15:41:31.869 :   -> Phase 1 | PSNR: 22.72dB | LPIPS: 0.1446 | DISTS: 0.1630
-25-12-23 15:41:31.884 :   -> [Base JSCC] Init | PSNR: 25.30dB | LPIPS: 0.2511 | DISTS: 0.2497
-25-12-23 15:41:31.903 :   -> [Corr] Smoothed: 0.4014 | Raw: 0.2842
-25-12-23 15:41:32.059 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:41:32.098 :      [Smooth JSCC] PSNR: 25.50dB | LPIPS: 0.2620 | DISTS: 0.2509
-25-12-23 15:42:47.329 :      [Smooth] Ratio: 9.99% | PSNR: 23.19dB | LPIPS: 0.1639 | DISTS: 0.1639
-25-12-23 15:42:47.385 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:42:47.423 :      [Raw JSCC   ] PSNR: 25.60dB | LPIPS: 0.2570 | DISTS: 0.2513
-25-12-23 15:44:02.547 :      [Raw   ] Ratio: 9.99% | PSNR: 23.37dB | LPIPS: 0.1379 | DISTS: 0.1658
-25-12-23 15:44:02.610 : --------------------------------------------
-25-12-23 15:44:02.636 : Batch 11/100: Phase 1 (Initial)...
-25-12-23 15:45:18.536 :   -> Phase 1 | PSNR: 22.86dB | LPIPS: 0.1278 | DISTS: 0.1572
-25-12-23 15:45:18.551 :   -> [Base JSCC] Init | PSNR: 25.06dB | LPIPS: 0.2826 | DISTS: 0.2605
-25-12-23 15:45:18.572 :   -> [Corr] Smoothed: 0.4352 | Raw: 0.3506
-25-12-23 15:45:18.757 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:45:18.795 :      [Smooth JSCC] PSNR: 25.21dB | LPIPS: 0.2934 | DISTS: 0.2523
-25-12-23 15:46:34.787 :      [Smooth] Ratio: 9.99% | PSNR: 22.79dB | LPIPS: 0.1300 | DISTS: 0.1328
-25-12-23 15:46:34.841 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:46:34.884 :      [Raw JSCC   ] PSNR: 25.40dB | LPIPS: 0.2915 | DISTS: 0.2486
-25-12-23 15:47:51.520 :      [Raw   ] Ratio: 9.99% | PSNR: 23.10dB | LPIPS: 0.1458 | DISTS: 0.1340
-25-12-23 15:47:51.578 : --------------------------------------------
-25-12-23 15:47:51.604 : Batch 12/100: Phase 1 (Initial)...
-25-12-23 15:49:06.759 :   -> Phase 1 | PSNR: 22.83dB | LPIPS: 0.1843 | DISTS: 0.1828
-25-12-23 15:49:06.776 :   -> [Base JSCC] Init | PSNR: 24.62dB | LPIPS: 0.3332 | DISTS: 0.2577
-25-12-23 15:49:06.794 :   -> [Corr] Smoothed: 0.2884 | Raw: 0.2762
-25-12-23 15:49:06.957 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:49:06.998 :      [Smooth JSCC] PSNR: 24.91dB | LPIPS: 0.3319 | DISTS: 0.2542
-25-12-23 15:50:22.722 :      [Smooth] Ratio: 9.99% | PSNR: 22.75dB | LPIPS: 0.1889 | DISTS: 0.1703
-25-12-23 15:50:22.776 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:50:22.819 :      [Raw JSCC   ] PSNR: 25.08dB | LPIPS: 0.3258 | DISTS: 0.2565
-25-12-23 15:51:37.498 :      [Raw   ] Ratio: 9.99% | PSNR: 22.90dB | LPIPS: 0.1856 | DISTS: 0.1634
-25-12-23 15:51:37.559 : --------------------------------------------
-25-12-23 15:51:37.601 : Batch 13/100: Phase 1 (Initial)...
-25-12-23 15:52:52.392 :   -> Phase 1 | PSNR: 19.17dB | LPIPS: 0.2249 | DISTS: 0.1609
-25-12-23 15:52:52.406 :   -> [Base JSCC] Init | PSNR: 21.31dB | LPIPS: 0.3366 | DISTS: 0.2719
-25-12-23 15:52:52.437 :   -> [Corr] Smoothed: 0.2622 | Raw: 0.2347
-25-12-23 15:52:52.605 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:52:52.646 :      [Smooth JSCC] PSNR: 21.58dB | LPIPS: 0.3455 | DISTS: 0.2710
-25-12-23 15:54:07.812 :      [Smooth] Ratio: 9.99% | PSNR: 19.30dB | LPIPS: 0.2109 | DISTS: 0.1647
-25-12-23 15:54:07.861 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:54:07.900 :      [Raw JSCC   ] PSNR: 21.83dB | LPIPS: 0.3428 | DISTS: 0.2701
-25-12-23 15:55:23.084 :      [Raw   ] Ratio: 9.99% | PSNR: 19.50dB | LPIPS: 0.2283 | DISTS: 0.1452
-25-12-23 15:55:23.142 : --------------------------------------------
-25-12-23 15:55:23.176 : Batch 14/100: Phase 1 (Initial)...
-25-12-23 15:56:38.271 :   -> Phase 1 | PSNR: 21.52dB | LPIPS: 0.1961 | DISTS: 0.1707
-25-12-23 15:56:38.286 :   -> [Base JSCC] Init | PSNR: 23.67dB | LPIPS: 0.3180 | DISTS: 0.2459
-25-12-23 15:56:38.304 :   -> [Corr] Smoothed: 0.3354 | Raw: 0.3070
-25-12-23 15:56:38.460 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 15:56:38.498 :      [Smooth JSCC] PSNR: 23.92dB | LPIPS: 0.3284 | DISTS: 0.2553
-25-12-23 15:57:52.648 :      [Smooth] Ratio: 9.99% | PSNR: 21.93dB | LPIPS: 0.1961 | DISTS: 0.1763
-25-12-23 15:57:52.701 :   -> Processing Phase 2 (Raw)...
-25-12-23 15:57:52.740 :      [Raw JSCC   ] PSNR: 24.00dB | LPIPS: 0.3199 | DISTS: 0.2499
-25-12-23 15:59:06.826 :      [Raw   ] Ratio: 9.99% | PSNR: 21.48dB | LPIPS: 0.2154 | DISTS: 0.1952
-25-12-23 15:59:06.888 : --------------------------------------------
-25-12-23 15:59:06.906 : Batch 15/100: Phase 1 (Initial)...
-25-12-23 16:00:21.806 :   -> Phase 1 | PSNR: 21.35dB | LPIPS: 0.2441 | DISTS: 0.1779
-25-12-23 16:00:21.820 :   -> [Base JSCC] Init | PSNR: 23.42dB | LPIPS: 0.3946 | DISTS: 0.2874
-25-12-23 16:00:21.829 :   -> [Corr] Smoothed: 0.3418 | Raw: 0.2591
-25-12-23 16:00:21.991 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:00:22.029 :      [Smooth JSCC] PSNR: 23.72dB | LPIPS: 0.3951 | DISTS: 0.2931
-25-12-23 16:01:38.097 :      [Smooth] Ratio: 9.99% | PSNR: 21.69dB | LPIPS: 0.2180 | DISTS: 0.1806
-25-12-23 16:01:38.148 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:01:38.191 :      [Raw JSCC   ] PSNR: 23.79dB | LPIPS: 0.3826 | DISTS: 0.2828
-25-12-23 16:02:54.316 :      [Raw   ] Ratio: 9.99% | PSNR: 21.44dB | LPIPS: 0.2265 | DISTS: 0.1763
-25-12-23 16:02:54.376 : --------------------------------------------
-25-12-23 16:02:54.404 : Batch 16/100: Phase 1 (Initial)...
-25-12-23 16:04:12.931 :   -> Phase 1 | PSNR: 17.49dB | LPIPS: 0.3853 | DISTS: 0.2444
-25-12-23 16:04:12.953 :   -> [Base JSCC] Init | PSNR: 18.40dB | LPIPS: 0.4933 | DISTS: 0.3101
-25-12-23 16:04:12.968 :   -> [Corr] Smoothed: 0.5200 | Raw: 0.3758
-25-12-23 16:04:13.132 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:04:13.180 :      [Smooth JSCC] PSNR: 18.62dB | LPIPS: 0.4832 | DISTS: 0.3055
-25-12-23 16:05:29.610 :      [Smooth] Ratio: 9.99% | PSNR: 17.62dB | LPIPS: 0.3693 | DISTS: 0.2490
-25-12-23 16:05:29.662 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:05:29.704 :      [Raw JSCC   ] PSNR: 18.54dB | LPIPS: 0.4887 | DISTS: 0.3120
-25-12-23 16:06:44.584 :      [Raw   ] Ratio: 9.99% | PSNR: 17.59dB | LPIPS: 0.4009 | DISTS: 0.2578
-25-12-23 16:06:44.642 : --------------------------------------------
-25-12-23 16:06:44.661 : Batch 17/100: Phase 1 (Initial)...
-25-12-23 16:07:58.908 :   -> Phase 1 | PSNR: 23.75dB | LPIPS: 0.1896 | DISTS: 0.1856
-25-12-23 16:07:58.923 :   -> [Base JSCC] Init | PSNR: 26.04dB | LPIPS: 0.3506 | DISTS: 0.2636
-25-12-23 16:07:58.935 :   -> [Corr] Smoothed: 0.5659 | Raw: 0.4690
-25-12-23 16:07:59.107 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:07:59.145 :      [Smooth JSCC] PSNR: 26.19dB | LPIPS: 0.3664 | DISTS: 0.2670
-25-12-23 16:09:15.277 :      [Smooth] Ratio: 9.99% | PSNR: 23.65dB | LPIPS: 0.2187 | DISTS: 0.1598
-25-12-23 16:09:15.333 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:09:15.375 :      [Raw JSCC   ] PSNR: 26.30dB | LPIPS: 0.3626 | DISTS: 0.2572
-25-12-23 16:10:30.277 :      [Raw   ] Ratio: 9.99% | PSNR: 23.75dB | LPIPS: 0.2097 | DISTS: 0.1550
-25-12-23 16:10:30.337 : --------------------------------------------
-25-12-23 16:10:30.363 : Batch 18/100: Phase 1 (Initial)...
-25-12-23 16:11:48.273 :   -> Phase 1 | PSNR: 20.78dB | LPIPS: 0.1723 | DISTS: 0.1435
-25-12-23 16:11:48.288 :   -> [Base JSCC] Init | PSNR: 21.77dB | LPIPS: 0.2932 | DISTS: 0.2352
-25-12-23 16:11:48.310 :   -> [Corr] Smoothed: 0.4610 | Raw: 0.3656
-25-12-23 16:11:48.479 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:11:48.519 :      [Smooth JSCC] PSNR: 24.47dB | LPIPS: 0.2818 | DISTS: 0.2394
-25-12-23 16:13:02.901 :      [Smooth] Ratio: 9.99% | PSNR: 22.68dB | LPIPS: 0.1623 | DISTS: 0.1442
-25-12-23 16:13:02.950 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:13:02.987 :      [Raw JSCC   ] PSNR: 24.30dB | LPIPS: 0.2709 | DISTS: 0.2396
-25-12-23 16:14:19.584 :      [Raw   ] Ratio: 9.99% | PSNR: 22.44dB | LPIPS: 0.1615 | DISTS: 0.1484
-25-12-23 16:14:19.641 : --------------------------------------------
-25-12-23 16:14:19.658 : Batch 19/100: Phase 1 (Initial)...
-25-12-23 16:15:34.815 :   -> Phase 1 | PSNR: 21.85dB | LPIPS: 0.1575 | DISTS: 0.1557
-25-12-23 16:15:34.830 :   -> [Base JSCC] Init | PSNR: 23.65dB | LPIPS: 0.2805 | DISTS: 0.2345
-25-12-23 16:15:34.846 :   -> [Corr] Smoothed: 0.4262 | Raw: 0.3380
-25-12-23 16:15:35.021 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:15:35.060 :      [Smooth JSCC] PSNR: 23.53dB | LPIPS: 0.2918 | DISTS: 0.2328
-25-12-23 16:16:52.055 :      [Smooth] Ratio: 9.99% | PSNR: 21.54dB | LPIPS: 0.1606 | DISTS: 0.1476
-25-12-23 16:16:52.108 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:16:52.146 :      [Raw JSCC   ] PSNR: 23.83dB | LPIPS: 0.2826 | DISTS: 0.2272
-25-12-23 16:18:07.506 :      [Raw   ] Ratio: 9.99% | PSNR: 21.80dB | LPIPS: 0.1596 | DISTS: 0.1551
-25-12-23 16:18:07.563 : --------------------------------------------
-25-12-23 16:18:07.603 : Batch 20/100: Phase 1 (Initial)...
-25-12-23 16:19:22.650 :   -> Phase 1 | PSNR: 23.72dB | LPIPS: 0.1387 | DISTS: 0.1508
-25-12-23 16:19:22.666 :   -> [Base JSCC] Init | PSNR: 26.17dB | LPIPS: 0.2310 | DISTS: 0.2511
-25-12-23 16:19:22.683 :   -> [Corr] Smoothed: 0.4210 | Raw: 0.3642
-25-12-23 16:19:22.857 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:19:22.896 :      [Smooth JSCC] PSNR: 26.18dB | LPIPS: 0.2355 | DISTS: 0.2569
-25-12-23 16:20:37.096 :      [Smooth] Ratio: 9.99% | PSNR: 23.79dB | LPIPS: 0.1491 | DISTS: 0.1778
-25-12-23 16:20:37.149 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:20:37.187 :      [Raw JSCC   ] PSNR: 26.01dB | LPIPS: 0.2361 | DISTS: 0.2572
-25-12-23 16:21:52.660 :      [Raw   ] Ratio: 9.99% | PSNR: 23.66dB | LPIPS: 0.1359 | DISTS: 0.1551
-25-12-23 16:21:52.716 : --------------------------------------------
-25-12-23 16:21:52.750 : Batch 21/100: Phase 1 (Initial)...
-25-12-23 16:23:07.937 :   -> Phase 1 | PSNR: 24.95dB | LPIPS: 0.2598 | DISTS: 0.1656
-25-12-23 16:23:07.952 :   -> [Base JSCC] Init | PSNR: 26.87dB | LPIPS: 0.3586 | DISTS: 0.2558
-25-12-23 16:23:07.967 :   -> [Corr] Smoothed: 0.3262 | Raw: 0.2963
-25-12-23 16:23:08.143 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:23:08.182 :      [Smooth JSCC] PSNR: 27.52dB | LPIPS: 0.3628 | DISTS: 0.2562
-25-12-23 16:24:22.475 :      [Smooth] Ratio: 9.99% | PSNR: 25.41dB | LPIPS: 0.2564 | DISTS: 0.1632
-25-12-23 16:24:22.532 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:24:22.570 :      [Raw JSCC   ] PSNR: 27.66dB | LPIPS: 0.3570 | DISTS: 0.2534
-25-12-23 16:25:37.570 :      [Raw   ] Ratio: 9.99% | PSNR: 25.30dB | LPIPS: 0.2535 | DISTS: 0.1714
-25-12-23 16:25:37.630 : --------------------------------------------
-25-12-23 16:25:37.648 : Batch 22/100: Phase 1 (Initial)...
-25-12-23 16:26:52.312 :   -> Phase 1 | PSNR: 23.51dB | LPIPS: 0.1580 | DISTS: 0.1548
-25-12-23 16:26:52.327 :   -> [Base JSCC] Init | PSNR: 25.57dB | LPIPS: 0.2924 | DISTS: 0.2484
-25-12-23 16:26:52.344 :   -> [Corr] Smoothed: 0.2838 | Raw: 0.2119
-25-12-23 16:26:52.511 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:26:52.549 :      [Smooth JSCC] PSNR: 25.90dB | LPIPS: 0.3079 | DISTS: 0.2446
-25-12-23 16:28:06.795 :      [Smooth] Ratio: 9.99% | PSNR: 23.30dB | LPIPS: 0.1723 | DISTS: 0.1600
-25-12-23 16:28:06.850 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:28:06.887 :      [Raw JSCC   ] PSNR: 25.94dB | LPIPS: 0.2908 | DISTS: 0.2354
-25-12-23 16:29:22.280 :      [Raw   ] Ratio: 9.99% | PSNR: 23.54dB | LPIPS: 0.1604 | DISTS: 0.1437
-25-12-23 16:29:22.342 : --------------------------------------------
-25-12-23 16:29:22.378 : Batch 23/100: Phase 1 (Initial)...
-25-12-23 16:30:36.287 :   -> Phase 1 | PSNR: 22.07dB | LPIPS: 0.2721 | DISTS: 0.1782
-25-12-23 16:30:36.302 :   -> [Base JSCC] Init | PSNR: 24.26dB | LPIPS: 0.4153 | DISTS: 0.2682
-25-12-23 16:30:36.320 :   -> [Corr] Smoothed: 0.4097 | Raw: 0.3067
-25-12-23 16:30:36.496 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:30:36.534 :      [Smooth JSCC] PSNR: 24.41dB | LPIPS: 0.4086 | DISTS: 0.2673
-25-12-23 16:31:52.661 :      [Smooth] Ratio: 9.99% | PSNR: 21.99dB | LPIPS: 0.2415 | DISTS: 0.1817
-25-12-23 16:31:52.735 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:31:52.775 :      [Raw JSCC   ] PSNR: 24.45dB | LPIPS: 0.4117 | DISTS: 0.2694
-25-12-23 16:33:07.792 :      [Raw   ] Ratio: 9.99% | PSNR: 22.11dB | LPIPS: 0.2563 | DISTS: 0.1751
-25-12-23 16:33:07.854 : --------------------------------------------
-25-12-23 16:33:07.883 : Batch 24/100: Phase 1 (Initial)...
-25-12-23 16:34:23.320 :   -> Phase 1 | PSNR: 19.64dB | LPIPS: 0.2005 | DISTS: 0.1719
-25-12-23 16:34:23.336 :   -> [Base JSCC] Init | PSNR: 20.95dB | LPIPS: 0.2503 | DISTS: 0.2150
-25-12-23 16:34:23.362 :   -> [Corr] Smoothed: 0.3858 | Raw: 0.3657
-25-12-23 16:34:23.538 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:34:23.582 :      [Smooth JSCC] PSNR: 21.32dB | LPIPS: 0.2543 | DISTS: 0.2137
-25-12-23 16:35:40.320 :      [Smooth] Ratio: 9.99% | PSNR: 19.72dB | LPIPS: 0.2280 | DISTS: 0.1902
-25-12-23 16:35:40.377 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:35:40.416 :      [Raw JSCC   ] PSNR: 21.46dB | LPIPS: 0.2485 | DISTS: 0.2206
-25-12-23 16:36:56.550 :      [Raw   ] Ratio: 9.99% | PSNR: 19.80dB | LPIPS: 0.2075 | DISTS: 0.1805
-25-12-23 16:36:56.611 : --------------------------------------------
-25-12-23 16:36:56.640 : Batch 25/100: Phase 1 (Initial)...
-25-12-23 16:38:12.658 :   -> Phase 1 | PSNR: 21.72dB | LPIPS: 0.2631 | DISTS: 0.1903
-25-12-23 16:38:12.673 :   -> [Base JSCC] Init | PSNR: 23.95dB | LPIPS: 0.3468 | DISTS: 0.2721
-25-12-23 16:38:12.679 :   -> [Corr] Smoothed: 0.3181 | Raw: 0.2505
-25-12-23 16:38:12.841 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:38:12.881 :      [Smooth JSCC] PSNR: 24.15dB | LPIPS: 0.3525 | DISTS: 0.2683
-25-12-23 16:39:28.866 :      [Smooth] Ratio: 9.99% | PSNR: 22.27dB | LPIPS: 0.2273 | DISTS: 0.1964
-25-12-23 16:39:28.922 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:39:28.961 :      [Raw JSCC   ] PSNR: 24.13dB | LPIPS: 0.3484 | DISTS: 0.2762
-25-12-23 16:40:46.496 :      [Raw   ] Ratio: 9.99% | PSNR: 22.51dB | LPIPS: 0.2096 | DISTS: 0.1748
-25-12-23 16:40:46.559 : --------------------------------------------
-25-12-23 16:40:46.601 : Batch 26/100: Phase 1 (Initial)...
-25-12-23 16:42:02.261 :   -> Phase 1 | PSNR: 21.41dB | LPIPS: 0.2309 | DISTS: 0.2075
-25-12-23 16:42:02.276 :   -> [Base JSCC] Init | PSNR: 23.71dB | LPIPS: 0.3213 | DISTS: 0.2487
-25-12-23 16:42:02.293 :   -> [Corr] Smoothed: 0.5077 | Raw: 0.4305
-25-12-23 16:42:02.439 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:42:02.478 :      [Smooth JSCC] PSNR: 23.74dB | LPIPS: 0.3238 | DISTS: 0.2502
-25-12-23 16:43:17.928 :      [Smooth] Ratio: 9.99% | PSNR: 21.63dB | LPIPS: 0.2406 | DISTS: 0.2039
-25-12-23 16:43:17.984 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:43:18.024 :      [Raw JSCC   ] PSNR: 23.98dB | LPIPS: 0.3208 | DISTS: 0.2491
-25-12-23 16:44:34.692 :      [Raw   ] Ratio: 9.99% | PSNR: 21.65dB | LPIPS: 0.2332 | DISTS: 0.1999
-25-12-23 16:44:34.756 : --------------------------------------------
-25-12-23 16:44:34.784 : Batch 27/100: Phase 1 (Initial)...
-25-12-23 16:45:50.966 :   -> Phase 1 | PSNR: 21.15dB | LPIPS: 0.1288 | DISTS: 0.1512
-25-12-23 16:45:50.981 :   -> [Base JSCC] Init | PSNR: 22.26dB | LPIPS: 0.2263 | DISTS: 0.2453
-25-12-23 16:45:50.994 :   -> [Corr] Smoothed: 0.3111 | Raw: 0.3121
-25-12-23 16:45:51.174 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:45:51.214 :      [Smooth JSCC] PSNR: 22.48dB | LPIPS: 0.2239 | DISTS: 0.2486
-25-12-23 16:47:09.325 :      [Smooth] Ratio: 9.99% | PSNR: 21.24dB | LPIPS: 0.1416 | DISTS: 0.1631
-25-12-23 16:47:09.382 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:47:09.435 :      [Raw JSCC   ] PSNR: 22.80dB | LPIPS: 0.2241 | DISTS: 0.2470
-25-12-23 16:48:28.924 :      [Raw   ] Ratio: 9.99% | PSNR: 21.35dB | LPIPS: 0.1242 | DISTS: 0.1385
-25-12-23 16:48:28.985 : --------------------------------------------
-25-12-23 16:48:29.020 : Batch 28/100: Phase 1 (Initial)...
-25-12-23 16:49:45.424 :   -> Phase 1 | PSNR: 24.19dB | LPIPS: 0.1399 | DISTS: 0.1477
-25-12-23 16:49:45.439 :   -> [Base JSCC] Init | PSNR: 26.80dB | LPIPS: 0.3258 | DISTS: 0.2401
-25-12-23 16:49:45.458 :   -> [Corr] Smoothed: 0.4255 | Raw: 0.3485
-25-12-23 16:49:45.611 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:49:45.653 :      [Smooth JSCC] PSNR: 27.02dB | LPIPS: 0.3336 | DISTS: 0.2452
-25-12-23 16:51:02.487 :      [Smooth] Ratio: 9.99% | PSNR: 24.27dB | LPIPS: 0.1469 | DISTS: 0.1303
-25-12-23 16:51:02.537 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:51:02.581 :      [Raw JSCC   ] PSNR: 27.12dB | LPIPS: 0.3255 | DISTS: 0.2456
-25-12-23 16:52:21.417 :      [Raw   ] Ratio: 9.99% | PSNR: 24.31dB | LPIPS: 0.1298 | DISTS: 0.1416
-25-12-23 16:52:21.475 : --------------------------------------------
-25-12-23 16:52:21.502 : Batch 29/100: Phase 1 (Initial)...
-25-12-23 16:53:37.674 :   -> Phase 1 | PSNR: 27.22dB | LPIPS: 0.1080 | DISTS: 0.1557
-25-12-23 16:53:37.689 :   -> [Base JSCC] Init | PSNR: 29.07dB | LPIPS: 0.2115 | DISTS: 0.2119
-25-12-23 16:53:37.703 :   -> [Corr] Smoothed: 0.3863 | Raw: 0.3323
-25-12-23 16:53:37.868 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:53:37.906 :      [Smooth JSCC] PSNR: 29.40dB | LPIPS: 0.2055 | DISTS: 0.2076
-25-12-23 16:54:52.525 :      [Smooth] Ratio: 9.99% | PSNR: 26.82dB | LPIPS: 0.0983 | DISTS: 0.1474
-25-12-23 16:54:52.581 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:54:52.619 :      [Raw JSCC   ] PSNR: 29.29dB | LPIPS: 0.2045 | DISTS: 0.2053
-25-12-23 16:56:08.311 :      [Raw   ] Ratio: 9.99% | PSNR: 26.70dB | LPIPS: 0.0903 | DISTS: 0.1284
-25-12-23 16:56:08.369 : --------------------------------------------
-25-12-23 16:56:08.411 : Batch 30/100: Phase 1 (Initial)...
-25-12-23 16:57:23.451 :   -> Phase 1 | PSNR: 22.76dB | LPIPS: 0.1236 | DISTS: 0.1336
-25-12-23 16:57:23.466 :   -> [Base JSCC] Init | PSNR: 24.56dB | LPIPS: 0.3213 | DISTS: 0.2366
-25-12-23 16:57:23.472 :   -> [Corr] Smoothed: 0.4390 | Raw: 0.3552
-25-12-23 16:57:23.635 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 16:57:23.673 :      [Smooth JSCC] PSNR: 24.59dB | LPIPS: 0.3247 | DISTS: 0.2311
-25-12-23 16:58:38.313 :      [Smooth] Ratio: 9.99% | PSNR: 22.70dB | LPIPS: 0.1325 | DISTS: 0.1379
-25-12-23 16:58:38.370 :   -> Processing Phase 2 (Raw)...
-25-12-23 16:58:38.409 :      [Raw JSCC   ] PSNR: 24.76dB | LPIPS: 0.3264 | DISTS: 0.2333
-25-12-23 16:59:53.284 :      [Raw   ] Ratio: 9.99% | PSNR: 22.80dB | LPIPS: 0.1297 | DISTS: 0.1325
-25-12-23 16:59:53.347 : --------------------------------------------
-25-12-23 16:59:53.381 : Batch 31/100: Phase 1 (Initial)...
-25-12-23 17:01:08.215 :   -> Phase 1 | PSNR: 24.43dB | LPIPS: 0.1396 | DISTS: 0.1606
-25-12-23 17:01:08.230 :   -> [Base JSCC] Init | PSNR: 26.90dB | LPIPS: 0.2834 | DISTS: 0.2596
-25-12-23 17:01:08.247 :   -> [Corr] Smoothed: 0.3220 | Raw: 0.2715
-25-12-23 17:01:08.413 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:01:08.452 :      [Smooth JSCC] PSNR: 27.09dB | LPIPS: 0.2891 | DISTS: 0.2610
-25-12-23 17:02:23.661 :      [Smooth] Ratio: 9.99% | PSNR: 24.83dB | LPIPS: 0.1469 | DISTS: 0.1582
-25-12-23 17:02:23.718 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:02:23.758 :      [Raw JSCC   ] PSNR: 27.23dB | LPIPS: 0.2900 | DISTS: 0.2621
-25-12-23 17:03:38.596 :      [Raw   ] Ratio: 9.99% | PSNR: 24.95dB | LPIPS: 0.1595 | DISTS: 0.1853
-25-12-23 17:03:38.662 : --------------------------------------------
-25-12-23 17:03:38.686 : Batch 32/100: Phase 1 (Initial)...
-25-12-23 17:04:53.932 :   -> Phase 1 | PSNR: 24.30dB | LPIPS: 0.1809 | DISTS: 0.1772
-25-12-23 17:04:53.947 :   -> [Base JSCC] Init | PSNR: 26.46dB | LPIPS: 0.2903 | DISTS: 0.2470
-25-12-23 17:04:53.953 :   -> [Corr] Smoothed: 0.4408 | Raw: 0.3878
-25-12-23 17:04:54.111 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:04:54.153 :      [Smooth JSCC] PSNR: 26.38dB | LPIPS: 0.2940 | DISTS: 0.2536
-25-12-23 17:06:10.373 :      [Smooth] Ratio: 9.99% | PSNR: 24.28dB | LPIPS: 0.1509 | DISTS: 0.1566
-25-12-23 17:06:10.430 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:06:10.471 :      [Raw JSCC   ] PSNR: 26.56dB | LPIPS: 0.2943 | DISTS: 0.2538
-25-12-23 17:07:27.525 :      [Raw   ] Ratio: 9.99% | PSNR: 24.65dB | LPIPS: 0.1429 | DISTS: 0.1459
-25-12-23 17:07:27.588 : --------------------------------------------
-25-12-23 17:07:27.629 : Batch 33/100: Phase 1 (Initial)...
-25-12-23 17:08:43.584 :   -> Phase 1 | PSNR: 21.04dB | LPIPS: 0.1738 | DISTS: 0.1701
-25-12-23 17:08:43.599 :   -> [Base JSCC] Init | PSNR: 23.55dB | LPIPS: 0.2822 | DISTS: 0.2385
-25-12-23 17:08:43.615 :   -> [Corr] Smoothed: 0.3149 | Raw: 0.3014
-25-12-23 17:08:43.773 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:08:43.813 :      [Smooth JSCC] PSNR: 23.45dB | LPIPS: 0.2896 | DISTS: 0.2483
-25-12-23 17:09:59.549 :      [Smooth] Ratio: 9.99% | PSNR: 20.87dB | LPIPS: 0.1695 | DISTS: 0.1734
-25-12-23 17:09:59.602 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:09:59.641 :      [Raw JSCC   ] PSNR: 23.54dB | LPIPS: 0.2858 | DISTS: 0.2483
-25-12-23 17:11:15.570 :      [Raw   ] Ratio: 9.99% | PSNR: 20.76dB | LPIPS: 0.2001 | DISTS: 0.1834
-25-12-23 17:11:15.627 : --------------------------------------------
-25-12-23 17:11:15.664 : Batch 34/100: Phase 1 (Initial)...
-25-12-23 17:12:31.570 :   -> Phase 1 | PSNR: 22.33dB | LPIPS: 0.2462 | DISTS: 0.1784
-25-12-23 17:12:31.585 :   -> [Base JSCC] Init | PSNR: 24.54dB | LPIPS: 0.3940 | DISTS: 0.2800
-25-12-23 17:12:31.616 :   -> [Corr] Smoothed: 0.3437 | Raw: 0.2882
-25-12-23 17:12:31.784 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:12:31.824 :      [Smooth JSCC] PSNR: 24.81dB | LPIPS: 0.4026 | DISTS: 0.2890
-25-12-23 17:13:47.528 :      [Smooth] Ratio: 9.99% | PSNR: 22.48dB | LPIPS: 0.2490 | DISTS: 0.1820
-25-12-23 17:13:47.581 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:13:47.620 :      [Raw JSCC   ] PSNR: 24.88dB | LPIPS: 0.3981 | DISTS: 0.2874
-25-12-23 17:15:03.319 :      [Raw   ] Ratio: 9.99% | PSNR: 22.58dB | LPIPS: 0.2404 | DISTS: 0.1825
-25-12-23 17:15:03.381 : --------------------------------------------
-25-12-23 17:15:03.407 : Batch 35/100: Phase 1 (Initial)...
-25-12-23 17:16:19.056 :   -> Phase 1 | PSNR: 20.92dB | LPIPS: 0.2208 | DISTS: 0.1834
-25-12-23 17:16:19.072 :   -> [Base JSCC] Init | PSNR: 23.54dB | LPIPS: 0.3321 | DISTS: 0.2568
-25-12-23 17:16:19.089 :   -> [Corr] Smoothed: 0.4580 | Raw: 0.4104
-25-12-23 17:16:19.253 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:16:19.293 :      [Smooth JSCC] PSNR: 23.77dB | LPIPS: 0.3457 | DISTS: 0.2632
-25-12-23 17:17:34.851 :      [Smooth] Ratio: 9.99% | PSNR: 21.14dB | LPIPS: 0.2310 | DISTS: 0.1638
-25-12-23 17:17:34.907 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:17:34.947 :      [Raw JSCC   ] PSNR: 24.04dB | LPIPS: 0.3362 | DISTS: 0.2582
-25-12-23 17:18:51.645 :      [Raw   ] Ratio: 9.99% | PSNR: 21.12dB | LPIPS: 0.2155 | DISTS: 0.1714
-25-12-23 17:18:51.706 : --------------------------------------------
-25-12-23 17:18:51.753 : Batch 36/100: Phase 1 (Initial)...
-25-12-23 17:20:08.925 :   -> Phase 1 | PSNR: 25.33dB | LPIPS: 0.1471 | DISTS: 0.1446
-25-12-23 17:20:08.943 :   -> [Base JSCC] Init | PSNR: 27.87dB | LPIPS: 0.2152 | DISTS: 0.2239
-25-12-23 17:20:08.971 :   -> [Corr] Smoothed: 0.3536 | Raw: 0.2778
-25-12-23 17:20:09.130 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:20:09.170 :      [Smooth JSCC] PSNR: 27.69dB | LPIPS: 0.2349 | DISTS: 0.2373
-25-12-23 17:21:26.085 :      [Smooth] Ratio: 9.99% | PSNR: 25.24dB | LPIPS: 0.1244 | DISTS: 0.1309
-25-12-23 17:21:26.142 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:21:26.181 :      [Raw JSCC   ] PSNR: 27.94dB | LPIPS: 0.2306 | DISTS: 0.2365
-25-12-23 17:22:41.241 :      [Raw   ] Ratio: 9.99% | PSNR: 25.38dB | LPIPS: 0.1275 | DISTS: 0.1395
-25-12-23 17:22:41.325 : --------------------------------------------
-25-12-23 17:22:41.342 : Batch 37/100: Phase 1 (Initial)...
-25-12-23 17:23:56.949 :   -> Phase 1 | PSNR: 23.09dB | LPIPS: 0.1911 | DISTS: 0.1550
-25-12-23 17:23:56.964 :   -> [Base JSCC] Init | PSNR: 25.37dB | LPIPS: 0.2862 | DISTS: 0.2314
-25-12-23 17:23:56.980 :   -> [Corr] Smoothed: 0.4153 | Raw: 0.3409
-25-12-23 17:23:57.136 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:23:57.195 :      [Smooth JSCC] PSNR: 25.52dB | LPIPS: 0.2924 | DISTS: 0.2220
-25-12-23 17:25:13.217 :      [Smooth] Ratio: 9.99% | PSNR: 22.86dB | LPIPS: 0.1916 | DISTS: 0.1513
-25-12-23 17:25:13.267 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:25:13.306 :      [Raw JSCC   ] PSNR: 25.72dB | LPIPS: 0.2917 | DISTS: 0.2181
-25-12-23 17:26:28.895 :      [Raw   ] Ratio: 9.99% | PSNR: 23.34dB | LPIPS: 0.1694 | DISTS: 0.1480
-25-12-23 17:26:28.954 : --------------------------------------------
-25-12-23 17:26:28.977 : Batch 38/100: Phase 1 (Initial)...
-25-12-23 17:27:44.080 :   -> Phase 1 | PSNR: 20.42dB | LPIPS: 0.1771 | DISTS: 0.1648
-25-12-23 17:27:44.095 :   -> [Base JSCC] Init | PSNR: 22.47dB | LPIPS: 0.2248 | DISTS: 0.2336
-25-12-23 17:27:44.101 :   -> [Corr] Smoothed: 0.4726 | Raw: 0.4147
-25-12-23 17:27:44.289 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:27:44.331 :      [Smooth JSCC] PSNR: 23.10dB | LPIPS: 0.2151 | DISTS: 0.2321
-25-12-23 17:29:00.490 :      [Smooth] Ratio: 9.99% | PSNR: 20.84dB | LPIPS: 0.1557 | DISTS: 0.1518
-25-12-23 17:29:00.545 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:29:00.584 :      [Raw JSCC   ] PSNR: 23.39dB | LPIPS: 0.2030 | DISTS: 0.2215
-25-12-23 17:30:16.498 :      [Raw   ] Ratio: 9.99% | PSNR: 20.61dB | LPIPS: 0.1666 | DISTS: 0.1735
-25-12-23 17:30:16.556 : --------------------------------------------
-25-12-23 17:30:16.581 : Batch 39/100: Phase 1 (Initial)...
-25-12-23 17:31:32.048 :   -> Phase 1 | PSNR: 23.86dB | LPIPS: 0.1869 | DISTS: 0.1589
-25-12-23 17:31:32.062 :   -> [Base JSCC] Init | PSNR: 26.16dB | LPIPS: 0.3295 | DISTS: 0.2355
-25-12-23 17:31:32.078 :   -> [Corr] Smoothed: 0.4075 | Raw: 0.3272
-25-12-23 17:31:32.244 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:31:32.283 :      [Smooth JSCC] PSNR: 26.26dB | LPIPS: 0.3298 | DISTS: 0.2540
-25-12-23 17:32:48.897 :      [Smooth] Ratio: 9.99% | PSNR: 24.07dB | LPIPS: 0.1739 | DISTS: 0.1651
-25-12-23 17:32:48.953 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:32:48.991 :      [Raw JSCC   ] PSNR: 26.54dB | LPIPS: 0.3274 | DISTS: 0.2474
-25-12-23 17:34:05.807 :      [Raw   ] Ratio: 9.99% | PSNR: 23.92dB | LPIPS: 0.1797 | DISTS: 0.1664
-25-12-23 17:34:05.872 : --------------------------------------------
-25-12-23 17:34:05.890 : Batch 40/100: Phase 1 (Initial)...
-25-12-23 17:35:22.116 :   -> Phase 1 | PSNR: 23.72dB | LPIPS: 0.1582 | DISTS: 0.1496
-25-12-23 17:35:22.134 :   -> [Base JSCC] Init | PSNR: 26.06dB | LPIPS: 0.3253 | DISTS: 0.2641
-25-12-23 17:35:22.140 :   -> [Corr] Smoothed: 0.3674 | Raw: 0.3306
-25-12-23 17:35:22.322 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:35:22.361 :      [Smooth JSCC] PSNR: 26.15dB | LPIPS: 0.3341 | DISTS: 0.2665
-25-12-23 17:36:37.553 :      [Smooth] Ratio: 9.99% | PSNR: 23.91dB | LPIPS: 0.1773 | DISTS: 0.1532
-25-12-23 17:36:37.609 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:36:37.647 :      [Raw JSCC   ] PSNR: 26.26dB | LPIPS: 0.3340 | DISTS: 0.2670
-25-12-23 17:37:53.132 :      [Raw   ] Ratio: 9.99% | PSNR: 23.83dB | LPIPS: 0.1617 | DISTS: 0.1526
-25-12-23 17:37:53.192 : --------------------------------------------
-25-12-23 17:37:53.210 : Batch 41/100: Phase 1 (Initial)...
-25-12-23 17:39:06.891 :   -> Phase 1 | PSNR: 21.87dB | LPIPS: 0.1666 | DISTS: 0.1537
-25-12-23 17:39:06.906 :   -> [Base JSCC] Init | PSNR: 23.37dB | LPIPS: 0.2774 | DISTS: 0.2469
-25-12-23 17:39:06.927 :   -> [Corr] Smoothed: 0.4685 | Raw: 0.3872
-25-12-23 17:39:07.061 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:39:07.103 :      [Smooth JSCC] PSNR: 23.44dB | LPIPS: 0.2790 | DISTS: 0.2486
-25-12-23 17:40:20.807 :      [Smooth] Ratio: 9.99% | PSNR: 22.12dB | LPIPS: 0.1720 | DISTS: 0.1453
-25-12-23 17:40:20.858 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:40:20.895 :      [Raw JSCC   ] PSNR: 23.45dB | LPIPS: 0.2787 | DISTS: 0.2474
-25-12-23 17:41:34.665 :      [Raw   ] Ratio: 9.99% | PSNR: 21.97dB | LPIPS: 0.1598 | DISTS: 0.1561
-25-12-23 17:41:34.725 : --------------------------------------------
-25-12-23 17:41:34.741 : Batch 42/100: Phase 1 (Initial)...
-25-12-23 17:42:49.725 :   -> Phase 1 | PSNR: 23.62dB | LPIPS: 0.1955 | DISTS: 0.1607
-25-12-23 17:42:49.739 :   -> [Base JSCC] Init | PSNR: 26.27dB | LPIPS: 0.2751 | DISTS: 0.2455
-25-12-23 17:42:49.755 :   -> [Corr] Smoothed: 0.2729 | Raw: 0.1869
-25-12-23 17:42:49.929 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:42:49.971 :      [Smooth JSCC] PSNR: 26.63dB | LPIPS: 0.2714 | DISTS: 0.2523
-25-12-23 17:44:06.239 :      [Smooth] Ratio: 9.99% | PSNR: 24.17dB | LPIPS: 0.2140 | DISTS: 0.1704
-25-12-23 17:44:06.290 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:44:06.328 :      [Raw JSCC   ] PSNR: 26.76dB | LPIPS: 0.2727 | DISTS: 0.2530
-25-12-23 17:45:22.143 :      [Raw   ] Ratio: 9.99% | PSNR: 24.66dB | LPIPS: 0.1724 | DISTS: 0.1548
-25-12-23 17:45:22.209 : --------------------------------------------
-25-12-23 17:45:22.236 : Batch 43/100: Phase 1 (Initial)...
-25-12-23 17:46:36.320 :   -> Phase 1 | PSNR: 20.74dB | LPIPS: 0.1761 | DISTS: 0.1491
-25-12-23 17:46:36.334 :   -> [Base JSCC] Init | PSNR: 22.49dB | LPIPS: 0.2900 | DISTS: 0.2477
-25-12-23 17:46:36.340 :   -> [Corr] Smoothed: 0.1961 | Raw: 0.2187
-25-12-23 17:46:36.496 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:46:36.534 :      [Smooth JSCC] PSNR: 22.93dB | LPIPS: 0.2829 | DISTS: 0.2387
-25-12-23 17:47:50.681 :      [Smooth] Ratio: 9.99% | PSNR: 20.83dB | LPIPS: 0.1773 | DISTS: 0.1495
-25-12-23 17:47:50.733 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:47:50.771 :      [Raw JSCC   ] PSNR: 22.99dB | LPIPS: 0.2775 | DISTS: 0.2380
-25-12-23 17:49:04.544 :      [Raw   ] Ratio: 9.99% | PSNR: 21.09dB | LPIPS: 0.1677 | DISTS: 0.1511
-25-12-23 17:49:04.607 : --------------------------------------------
-25-12-23 17:49:04.633 : Batch 44/100: Phase 1 (Initial)...
-25-12-23 17:50:18.683 :   -> Phase 1 | PSNR: 23.29dB | LPIPS: 0.2011 | DISTS: 0.1995
-25-12-23 17:50:18.698 :   -> [Base JSCC] Init | PSNR: 25.53dB | LPIPS: 0.3608 | DISTS: 0.2529
-25-12-23 17:50:18.704 :   -> [Corr] Smoothed: 0.3287 | Raw: 0.2886
-25-12-23 17:50:18.869 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:50:18.910 :      [Smooth JSCC] PSNR: 25.68dB | LPIPS: 0.3606 | DISTS: 0.2527
-25-12-23 17:51:33.011 :      [Smooth] Ratio: 9.99% | PSNR: 23.51dB | LPIPS: 0.2077 | DISTS: 0.1827
-25-12-23 17:51:33.063 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:51:33.101 :      [Raw JSCC   ] PSNR: 25.84dB | LPIPS: 0.3528 | DISTS: 0.2516
-25-12-23 17:52:47.849 :      [Raw   ] Ratio: 9.99% | PSNR: 23.64dB | LPIPS: 0.1989 | DISTS: 0.1715
-25-12-23 17:52:47.910 : --------------------------------------------
-25-12-23 17:52:47.953 : Batch 45/100: Phase 1 (Initial)...
-25-12-23 17:54:01.791 :   -> Phase 1 | PSNR: 23.18dB | LPIPS: 0.1606 | DISTS: 0.1602
-25-12-23 17:54:01.806 :   -> [Base JSCC] Init | PSNR: 25.06dB | LPIPS: 0.2992 | DISTS: 0.2543
-25-12-23 17:54:01.823 :   -> [Corr] Smoothed: 0.3822 | Raw: 0.3196
-25-12-23 17:54:01.988 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:54:02.026 :      [Smooth JSCC] PSNR: 25.37dB | LPIPS: 0.2993 | DISTS: 0.2575
-25-12-23 17:55:16.279 :      [Smooth] Ratio: 9.99% | PSNR: 23.48dB | LPIPS: 0.1533 | DISTS: 0.1565
-25-12-23 17:55:16.334 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:55:16.372 :      [Raw JSCC   ] PSNR: 25.43dB | LPIPS: 0.2901 | DISTS: 0.2529
-25-12-23 17:56:30.493 :      [Raw   ] Ratio: 9.99% | PSNR: 23.45dB | LPIPS: 0.1519 | DISTS: 0.1524
-25-12-23 17:56:30.556 : --------------------------------------------
-25-12-23 17:56:30.593 : Batch 46/100: Phase 1 (Initial)...
-25-12-23 17:57:44.285 :   -> Phase 1 | PSNR: 23.40dB | LPIPS: 0.1591 | DISTS: 0.1597
-25-12-23 17:57:44.300 :   -> [Base JSCC] Init | PSNR: 25.46dB | LPIPS: 0.2314 | DISTS: 0.2407
-25-12-23 17:57:44.314 :   -> [Corr] Smoothed: 0.5102 | Raw: 0.4620
-25-12-23 17:57:44.509 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 17:57:44.547 :      [Smooth JSCC] PSNR: 25.93dB | LPIPS: 0.2107 | DISTS: 0.2359
-25-12-23 17:58:58.561 :      [Smooth] Ratio: 9.99% | PSNR: 23.37dB | LPIPS: 0.1443 | DISTS: 0.1911
-25-12-23 17:58:58.622 :   -> Processing Phase 2 (Raw)...
-25-12-23 17:58:58.660 :      [Raw JSCC   ] PSNR: 25.99dB | LPIPS: 0.2142 | DISTS: 0.2286
-25-12-23 18:00:12.557 :      [Raw   ] Ratio: 9.99% | PSNR: 23.35dB | LPIPS: 0.1573 | DISTS: 0.1782
-25-12-23 18:00:12.615 : --------------------------------------------
-25-12-23 18:00:12.632 : Batch 47/100: Phase 1 (Initial)...
-25-12-23 18:01:26.531 :   -> Phase 1 | PSNR: 21.47dB | LPIPS: 0.2373 | DISTS: 0.2134
-25-12-23 18:01:26.545 :   -> [Base JSCC] Init | PSNR: 23.97dB | LPIPS: 0.2780 | DISTS: 0.2599
-25-12-23 18:01:26.563 :   -> [Corr] Smoothed: 0.5020 | Raw: 0.4220
-25-12-23 18:01:26.723 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:01:26.767 :      [Smooth JSCC] PSNR: 23.99dB | LPIPS: 0.2880 | DISTS: 0.2633
-25-12-23 18:02:41.410 :      [Smooth] Ratio: 9.99% | PSNR: 21.57dB | LPIPS: 0.2129 | DISTS: 0.1965
-25-12-23 18:02:41.459 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:02:41.497 :      [Raw JSCC   ] PSNR: 24.11dB | LPIPS: 0.2780 | DISTS: 0.2578
-25-12-23 18:03:55.760 :      [Raw   ] Ratio: 9.99% | PSNR: 21.35dB | LPIPS: 0.2160 | DISTS: 0.1799
-25-12-23 18:03:55.815 : --------------------------------------------
-25-12-23 18:03:55.848 : Batch 48/100: Phase 1 (Initial)...
-25-12-23 18:05:10.733 :   -> Phase 1 | PSNR: 20.05dB | LPIPS: 0.2672 | DISTS: 0.1958
-25-12-23 18:05:10.750 :   -> [Base JSCC] Init | PSNR: 21.91dB | LPIPS: 0.3811 | DISTS: 0.2539
-25-12-23 18:05:10.767 :   -> [Corr] Smoothed: 0.3866 | Raw: 0.3038
-25-12-23 18:05:10.922 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:05:10.965 :      [Smooth JSCC] PSNR: 22.37dB | LPIPS: 0.3767 | DISTS: 0.2492
-25-12-23 18:06:24.746 :      [Smooth] Ratio: 9.99% | PSNR: 20.53dB | LPIPS: 0.2384 | DISTS: 0.1740
-25-12-23 18:06:24.797 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:06:24.835 :      [Raw JSCC   ] PSNR: 22.38dB | LPIPS: 0.3695 | DISTS: 0.2537
-25-12-23 18:07:39.879 :      [Raw   ] Ratio: 9.99% | PSNR: 20.37dB | LPIPS: 0.2538 | DISTS: 0.1893
-25-12-23 18:07:39.941 : --------------------------------------------
-25-12-23 18:07:39.982 : Batch 49/100: Phase 1 (Initial)...
-25-12-23 18:08:53.862 :   -> Phase 1 | PSNR: 21.89dB | LPIPS: 0.1938 | DISTS: 0.1706
-25-12-23 18:08:53.876 :   -> [Base JSCC] Init | PSNR: 24.00dB | LPIPS: 0.3132 | DISTS: 0.2414
-25-12-23 18:08:53.883 :   -> [Corr] Smoothed: 0.2787 | Raw: 0.2723
-25-12-23 18:08:54.051 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:08:54.089 :      [Smooth JSCC] PSNR: 24.40dB | LPIPS: 0.3140 | DISTS: 0.2446
-25-12-23 18:10:08.356 :      [Smooth] Ratio: 9.99% | PSNR: 22.03dB | LPIPS: 0.1768 | DISTS: 0.1668
-25-12-23 18:10:08.414 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:10:08.452 :      [Raw JSCC   ] PSNR: 24.33dB | LPIPS: 0.3187 | DISTS: 0.2533
-25-12-23 18:11:22.697 :      [Raw   ] Ratio: 9.99% | PSNR: 22.05dB | LPIPS: 0.2104 | DISTS: 0.1847
-25-12-23 18:11:22.758 : --------------------------------------------
-25-12-23 18:11:22.800 : Batch 50/100: Phase 1 (Initial)...
-25-12-23 18:12:36.670 :   -> Phase 1 | PSNR: 19.86dB | LPIPS: 0.2282 | DISTS: 0.1686
-25-12-23 18:12:36.684 :   -> [Base JSCC] Init | PSNR: 21.54dB | LPIPS: 0.3523 | DISTS: 0.2541
-25-12-23 18:12:36.690 :   -> [Corr] Smoothed: 0.3461 | Raw: 0.3018
-25-12-23 18:12:36.851 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:12:36.895 :      [Smooth JSCC] PSNR: 21.57dB | LPIPS: 0.3595 | DISTS: 0.2497
-25-12-23 18:13:51.056 :      [Smooth] Ratio: 9.99% | PSNR: 19.97dB | LPIPS: 0.2726 | DISTS: 0.1935
-25-12-23 18:13:51.108 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:13:51.147 :      [Raw JSCC   ] PSNR: 21.84dB | LPIPS: 0.3580 | DISTS: 0.2510
-25-12-23 18:15:05.229 :      [Raw   ] Ratio: 9.99% | PSNR: 19.99dB | LPIPS: 0.2321 | DISTS: 0.1766
-25-12-23 18:15:05.287 : --------------------------------------------
-25-12-23 18:15:05.315 : Batch 51/100: Phase 1 (Initial)...
-25-12-23 18:16:19.493 :   -> Phase 1 | PSNR: 24.77dB | LPIPS: 0.2037 | DISTS: 0.1730
-25-12-23 18:16:19.508 :   -> [Base JSCC] Init | PSNR: 27.40dB | LPIPS: 0.3272 | DISTS: 0.2669
-25-12-23 18:16:19.525 :   -> [Corr] Smoothed: 0.3650 | Raw: 0.2829
-25-12-23 18:16:19.705 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:16:19.747 :      [Smooth JSCC] PSNR: 27.76dB | LPIPS: 0.3289 | DISTS: 0.2599
-25-12-23 18:17:34.173 :      [Smooth] Ratio: 9.99% | PSNR: 24.87dB | LPIPS: 0.2152 | DISTS: 0.1772
-25-12-23 18:17:34.231 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:17:34.270 :      [Raw JSCC   ] PSNR: 27.94dB | LPIPS: 0.3305 | DISTS: 0.2667
-25-12-23 18:18:48.258 :      [Raw   ] Ratio: 9.99% | PSNR: 25.37dB | LPIPS: 0.1815 | DISTS: 0.1678
-25-12-23 18:18:48.316 : --------------------------------------------
-25-12-23 18:18:48.351 : Batch 52/100: Phase 1 (Initial)...
-25-12-23 18:20:02.430 :   -> Phase 1 | PSNR: 21.52dB | LPIPS: 0.1792 | DISTS: 0.1578
-25-12-23 18:20:02.445 :   -> [Base JSCC] Init | PSNR: 24.06dB | LPIPS: 0.2944 | DISTS: 0.2448
-25-12-23 18:20:02.466 :   -> [Corr] Smoothed: 0.4270 | Raw: 0.3385
-25-12-23 18:20:02.630 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:20:02.669 :      [Smooth JSCC] PSNR: 24.18dB | LPIPS: 0.2969 | DISTS: 0.2577
-25-12-23 18:21:17.868 :      [Smooth] Ratio: 9.99% | PSNR: 21.79dB | LPIPS: 0.1764 | DISTS: 0.1737
-25-12-23 18:21:17.916 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:21:17.966 :      [Raw JSCC   ] PSNR: 24.29dB | LPIPS: 0.2925 | DISTS: 0.2539
-25-12-23 18:22:32.633 :      [Raw   ] Ratio: 9.99% | PSNR: 22.06dB | LPIPS: 0.1786 | DISTS: 0.1607
-25-12-23 18:22:32.695 : --------------------------------------------
-25-12-23 18:22:32.737 : Batch 53/100: Phase 1 (Initial)...
-25-12-23 18:23:46.801 :   -> Phase 1 | PSNR: 22.91dB | LPIPS: 0.1978 | DISTS: 0.1728
-25-12-23 18:23:46.816 :   -> [Base JSCC] Init | PSNR: 25.21dB | LPIPS: 0.3769 | DISTS: 0.2685
-25-12-23 18:23:46.831 :   -> [Corr] Smoothed: 0.3761 | Raw: 0.2770
-25-12-23 18:23:46.989 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:23:47.027 :      [Smooth JSCC] PSNR: 25.05dB | LPIPS: 0.3847 | DISTS: 0.2803
-25-12-23 18:25:01.061 :      [Smooth] Ratio: 9.99% | PSNR: 23.05dB | LPIPS: 0.2221 | DISTS: 0.1723
-25-12-23 18:25:01.115 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:25:01.153 :      [Raw JSCC   ] PSNR: 25.37dB | LPIPS: 0.3796 | DISTS: 0.2769
-25-12-23 18:26:14.962 :      [Raw   ] Ratio: 9.99% | PSNR: 23.31dB | LPIPS: 0.2055 | DISTS: 0.1550
-25-12-23 18:26:15.027 : --------------------------------------------
-25-12-23 18:26:15.052 : Batch 54/100: Phase 1 (Initial)...
-25-12-23 18:27:28.998 :   -> Phase 1 | PSNR: 21.93dB | LPIPS: 0.1654 | DISTS: 0.1232
-25-12-23 18:27:29.013 :   -> [Base JSCC] Init | PSNR: 24.38dB | LPIPS: 0.3306 | DISTS: 0.2199
-25-12-23 18:27:29.019 :   -> [Corr] Smoothed: 0.2479 | Raw: 0.2338
-25-12-23 18:27:29.186 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:27:29.224 :      [Smooth JSCC] PSNR: 24.50dB | LPIPS: 0.3311 | DISTS: 0.2216
-25-12-23 18:28:43.078 :      [Smooth] Ratio: 9.99% | PSNR: 22.30dB | LPIPS: 0.1657 | DISTS: 0.1349
-25-12-23 18:28:43.132 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:28:43.170 :      [Raw JSCC   ] PSNR: 24.65dB | LPIPS: 0.3310 | DISTS: 0.2166
-25-12-23 18:29:57.037 :      [Raw   ] Ratio: 9.99% | PSNR: 22.30dB | LPIPS: 0.1632 | DISTS: 0.1263
-25-12-23 18:29:57.100 : --------------------------------------------
-25-12-23 18:29:57.141 : Batch 55/100: Phase 1 (Initial)...
-25-12-23 18:31:11.056 :   -> Phase 1 | PSNR: 22.24dB | LPIPS: 0.2235 | DISTS: 0.1672
-25-12-23 18:31:11.070 :   -> [Base JSCC] Init | PSNR: 24.78dB | LPIPS: 0.3437 | DISTS: 0.2490
-25-12-23 18:31:11.077 :   -> [Corr] Smoothed: 0.3090 | Raw: 0.2663
-25-12-23 18:31:11.250 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:31:11.289 :      [Smooth JSCC] PSNR: 24.98dB | LPIPS: 0.3605 | DISTS: 0.2495
-25-12-23 18:32:25.720 :      [Smooth] Ratio: 9.99% | PSNR: 22.63dB | LPIPS: 0.2306 | DISTS: 0.1640
-25-12-23 18:32:25.775 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:32:25.813 :      [Raw JSCC   ] PSNR: 25.23dB | LPIPS: 0.3574 | DISTS: 0.2446
-25-12-23 18:33:39.765 :      [Raw   ] Ratio: 9.99% | PSNR: 22.48dB | LPIPS: 0.2292 | DISTS: 0.1618
-25-12-23 18:33:39.826 : --------------------------------------------
-25-12-23 18:33:39.867 : Batch 56/100: Phase 1 (Initial)...
-25-12-23 18:34:53.789 :   -> Phase 1 | PSNR: 20.18dB | LPIPS: 0.1836 | DISTS: 0.1887
-25-12-23 18:34:53.804 :   -> [Base JSCC] Init | PSNR: 21.87dB | LPIPS: 0.2669 | DISTS: 0.2458
-25-12-23 18:34:53.822 :   -> [Corr] Smoothed: 0.3931 | Raw: 0.3680
-25-12-23 18:34:54.005 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:34:54.047 :      [Smooth JSCC] PSNR: 22.48dB | LPIPS: 0.2582 | DISTS: 0.2384
-25-12-23 18:36:08.122 :      [Smooth] Ratio: 9.99% | PSNR: 20.38dB | LPIPS: 0.1691 | DISTS: 0.1747
-25-12-23 18:36:08.177 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:36:08.214 :      [Raw JSCC   ] PSNR: 22.83dB | LPIPS: 0.2525 | DISTS: 0.2417
-25-12-23 18:37:23.148 :      [Raw   ] Ratio: 9.99% | PSNR: 20.51dB | LPIPS: 0.1784 | DISTS: 0.1761
-25-12-23 18:37:23.208 : --------------------------------------------
-25-12-23 18:37:23.237 : Batch 57/100: Phase 1 (Initial)...
-25-12-23 18:38:37.174 :   -> Phase 1 | PSNR: 21.92dB | LPIPS: 0.1896 | DISTS: 0.1684
-25-12-23 18:38:37.189 :   -> [Base JSCC] Init | PSNR: 24.29dB | LPIPS: 0.3148 | DISTS: 0.2438
-25-12-23 18:38:37.203 :   -> [Corr] Smoothed: 0.2704 | Raw: 0.2539
-25-12-23 18:38:37.391 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:38:37.429 :      [Smooth JSCC] PSNR: 24.51dB | LPIPS: 0.3211 | DISTS: 0.2403
-25-12-23 18:39:51.297 :      [Smooth] Ratio: 9.99% | PSNR: 21.97dB | LPIPS: 0.1995 | DISTS: 0.1618
-25-12-23 18:39:51.349 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:39:51.387 :      [Raw JSCC   ] PSNR: 24.75dB | LPIPS: 0.3220 | DISTS: 0.2436
-25-12-23 18:41:05.709 :      [Raw   ] Ratio: 9.99% | PSNR: 22.46dB | LPIPS: 0.1810 | DISTS: 0.1600
-25-12-23 18:41:05.771 : --------------------------------------------
-25-12-23 18:41:05.788 : Batch 58/100: Phase 1 (Initial)...
-25-12-23 18:42:19.714 :   -> Phase 1 | PSNR: 22.30dB | LPIPS: 0.1707 | DISTS: 0.1803
-25-12-23 18:42:19.729 :   -> [Base JSCC] Init | PSNR: 24.11dB | LPIPS: 0.2999 | DISTS: 0.2441
-25-12-23 18:42:19.758 :   -> [Corr] Smoothed: 0.4131 | Raw: 0.3225
-25-12-23 18:42:19.912 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:42:19.963 :      [Smooth JSCC] PSNR: 24.09dB | LPIPS: 0.3036 | DISTS: 0.2479
-25-12-23 18:43:34.089 :      [Smooth] Ratio: 9.99% | PSNR: 21.99dB | LPIPS: 0.1825 | DISTS: 0.1678
-25-12-23 18:43:34.140 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:43:34.177 :      [Raw JSCC   ] PSNR: 24.34dB | LPIPS: 0.2988 | DISTS: 0.2481
-25-12-23 18:44:48.096 :      [Raw   ] Ratio: 9.99% | PSNR: 22.18dB | LPIPS: 0.1766 | DISTS: 0.1615
-25-12-23 18:44:48.156 : --------------------------------------------
-25-12-23 18:44:48.197 : Batch 59/100: Phase 1 (Initial)...
-25-12-23 18:46:02.289 :   -> Phase 1 | PSNR: 22.90dB | LPIPS: 0.1918 | DISTS: 0.1736
-25-12-23 18:46:02.303 :   -> [Base JSCC] Init | PSNR: 24.75dB | LPIPS: 0.3660 | DISTS: 0.2718
-25-12-23 18:46:02.320 :   -> [Corr] Smoothed: 0.3244 | Raw: 0.2736
-25-12-23 18:46:02.504 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:46:02.542 :      [Smooth JSCC] PSNR: 25.02dB | LPIPS: 0.3574 | DISTS: 0.2767
-25-12-23 18:47:16.783 :      [Smooth] Ratio: 9.99% | PSNR: 23.08dB | LPIPS: 0.2058 | DISTS: 0.1952
-25-12-23 18:47:16.837 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:47:16.875 :      [Raw JSCC   ] PSNR: 25.10dB | LPIPS: 0.3628 | DISTS: 0.2787
-25-12-23 18:48:30.703 :      [Raw   ] Ratio: 9.99% | PSNR: 23.16dB | LPIPS: 0.1829 | DISTS: 0.1709
-25-12-23 18:48:30.764 : --------------------------------------------
-25-12-23 18:48:30.790 : Batch 60/100: Phase 1 (Initial)...
-25-12-23 18:49:44.691 :   -> Phase 1 | PSNR: 23.05dB | LPIPS: 0.1705 | DISTS: 0.1402
-25-12-23 18:49:44.706 :   -> [Base JSCC] Init | PSNR: 25.25dB | LPIPS: 0.3027 | DISTS: 0.2545
-25-12-23 18:49:44.714 :   -> [Corr] Smoothed: 0.3096 | Raw: 0.2456
-25-12-23 18:49:44.875 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:49:44.913 :      [Smooth JSCC] PSNR: 25.37dB | LPIPS: 0.3045 | DISTS: 0.2641
-25-12-23 18:50:58.656 :      [Smooth] Ratio: 9.99% | PSNR: 22.99dB | LPIPS: 0.1455 | DISTS: 0.1383
-25-12-23 18:50:58.711 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:50:58.749 :      [Raw JSCC   ] PSNR: 25.53dB | LPIPS: 0.3012 | DISTS: 0.2609
-25-12-23 18:52:12.507 :      [Raw   ] Ratio: 9.99% | PSNR: 23.42dB | LPIPS: 0.1488 | DISTS: 0.1374
-25-12-23 18:52:12.574 : --------------------------------------------
-25-12-23 18:52:12.614 : Batch 61/100: Phase 1 (Initial)...
-25-12-23 18:53:26.397 :   -> Phase 1 | PSNR: 21.34dB | LPIPS: 0.2238 | DISTS: 0.2031
-25-12-23 18:53:26.412 :   -> [Base JSCC] Init | PSNR: 23.51dB | LPIPS: 0.3472 | DISTS: 0.2810
-25-12-23 18:53:26.422 :   -> [Corr] Smoothed: 0.3211 | Raw: 0.2959
-25-12-23 18:53:26.575 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:53:26.613 :      [Smooth JSCC] PSNR: 23.63dB | LPIPS: 0.3543 | DISTS: 0.2682
-25-12-23 18:54:40.457 :      [Smooth] Ratio: 9.99% | PSNR: 21.69dB | LPIPS: 0.1835 | DISTS: 0.1775
-25-12-23 18:54:40.511 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:54:40.550 :      [Raw JSCC   ] PSNR: 23.76dB | LPIPS: 0.3491 | DISTS: 0.2731
-25-12-23 18:55:54.328 :      [Raw   ] Ratio: 9.99% | PSNR: 21.58dB | LPIPS: 0.2028 | DISTS: 0.1734
-25-12-23 18:55:54.390 : --------------------------------------------
-25-12-23 18:55:54.406 : Batch 62/100: Phase 1 (Initial)...
-25-12-23 18:57:08.280 :   -> Phase 1 | PSNR: 25.12dB | LPIPS: 0.1868 | DISTS: 0.1663
-25-12-23 18:57:08.295 :   -> [Base JSCC] Init | PSNR: 26.61dB | LPIPS: 0.3171 | DISTS: 0.2593
-25-12-23 18:57:08.301 :   -> [Corr] Smoothed: 0.2858 | Raw: 0.2729
-25-12-23 18:57:08.478 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 18:57:08.516 :      [Smooth JSCC] PSNR: 26.73dB | LPIPS: 0.3295 | DISTS: 0.2623
-25-12-23 18:58:22.175 :      [Smooth] Ratio: 9.99% | PSNR: 25.42dB | LPIPS: 0.2127 | DISTS: 0.1714
-25-12-23 18:58:22.232 :   -> Processing Phase 2 (Raw)...
-25-12-23 18:58:22.270 :      [Raw JSCC   ] PSNR: 26.90dB | LPIPS: 0.3293 | DISTS: 0.2564
-25-12-23 18:59:36.078 :      [Raw   ] Ratio: 9.99% | PSNR: 25.32dB | LPIPS: 0.1981 | DISTS: 0.1658
-25-12-23 18:59:36.143 : --------------------------------------------
-25-12-23 18:59:36.169 : Batch 63/100: Phase 1 (Initial)...
-25-12-23 19:00:49.862 :   -> Phase 1 | PSNR: 24.75dB | LPIPS: 0.1926 | DISTS: 0.1631
-25-12-23 19:00:49.877 :   -> [Base JSCC] Init | PSNR: 26.65dB | LPIPS: 0.2916 | DISTS: 0.2244
-25-12-23 19:00:49.883 :   -> [Corr] Smoothed: 0.3654 | Raw: 0.2984
-25-12-23 19:00:50.039 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:00:50.080 :      [Smooth JSCC] PSNR: 26.74dB | LPIPS: 0.2895 | DISTS: 0.2266
-25-12-23 19:02:04.145 :      [Smooth] Ratio: 9.99% | PSNR: 24.35dB | LPIPS: 0.1934 | DISTS: 0.1587
-25-12-23 19:02:04.199 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:02:04.237 :      [Raw JSCC   ] PSNR: 27.03dB | LPIPS: 0.2850 | DISTS: 0.2258
-25-12-23 19:03:18.120 :      [Raw   ] Ratio: 9.99% | PSNR: 24.63dB | LPIPS: 0.1827 | DISTS: 0.1552
-25-12-23 19:03:18.180 : --------------------------------------------
-25-12-23 19:03:18.205 : Batch 64/100: Phase 1 (Initial)...
-25-12-23 19:04:32.045 :   -> Phase 1 | PSNR: 20.57dB | LPIPS: 0.1752 | DISTS: 0.1737
-25-12-23 19:04:32.060 :   -> [Base JSCC] Init | PSNR: 22.76dB | LPIPS: 0.2585 | DISTS: 0.2337
-25-12-23 19:04:32.079 :   -> [Corr] Smoothed: 0.4026 | Raw: 0.3469
-25-12-23 19:04:32.249 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:04:32.287 :      [Smooth JSCC] PSNR: 23.20dB | LPIPS: 0.2505 | DISTS: 0.2329
-25-12-23 19:05:46.920 :      [Smooth] Ratio: 9.99% | PSNR: 20.74dB | LPIPS: 0.1717 | DISTS: 0.1654
-25-12-23 19:05:46.973 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:05:47.011 :      [Raw JSCC   ] PSNR: 23.31dB | LPIPS: 0.2456 | DISTS: 0.2391
-25-12-23 19:07:01.029 :      [Raw   ] Ratio: 9.99% | PSNR: 21.17dB | LPIPS: 0.1632 | DISTS: 0.1696
-25-12-23 19:07:01.091 : --------------------------------------------
-25-12-23 19:07:01.115 : Batch 65/100: Phase 1 (Initial)...
-25-12-23 19:08:14.875 :   -> Phase 1 | PSNR: 23.30dB | LPIPS: 0.1874 | DISTS: 0.1490
-25-12-23 19:08:14.890 :   -> [Base JSCC] Init | PSNR: 25.52dB | LPIPS: 0.3496 | DISTS: 0.2566
-25-12-23 19:08:14.911 :   -> [Corr] Smoothed: 0.3972 | Raw: 0.2897
-25-12-23 19:08:15.065 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:08:15.104 :      [Smooth JSCC] PSNR: 25.74dB | LPIPS: 0.3629 | DISTS: 0.2704
-25-12-23 19:09:28.878 :      [Smooth] Ratio: 9.99% | PSNR: 23.44dB | LPIPS: 0.2057 | DISTS: 0.1559
-25-12-23 19:09:28.931 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:09:28.969 :      [Raw JSCC   ] PSNR: 25.64dB | LPIPS: 0.3613 | DISTS: 0.2700
-25-12-23 19:10:42.711 :      [Raw   ] Ratio: 9.99% | PSNR: 23.27dB | LPIPS: 0.2109 | DISTS: 0.1559
-25-12-23 19:10:42.773 : --------------------------------------------
-25-12-23 19:10:42.813 : Batch 66/100: Phase 1 (Initial)...
-25-12-23 19:11:56.666 :   -> Phase 1 | PSNR: 23.33dB | LPIPS: 0.1626 | DISTS: 0.1513
-25-12-23 19:11:56.680 :   -> [Base JSCC] Init | PSNR: 25.47dB | LPIPS: 0.3141 | DISTS: 0.2399
-25-12-23 19:11:56.697 :   -> [Corr] Smoothed: 0.3195 | Raw: 0.2411
-25-12-23 19:11:56.887 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:11:56.925 :      [Smooth JSCC] PSNR: 25.58dB | LPIPS: 0.3100 | DISTS: 0.2384
-25-12-23 19:13:10.827 :      [Smooth] Ratio: 9.99% | PSNR: 23.68dB | LPIPS: 0.1716 | DISTS: 0.1561
-25-12-23 19:13:10.879 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:13:10.917 :      [Raw JSCC   ] PSNR: 25.80dB | LPIPS: 0.3094 | DISTS: 0.2402
-25-12-23 19:14:24.673 :      [Raw   ] Ratio: 9.99% | PSNR: 23.81dB | LPIPS: 0.1731 | DISTS: 0.1497
-25-12-23 19:14:24.738 : --------------------------------------------
-25-12-23 19:14:24.763 : Batch 67/100: Phase 1 (Initial)...
-25-12-23 19:15:38.690 :   -> Phase 1 | PSNR: 23.10dB | LPIPS: 0.2147 | DISTS: 0.1645
-25-12-23 19:15:38.705 :   -> [Base JSCC] Init | PSNR: 25.92dB | LPIPS: 0.2700 | DISTS: 0.2193
-25-12-23 19:15:38.724 :   -> [Corr] Smoothed: 0.3205 | Raw: 0.2663
-25-12-23 19:15:38.886 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:15:38.924 :      [Smooth JSCC] PSNR: 25.96dB | LPIPS: 0.2664 | DISTS: 0.2265
-25-12-23 19:16:52.994 :      [Smooth] Ratio: 9.99% | PSNR: 22.94dB | LPIPS: 0.2053 | DISTS: 0.1821
-25-12-23 19:16:53.049 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:16:53.087 :      [Raw JSCC   ] PSNR: 26.04dB | LPIPS: 0.2729 | DISTS: 0.2233
-25-12-23 19:18:07.025 :      [Raw   ] Ratio: 9.99% | PSNR: 23.05dB | LPIPS: 0.2005 | DISTS: 0.1508
-25-12-23 19:18:07.090 : --------------------------------------------
-25-12-23 19:18:07.116 : Batch 68/100: Phase 1 (Initial)...
-25-12-23 19:19:20.985 :   -> Phase 1 | PSNR: 23.11dB | LPIPS: 0.1153 | DISTS: 0.1475
-25-12-23 19:19:21.000 :   -> [Base JSCC] Init | PSNR: 24.77dB | LPIPS: 0.1650 | DISTS: 0.2276
-25-12-23 19:19:21.014 :   -> [Corr] Smoothed: 0.4588 | Raw: 0.4605
-25-12-23 19:19:21.179 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:19:21.217 :      [Smooth JSCC] PSNR: 24.92dB | LPIPS: 0.1567 | DISTS: 0.2406
-25-12-23 19:20:34.959 :      [Smooth] Ratio: 9.99% | PSNR: 22.80dB | LPIPS: 0.1282 | DISTS: 0.1683
-25-12-23 19:20:35.012 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:20:35.050 :      [Raw JSCC   ] PSNR: 25.36dB | LPIPS: 0.1519 | DISTS: 0.2367
-25-12-23 19:21:48.993 :      [Raw   ] Ratio: 9.99% | PSNR: 23.30dB | LPIPS: 0.1262 | DISTS: 0.1598
-25-12-23 19:21:49.053 : --------------------------------------------
-25-12-23 19:21:49.079 : Batch 69/100: Phase 1 (Initial)...
-25-12-23 19:23:03.464 :   -> Phase 1 | PSNR: 22.84dB | LPIPS: 0.1965 | DISTS: 0.2045
-25-12-23 19:23:03.478 :   -> [Base JSCC] Init | PSNR: 25.61dB | LPIPS: 0.1574 | DISTS: 0.2185
-25-12-23 19:23:03.486 :   -> [Corr] Smoothed: 0.4980 | Raw: 0.4370
-25-12-23 19:23:03.645 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:23:03.683 :      [Smooth JSCC] PSNR: 25.15dB | LPIPS: 0.1583 | DISTS: 0.2107
-25-12-23 19:24:18.257 :      [Smooth] Ratio: 9.99% | PSNR: 23.05dB | LPIPS: 0.2120 | DISTS: 0.1988
-25-12-23 19:24:18.313 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:24:18.351 :      [Raw JSCC   ] PSNR: 25.57dB | LPIPS: 0.1493 | DISTS: 0.2129
-25-12-23 19:25:32.394 :      [Raw   ] Ratio: 9.99% | PSNR: 23.11dB | LPIPS: 0.2026 | DISTS: 0.2019
-25-12-23 19:25:32.455 : --------------------------------------------
-25-12-23 19:25:32.496 : Batch 70/100: Phase 1 (Initial)...
-25-12-23 19:26:46.428 :   -> Phase 1 | PSNR: 21.28dB | LPIPS: 0.2111 | DISTS: 0.1878
-25-12-23 19:26:46.442 :   -> [Base JSCC] Init | PSNR: 22.86dB | LPIPS: 0.3522 | DISTS: 0.2546
-25-12-23 19:26:46.452 :   -> [Corr] Smoothed: 0.4275 | Raw: 0.3659
-25-12-23 19:26:46.609 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:26:46.648 :      [Smooth JSCC] PSNR: 23.04dB | LPIPS: 0.3510 | DISTS: 0.2506
-25-12-23 19:28:00.465 :      [Smooth] Ratio: 9.99% | PSNR: 21.50dB | LPIPS: 0.2063 | DISTS: 0.1908
-25-12-23 19:28:00.517 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:28:00.556 :      [Raw JSCC   ] PSNR: 23.26dB | LPIPS: 0.3483 | DISTS: 0.2495
-25-12-23 19:29:14.567 :      [Raw   ] Ratio: 9.99% | PSNR: 21.59dB | LPIPS: 0.1714 | DISTS: 0.1716
-25-12-23 19:29:14.625 : --------------------------------------------
-25-12-23 19:29:14.650 : Batch 71/100: Phase 1 (Initial)...
-25-12-23 19:30:28.618 :   -> Phase 1 | PSNR: 23.07dB | LPIPS: 0.1994 | DISTS: 0.1912
-25-12-23 19:30:28.633 :   -> [Base JSCC] Init | PSNR: 26.40dB | LPIPS: 0.2905 | DISTS: 0.2735
-25-12-23 19:30:28.650 :   -> [Corr] Smoothed: 0.5041 | Raw: 0.3943
-25-12-23 19:30:28.805 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:30:28.843 :      [Smooth JSCC] PSNR: 26.85dB | LPIPS: 0.2766 | DISTS: 0.2627
-25-12-23 19:31:43.956 :      [Smooth] Ratio: 9.99% | PSNR: 23.03dB | LPIPS: 0.2300 | DISTS: 0.2085
-25-12-23 19:31:44.005 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:31:44.044 :      [Raw JSCC   ] PSNR: 26.82dB | LPIPS: 0.2721 | DISTS: 0.2626
-25-12-23 19:32:58.179 :      [Raw   ] Ratio: 9.99% | PSNR: 23.12dB | LPIPS: 0.2156 | DISTS: 0.2097
-25-12-23 19:32:58.231 : --------------------------------------------
-25-12-23 19:32:58.255 : Batch 72/100: Phase 1 (Initial)...
-25-12-23 19:34:14.547 :   -> Phase 1 | PSNR: 22.76dB | LPIPS: 0.2199 | DISTS: 0.1811
-25-12-23 19:34:14.565 :   -> [Base JSCC] Init | PSNR: 24.65dB | LPIPS: 0.3650 | DISTS: 0.2693
-25-12-23 19:34:14.597 :   -> [Corr] Smoothed: 0.3721 | Raw: 0.2971
-25-12-23 19:34:14.740 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:34:14.784 :      [Smooth JSCC] PSNR: 24.91dB | LPIPS: 0.3809 | DISTS: 0.2691
-25-12-23 19:35:30.791 :      [Smooth] Ratio: 9.99% | PSNR: 22.98dB | LPIPS: 0.2288 | DISTS: 0.2010
-25-12-23 19:35:30.843 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:35:30.885 :      [Raw JSCC   ] PSNR: 25.01dB | LPIPS: 0.3776 | DISTS: 0.2704
-25-12-23 19:36:44.713 :      [Raw   ] Ratio: 9.99% | PSNR: 23.24dB | LPIPS: 0.2082 | DISTS: 0.1925
-25-12-23 19:36:44.774 : --------------------------------------------
-25-12-23 19:36:44.800 : Batch 73/100: Phase 1 (Initial)...
-25-12-23 19:38:00.891 :   -> Phase 1 | PSNR: 24.59dB | LPIPS: 0.1478 | DISTS: 0.1608
-25-12-23 19:38:00.909 :   -> [Base JSCC] Init | PSNR: 27.29dB | LPIPS: 0.3351 | DISTS: 0.2739
-25-12-23 19:38:00.915 :   -> [Corr] Smoothed: 0.4122 | Raw: 0.3066
-25-12-23 19:38:01.076 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:38:01.114 :      [Smooth JSCC] PSNR: 27.25dB | LPIPS: 0.3343 | DISTS: 0.2787
-25-12-23 19:39:17.066 :      [Smooth] Ratio: 9.99% | PSNR: 24.56dB | LPIPS: 0.1495 | DISTS: 0.1745
-25-12-23 19:39:17.120 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:39:17.158 :      [Raw JSCC   ] PSNR: 27.30dB | LPIPS: 0.3376 | DISTS: 0.2778
-25-12-23 19:40:31.469 :      [Raw   ] Ratio: 9.99% | PSNR: 24.88dB | LPIPS: 0.1520 | DISTS: 0.1706
-25-12-23 19:40:31.532 : --------------------------------------------
-25-12-23 19:40:31.557 : Batch 74/100: Phase 1 (Initial)...
-25-12-23 19:41:45.390 :   -> Phase 1 | PSNR: 22.20dB | LPIPS: 0.1914 | DISTS: 0.1639
-25-12-23 19:41:45.404 :   -> [Base JSCC] Init | PSNR: 24.81dB | LPIPS: 0.3167 | DISTS: 0.2663
-25-12-23 19:41:45.421 :   -> [Corr] Smoothed: 0.3373 | Raw: 0.3011
-25-12-23 19:41:45.613 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:41:45.656 :      [Smooth JSCC] PSNR: 25.09dB | LPIPS: 0.3230 | DISTS: 0.2630
-25-12-23 19:42:59.398 :      [Smooth] Ratio: 9.99% | PSNR: 22.39dB | LPIPS: 0.1893 | DISTS: 0.1608
-25-12-23 19:42:59.452 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:42:59.490 :      [Raw JSCC   ] PSNR: 25.16dB | LPIPS: 0.3101 | DISTS: 0.2607
-25-12-23 19:44:13.359 :      [Raw   ] Ratio: 9.99% | PSNR: 22.46dB | LPIPS: 0.1902 | DISTS: 0.1653
-25-12-23 19:44:13.419 : --------------------------------------------
-25-12-23 19:44:13.444 : Batch 75/100: Phase 1 (Initial)...
-25-12-23 19:45:27.375 :   -> Phase 1 | PSNR: 22.34dB | LPIPS: 0.1597 | DISTS: 0.1692
-25-12-23 19:45:27.390 :   -> [Base JSCC] Init | PSNR: 23.34dB | LPIPS: 0.2459 | DISTS: 0.2384
-25-12-23 19:45:27.405 :   -> [Corr] Smoothed: 0.3910 | Raw: 0.3747
-25-12-23 19:45:27.602 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:45:27.646 :      [Smooth JSCC] PSNR: 23.31dB | LPIPS: 0.2378 | DISTS: 0.2340
-25-12-23 19:46:41.520 :      [Smooth] Ratio: 9.99% | PSNR: 22.28dB | LPIPS: 0.1637 | DISTS: 0.1925
-25-12-23 19:46:41.573 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:46:41.610 :      [Raw JSCC   ] PSNR: 23.53dB | LPIPS: 0.2318 | DISTS: 0.2381
-25-12-23 19:47:55.906 :      [Raw   ] Ratio: 9.99% | PSNR: 22.47dB | LPIPS: 0.1647 | DISTS: 0.1855
-25-12-23 19:47:55.968 : --------------------------------------------
-25-12-23 19:47:55.993 : Batch 76/100: Phase 1 (Initial)...
-25-12-23 19:49:10.200 :   -> Phase 1 | PSNR: 21.24dB | LPIPS: 0.1806 | DISTS: 0.1788
-25-12-23 19:49:10.214 :   -> [Base JSCC] Init | PSNR: 23.31dB | LPIPS: 0.2488 | DISTS: 0.2065
-25-12-23 19:49:10.227 :   -> [Corr] Smoothed: 0.3091 | Raw: 0.2866
-25-12-23 19:49:10.399 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:49:10.437 :      [Smooth JSCC] PSNR: 23.86dB | LPIPS: 0.2349 | DISTS: 0.2014
-25-12-23 19:50:24.263 :      [Smooth] Ratio: 9.99% | PSNR: 21.57dB | LPIPS: 0.1642 | DISTS: 0.1629
-25-12-23 19:50:24.315 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:50:24.353 :      [Raw JSCC   ] PSNR: 23.94dB | LPIPS: 0.2325 | DISTS: 0.1991
-25-12-23 19:51:38.191 :      [Raw   ] Ratio: 9.99% | PSNR: 21.70dB | LPIPS: 0.1659 | DISTS: 0.1649
-25-12-23 19:51:38.256 : --------------------------------------------
-25-12-23 19:51:38.282 : Batch 77/100: Phase 1 (Initial)...
-25-12-23 19:52:52.411 :   -> Phase 1 | PSNR: 23.99dB | LPIPS: 0.1887 | DISTS: 0.1513
-25-12-23 19:52:52.426 :   -> [Base JSCC] Init | PSNR: 25.39dB | LPIPS: 0.3139 | DISTS: 0.2718
-25-12-23 19:52:52.441 :   -> [Corr] Smoothed: 0.4604 | Raw: 0.3962
-25-12-23 19:52:52.605 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:52:52.643 :      [Smooth JSCC] PSNR: 25.68dB | LPIPS: 0.3120 | DISTS: 0.2713
-25-12-23 19:54:06.584 :      [Smooth] Ratio: 9.99% | PSNR: 23.82dB | LPIPS: 0.1939 | DISTS: 0.1523
-25-12-23 19:54:06.636 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:54:06.674 :      [Raw JSCC   ] PSNR: 25.75dB | LPIPS: 0.3101 | DISTS: 0.2704
-25-12-23 19:55:20.528 :      [Raw   ] Ratio: 9.99% | PSNR: 23.95dB | LPIPS: 0.1629 | DISTS: 0.1386
-25-12-23 19:55:20.589 : --------------------------------------------
-25-12-23 19:55:20.616 : Batch 78/100: Phase 1 (Initial)...
-25-12-23 19:56:34.533 :   -> Phase 1 | PSNR: 23.32dB | LPIPS: 0.1961 | DISTS: 0.2071
-25-12-23 19:56:34.547 :   -> [Base JSCC] Init | PSNR: 26.10dB | LPIPS: 0.3092 | DISTS: 0.2516
-25-12-23 19:56:34.553 :   -> [Corr] Smoothed: 0.3677 | Raw: 0.2923
-25-12-23 19:56:34.710 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 19:56:34.752 :      [Smooth JSCC] PSNR: 26.59dB | LPIPS: 0.3024 | DISTS: 0.2512
-25-12-23 19:57:49.132 :      [Smooth] Ratio: 9.99% | PSNR: 23.81dB | LPIPS: 0.1731 | DISTS: 0.1812
-25-12-23 19:57:49.189 :   -> Processing Phase 2 (Raw)...
-25-12-23 19:57:49.227 :      [Raw JSCC   ] PSNR: 26.75dB | LPIPS: 0.2975 | DISTS: 0.2448
-25-12-23 19:59:03.196 :      [Raw   ] Ratio: 9.99% | PSNR: 23.90dB | LPIPS: 0.1755 | DISTS: 0.1708
-25-12-23 19:59:03.261 : --------------------------------------------
-25-12-23 19:59:03.287 : Batch 79/100: Phase 1 (Initial)...
-25-12-23 20:00:17.326 :   -> Phase 1 | PSNR: 24.01dB | LPIPS: 0.1995 | DISTS: 0.1619
-25-12-23 20:00:17.341 :   -> [Base JSCC] Init | PSNR: 25.16dB | LPIPS: 0.3885 | DISTS: 0.2559
-25-12-23 20:00:17.346 :   -> [Corr] Smoothed: 0.4217 | Raw: 0.3342
-25-12-23 20:00:17.502 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:00:17.540 :      [Smooth JSCC] PSNR: 25.43dB | LPIPS: 0.3921 | DISTS: 0.2584
-25-12-23 20:01:31.538 :      [Smooth] Ratio: 9.99% | PSNR: 24.19dB | LPIPS: 0.2048 | DISTS: 0.1553
-25-12-23 20:01:31.594 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:01:31.632 :      [Raw JSCC   ] PSNR: 25.55dB | LPIPS: 0.3899 | DISTS: 0.2561
-25-12-23 20:02:45.918 :      [Raw   ] Ratio: 9.99% | PSNR: 24.43dB | LPIPS: 0.2157 | DISTS: 0.1605
-25-12-23 20:02:45.982 : --------------------------------------------
-25-12-23 20:02:46.010 : Batch 80/100: Phase 1 (Initial)...
-25-12-23 20:04:00.672 :   -> Phase 1 | PSNR: 22.55dB | LPIPS: 0.1764 | DISTS: 0.1730
-25-12-23 20:04:00.687 :   -> [Base JSCC] Init | PSNR: 23.98dB | LPIPS: 0.2616 | DISTS: 0.2519
-25-12-23 20:04:00.709 :   -> [Corr] Smoothed: 0.4347 | Raw: 0.3928
-25-12-23 20:04:00.875 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:04:00.913 :      [Smooth JSCC] PSNR: 24.09dB | LPIPS: 0.2525 | DISTS: 0.2459
-25-12-23 20:05:15.444 :      [Smooth] Ratio: 9.99% | PSNR: 22.38dB | LPIPS: 0.1670 | DISTS: 0.1637
-25-12-23 20:05:15.499 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:05:15.537 :      [Raw JSCC   ] PSNR: 24.48dB | LPIPS: 0.2339 | DISTS: 0.2317
-25-12-23 20:06:29.583 :      [Raw   ] Ratio: 9.99% | PSNR: 22.28dB | LPIPS: 0.1743 | DISTS: 0.1593
-25-12-23 20:06:29.642 : --------------------------------------------
-25-12-23 20:06:29.658 : Batch 81/100: Phase 1 (Initial)...
-25-12-23 20:07:44.518 :   -> Phase 1 | PSNR: 24.84dB | LPIPS: 0.1754 | DISTS: 0.1555
-25-12-23 20:07:44.533 :   -> [Base JSCC] Init | PSNR: 26.86dB | LPIPS: 0.3802 | DISTS: 0.2738
-25-12-23 20:07:44.557 :   -> [Corr] Smoothed: 0.3541 | Raw: 0.2642
-25-12-23 20:07:44.707 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:07:44.745 :      [Smooth JSCC] PSNR: 27.15dB | LPIPS: 0.3826 | DISTS: 0.2748
-25-12-23 20:08:59.495 :      [Smooth] Ratio: 9.99% | PSNR: 24.91dB | LPIPS: 0.1709 | DISTS: 0.1430
-25-12-23 20:08:59.546 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:08:59.584 :      [Raw JSCC   ] PSNR: 27.29dB | LPIPS: 0.3807 | DISTS: 0.2752
-25-12-23 20:10:14.082 :      [Raw   ] Ratio: 9.99% | PSNR: 24.99dB | LPIPS: 0.1754 | DISTS: 0.1536
-25-12-23 20:10:14.144 : --------------------------------------------
-25-12-23 20:10:14.168 : Batch 82/100: Phase 1 (Initial)...
-25-12-23 20:11:28.459 :   -> Phase 1 | PSNR: 23.80dB | LPIPS: 0.2216 | DISTS: 0.1838
-25-12-23 20:11:28.473 :   -> [Base JSCC] Init | PSNR: 26.15dB | LPIPS: 0.3386 | DISTS: 0.2747
-25-12-23 20:11:28.492 :   -> [Corr] Smoothed: 0.3876 | Raw: 0.3237
-25-12-23 20:11:28.658 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:11:28.696 :      [Smooth JSCC] PSNR: 26.40dB | LPIPS: 0.3490 | DISTS: 0.2818
-25-12-23 20:12:43.165 :      [Smooth] Ratio: 9.99% | PSNR: 23.91dB | LPIPS: 0.2080 | DISTS: 0.1935
-25-12-23 20:12:43.219 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:12:43.258 :      [Raw JSCC   ] PSNR: 26.55dB | LPIPS: 0.3485 | DISTS: 0.2814
-25-12-23 20:13:57.192 :      [Raw   ] Ratio: 9.99% | PSNR: 23.88dB | LPIPS: 0.2057 | DISTS: 0.1990
-25-12-23 20:13:57.253 : --------------------------------------------
-25-12-23 20:13:57.271 : Batch 83/100: Phase 1 (Initial)...
-25-12-23 20:15:11.321 :   -> Phase 1 | PSNR: 21.37dB | LPIPS: 0.1492 | DISTS: 0.1594
-25-12-23 20:15:11.335 :   -> [Base JSCC] Init | PSNR: 22.61dB | LPIPS: 0.2462 | DISTS: 0.2558
-25-12-23 20:15:11.341 :   -> [Corr] Smoothed: 0.3957 | Raw: 0.3377
-25-12-23 20:15:11.501 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:15:11.540 :      [Smooth JSCC] PSNR: 22.46dB | LPIPS: 0.2546 | DISTS: 0.2622
-25-12-23 20:16:26.410 :      [Smooth] Ratio: 9.99% | PSNR: 21.42dB | LPIPS: 0.1432 | DISTS: 0.1457
-25-12-23 20:16:26.462 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:16:26.500 :      [Raw JSCC   ] PSNR: 22.81dB | LPIPS: 0.2482 | DISTS: 0.2556
-25-12-23 20:17:40.504 :      [Raw   ] Ratio: 9.99% | PSNR: 21.49dB | LPIPS: 0.1439 | DISTS: 0.1642
-25-12-23 20:17:40.562 : --------------------------------------------
-25-12-23 20:17:40.579 : Batch 84/100: Phase 1 (Initial)...
-25-12-23 20:18:54.255 :   -> Phase 1 | PSNR: 21.94dB | LPIPS: 0.2164 | DISTS: 0.1408
-25-12-23 20:18:54.269 :   -> [Base JSCC] Init | PSNR: 24.40dB | LPIPS: 0.3708 | DISTS: 0.2746
-25-12-23 20:18:54.295 :   -> [Corr] Smoothed: 0.2926 | Raw: 0.2254
-25-12-23 20:18:54.463 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:18:54.502 :      [Smooth JSCC] PSNR: 24.63dB | LPIPS: 0.3862 | DISTS: 0.2870
-25-12-23 20:20:08.542 :      [Smooth] Ratio: 9.99% | PSNR: 22.48dB | LPIPS: 0.2358 | DISTS: 0.1893
-25-12-23 20:20:08.596 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:20:08.633 :      [Raw JSCC   ] PSNR: 24.69dB | LPIPS: 0.3829 | DISTS: 0.2825
-25-12-23 20:21:23.654 :      [Raw   ] Ratio: 9.99% | PSNR: 22.44dB | LPIPS: 0.2195 | DISTS: 0.1714
-25-12-23 20:21:23.717 : --------------------------------------------
-25-12-23 20:21:23.760 : Batch 85/100: Phase 1 (Initial)...
-25-12-23 20:22:38.652 :   -> Phase 1 | PSNR: 23.80dB | LPIPS: 0.2748 | DISTS: 0.2110
-25-12-23 20:22:38.666 :   -> [Base JSCC] Init | PSNR: 25.23dB | LPIPS: 0.4246 | DISTS: 0.2659
-25-12-23 20:22:38.691 :   -> [Corr] Smoothed: 0.2772 | Raw: 0.2139
-25-12-23 20:22:38.872 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:22:38.910 :      [Smooth JSCC] PSNR: 25.52dB | LPIPS: 0.4331 | DISTS: 0.2611
-25-12-23 20:23:52.928 :      [Smooth] Ratio: 9.99% | PSNR: 23.87dB | LPIPS: 0.2732 | DISTS: 0.1718
-25-12-23 20:23:52.979 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:23:53.017 :      [Raw JSCC   ] PSNR: 25.53dB | LPIPS: 0.4208 | DISTS: 0.2621
-25-12-23 20:25:07.535 :      [Raw   ] Ratio: 9.99% | PSNR: 23.88dB | LPIPS: 0.2633 | DISTS: 0.1816
-25-12-23 20:25:07.596 : --------------------------------------------
-25-12-23 20:25:07.639 : Batch 86/100: Phase 1 (Initial)...
-25-12-23 20:26:22.670 :   -> Phase 1 | PSNR: 21.99dB | LPIPS: 0.1809 | DISTS: 0.1608
-25-12-23 20:26:22.684 :   -> [Base JSCC] Init | PSNR: 24.66dB | LPIPS: 0.2963 | DISTS: 0.2245
-25-12-23 20:26:22.704 :   -> [Corr] Smoothed: 0.2990 | Raw: 0.2783
-25-12-23 20:26:22.890 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:26:22.928 :      [Smooth JSCC] PSNR: 24.65dB | LPIPS: 0.3039 | DISTS: 0.2294
-25-12-23 20:27:37.632 :      [Smooth] Ratio: 9.99% | PSNR: 22.44dB | LPIPS: 0.1758 | DISTS: 0.1445
-25-12-23 20:27:37.685 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:27:37.723 :      [Raw JSCC   ] PSNR: 25.00dB | LPIPS: 0.2896 | DISTS: 0.2143
-25-12-23 20:28:51.556 :      [Raw   ] Ratio: 9.99% | PSNR: 22.26dB | LPIPS: 0.1779 | DISTS: 0.1600
-25-12-23 20:28:51.619 : --------------------------------------------
-25-12-23 20:28:51.653 : Batch 87/100: Phase 1 (Initial)...
-25-12-23 20:30:05.524 :   -> Phase 1 | PSNR: 20.33dB | LPIPS: 0.2079 | DISTS: 0.1700
-25-12-23 20:30:05.538 :   -> [Base JSCC] Init | PSNR: 22.30dB | LPIPS: 0.2625 | DISTS: 0.2410
-25-12-23 20:30:05.545 :   -> [Corr] Smoothed: 0.3367 | Raw: 0.3138
-25-12-23 20:30:05.703 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:30:05.740 :      [Smooth JSCC] PSNR: 22.79dB | LPIPS: 0.2555 | DISTS: 0.2376
-25-12-23 20:31:20.946 :      [Smooth] Ratio: 9.99% | PSNR: 20.97dB | LPIPS: 0.1674 | DISTS: 0.1738
-25-12-23 20:31:21.000 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:31:21.039 :      [Raw JSCC   ] PSNR: 22.93dB | LPIPS: 0.2573 | DISTS: 0.2357
-25-12-23 20:32:35.008 :      [Raw   ] Ratio: 9.99% | PSNR: 21.06dB | LPIPS: 0.1704 | DISTS: 0.1619
-25-12-23 20:32:35.066 : --------------------------------------------
-25-12-23 20:32:35.112 : Batch 88/100: Phase 1 (Initial)...
-25-12-23 20:33:50.373 :   -> Phase 1 | PSNR: 22.25dB | LPIPS: 0.2945 | DISTS: 0.2132
-25-12-23 20:33:50.388 :   -> [Base JSCC] Init | PSNR: 25.12dB | LPIPS: 0.3952 | DISTS: 0.2701
-25-12-23 20:33:50.408 :   -> [Corr] Smoothed: 0.4166 | Raw: 0.3671
-25-12-23 20:33:50.583 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:33:50.625 :      [Smooth JSCC] PSNR: 25.27dB | LPIPS: 0.4021 | DISTS: 0.2709
-25-12-23 20:35:04.933 :      [Smooth] Ratio: 9.99% | PSNR: 22.47dB | LPIPS: 0.2662 | DISTS: 0.2080
-25-12-23 20:35:04.986 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:35:05.024 :      [Raw JSCC   ] PSNR: 25.47dB | LPIPS: 0.3988 | DISTS: 0.2807
-25-12-23 20:36:19.113 :      [Raw   ] Ratio: 9.99% | PSNR: 22.39dB | LPIPS: 0.2654 | DISTS: 0.1879
-25-12-23 20:36:19.173 : --------------------------------------------
-25-12-23 20:36:19.218 : Batch 89/100: Phase 1 (Initial)...
-25-12-23 20:37:33.001 :   -> Phase 1 | PSNR: 22.05dB | LPIPS: 0.1895 | DISTS: 0.1859
-25-12-23 20:37:33.016 :   -> [Base JSCC] Init | PSNR: 24.32dB | LPIPS: 0.2671 | DISTS: 0.2284
-25-12-23 20:37:33.035 :   -> [Corr] Smoothed: 0.4710 | Raw: 0.3794
-25-12-23 20:37:33.216 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:37:33.254 :      [Smooth JSCC] PSNR: 24.51dB | LPIPS: 0.2679 | DISTS: 0.2365
-25-12-23 20:38:46.920 :      [Smooth] Ratio: 9.99% | PSNR: 22.32dB | LPIPS: 0.1659 | DISTS: 0.1665
-25-12-23 20:38:46.973 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:38:47.012 :      [Raw JSCC   ] PSNR: 24.60dB | LPIPS: 0.2638 | DISTS: 0.2328
-25-12-23 20:40:03.129 :      [Raw   ] Ratio: 9.99% | PSNR: 22.32dB | LPIPS: 0.1799 | DISTS: 0.1893
-25-12-23 20:40:03.193 : --------------------------------------------
-25-12-23 20:40:03.234 : Batch 90/100: Phase 1 (Initial)...
-25-12-23 20:41:19.374 :   -> Phase 1 | PSNR: 23.01dB | LPIPS: 0.1420 | DISTS: 0.1419
-25-12-23 20:41:19.389 :   -> [Base JSCC] Init | PSNR: 25.83dB | LPIPS: 0.2645 | DISTS: 0.2179
-25-12-23 20:41:19.394 :   -> [Corr] Smoothed: 0.3515 | Raw: 0.2932
-25-12-23 20:41:19.564 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:41:19.602 :      [Smooth JSCC] PSNR: 25.26dB | LPIPS: 0.2818 | DISTS: 0.2494
-25-12-23 20:42:35.481 :      [Smooth] Ratio: 9.99% | PSNR: 22.46dB | LPIPS: 0.1491 | DISTS: 0.1347
-25-12-23 20:42:35.533 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:42:35.571 :      [Raw JSCC   ] PSNR: 25.61dB | LPIPS: 0.2789 | DISTS: 0.2429
-25-12-23 20:43:50.213 :      [Raw   ] Ratio: 9.99% | PSNR: 22.99dB | LPIPS: 0.1383 | DISTS: 0.1487
-25-12-23 20:43:50.271 : --------------------------------------------
-25-12-23 20:43:50.297 : Batch 91/100: Phase 1 (Initial)...
-25-12-23 20:45:04.004 :   -> Phase 1 | PSNR: 25.11dB | LPIPS: 0.1440 | DISTS: 0.1269
-25-12-23 20:45:04.019 :   -> [Base JSCC] Init | PSNR: 27.25dB | LPIPS: 0.2483 | DISTS: 0.2416
-25-12-23 20:45:04.033 :   -> [Corr] Smoothed: 0.2702 | Raw: 0.2559
-25-12-23 20:45:04.226 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:45:04.265 :      [Smooth JSCC] PSNR: 27.26dB | LPIPS: 0.2460 | DISTS: 0.2362
-25-12-23 20:46:18.038 :      [Smooth] Ratio: 9.99% | PSNR: 25.27dB | LPIPS: 0.1224 | DISTS: 0.1241
-25-12-23 20:46:18.092 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:46:18.130 :      [Raw JSCC   ] PSNR: 27.46dB | LPIPS: 0.2448 | DISTS: 0.2348
-25-12-23 20:47:31.938 :      [Raw   ] Ratio: 9.99% | PSNR: 25.26dB | LPIPS: 0.1358 | DISTS: 0.1508
-25-12-23 20:47:31.996 : --------------------------------------------
-25-12-23 20:47:32.021 : Batch 92/100: Phase 1 (Initial)...
-25-12-23 20:48:45.975 :   -> Phase 1 | PSNR: 23.02dB | LPIPS: 0.1545 | DISTS: 0.1320
-25-12-23 20:48:45.989 :   -> [Base JSCC] Init | PSNR: 25.38dB | LPIPS: 0.2910 | DISTS: 0.2169
-25-12-23 20:48:46.010 :   -> [Corr] Smoothed: 0.3028 | Raw: 0.2605
-25-12-23 20:48:46.194 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:48:46.232 :      [Smooth JSCC] PSNR: 25.51dB | LPIPS: 0.2997 | DISTS: 0.2309
-25-12-23 20:50:01.816 :      [Smooth] Ratio: 9.99% | PSNR: 23.11dB | LPIPS: 0.1576 | DISTS: 0.1289
-25-12-23 20:50:01.870 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:50:01.908 :      [Raw JSCC   ] PSNR: 25.50dB | LPIPS: 0.3021 | DISTS: 0.2306
-25-12-23 20:51:15.890 :      [Raw   ] Ratio: 9.99% | PSNR: 22.97dB | LPIPS: 0.1596 | DISTS: 0.1351
-25-12-23 20:51:15.979 : --------------------------------------------
-25-12-23 20:51:15.997 : Batch 93/100: Phase 1 (Initial)...
-25-12-23 20:52:32.664 :   -> Phase 1 | PSNR: 24.49dB | LPIPS: 0.1779 | DISTS: 0.1843
-25-12-23 20:52:32.678 :   -> [Base JSCC] Init | PSNR: 27.08dB | LPIPS: 0.2942 | DISTS: 0.2729
-25-12-23 20:52:32.701 :   -> [Corr] Smoothed: 0.3948 | Raw: 0.3337
-25-12-23 20:52:32.865 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:52:32.903 :      [Smooth JSCC] PSNR: 27.25dB | LPIPS: 0.2992 | DISTS: 0.2899
-25-12-23 20:53:48.777 :      [Smooth] Ratio: 9.99% | PSNR: 24.74dB | LPIPS: 0.1940 | DISTS: 0.1586
-25-12-23 20:53:48.836 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:53:48.879 :      [Raw JSCC   ] PSNR: 27.38dB | LPIPS: 0.2987 | DISTS: 0.2864
-25-12-23 20:55:06.183 :      [Raw   ] Ratio: 9.99% | PSNR: 24.80dB | LPIPS: 0.1822 | DISTS: 0.1470
-25-12-23 20:55:06.246 : --------------------------------------------
-25-12-23 20:55:06.265 : Batch 94/100: Phase 1 (Initial)...
-25-12-23 20:56:20.093 :   -> Phase 1 | PSNR: 22.48dB | LPIPS: 0.2249 | DISTS: 0.1728
-25-12-23 20:56:20.107 :   -> [Base JSCC] Init | PSNR: 25.02dB | LPIPS: 0.2970 | DISTS: 0.2578
-25-12-23 20:56:20.123 :   -> [Corr] Smoothed: 0.2548 | Raw: 0.2215
-25-12-23 20:56:20.294 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 20:56:20.331 :      [Smooth JSCC] PSNR: 24.86dB | LPIPS: 0.2962 | DISTS: 0.2588
-25-12-23 20:57:34.539 :      [Smooth] Ratio: 9.99% | PSNR: 22.30dB | LPIPS: 0.2068 | DISTS: 0.1767
-25-12-23 20:57:34.594 :   -> Processing Phase 2 (Raw)...
-25-12-23 20:57:34.632 :      [Raw JSCC   ] PSNR: 24.72dB | LPIPS: 0.2963 | DISTS: 0.2650
-25-12-23 20:58:49.718 :      [Raw   ] Ratio: 9.99% | PSNR: 22.16dB | LPIPS: 0.2171 | DISTS: 0.1809
-25-12-23 20:58:49.775 : --------------------------------------------
-25-12-23 20:58:49.816 : Batch 95/100: Phase 1 (Initial)...
-25-12-23 21:00:05.585 :   -> Phase 1 | PSNR: 22.36dB | LPIPS: 0.1809 | DISTS: 0.1792
-25-12-23 21:00:05.602 :   -> [Base JSCC] Init | PSNR: 24.37dB | LPIPS: 0.2387 | DISTS: 0.2190
-25-12-23 21:00:05.626 :   -> [Corr] Smoothed: 0.3450 | Raw: 0.3217
-25-12-23 21:00:05.800 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:00:05.842 :      [Smooth JSCC] PSNR: 24.58dB | LPIPS: 0.2430 | DISTS: 0.2220
-25-12-23 21:01:20.623 :      [Smooth] Ratio: 9.99% | PSNR: 22.57dB | LPIPS: 0.1896 | DISTS: 0.1760
-25-12-23 21:01:20.674 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:01:20.712 :      [Raw JSCC   ] PSNR: 25.02dB | LPIPS: 0.2378 | DISTS: 0.2167
-25-12-23 21:02:36.342 :      [Raw   ] Ratio: 9.99% | PSNR: 22.67dB | LPIPS: 0.1863 | DISTS: 0.1613
-25-12-23 21:02:36.402 : --------------------------------------------
-25-12-23 21:02:36.421 : Batch 96/100: Phase 1 (Initial)...
-25-12-23 21:03:50.687 :   -> Phase 1 | PSNR: 21.99dB | LPIPS: 0.1618 | DISTS: 0.1620
-25-12-23 21:03:50.702 :   -> [Base JSCC] Init | PSNR: 24.12dB | LPIPS: 0.2681 | DISTS: 0.2593
-25-12-23 21:03:50.711 :   -> [Corr] Smoothed: 0.3174 | Raw: 0.2778
-25-12-23 21:03:50.896 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:03:50.937 :      [Smooth JSCC] PSNR: 24.23dB | LPIPS: 0.2747 | DISTS: 0.2530
-25-12-23 21:05:05.209 :      [Smooth] Ratio: 9.99% | PSNR: 22.43dB | LPIPS: 0.1665 | DISTS: 0.1787
-25-12-23 21:05:05.263 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:05:05.302 :      [Raw JSCC   ] PSNR: 24.44dB | LPIPS: 0.2694 | DISTS: 0.2477
-25-12-23 21:06:19.663 :      [Raw   ] Ratio: 9.99% | PSNR: 22.67dB | LPIPS: 0.1650 | DISTS: 0.1586
-25-12-23 21:06:19.727 : --------------------------------------------
-25-12-23 21:06:19.751 : Batch 97/100: Phase 1 (Initial)...
-25-12-23 21:07:35.138 :   -> Phase 1 | PSNR: 21.95dB | LPIPS: 0.1664 | DISTS: 0.1510
-25-12-23 21:07:35.152 :   -> [Base JSCC] Init | PSNR: 24.22dB | LPIPS: 0.2887 | DISTS: 0.2443
-25-12-23 21:07:35.170 :   -> [Corr] Smoothed: 0.3131 | Raw: 0.2763
-25-12-23 21:07:35.338 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:07:35.376 :      [Smooth JSCC] PSNR: 24.73dB | LPIPS: 0.2937 | DISTS: 0.2369
-25-12-23 21:08:50.630 :      [Smooth] Ratio: 9.99% | PSNR: 22.01dB | LPIPS: 0.1741 | DISTS: 0.1538
-25-12-23 21:08:50.682 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:08:50.724 :      [Raw JSCC   ] PSNR: 24.81dB | LPIPS: 0.2865 | DISTS: 0.2423
-25-12-23 21:10:06.126 :      [Raw   ] Ratio: 9.99% | PSNR: 22.16dB | LPIPS: 0.1590 | DISTS: 0.1407
-25-12-23 21:10:06.187 : --------------------------------------------
-25-12-23 21:10:06.214 : Batch 98/100: Phase 1 (Initial)...
-25-12-23 21:11:21.849 :   -> Phase 1 | PSNR: 25.66dB | LPIPS: 0.1631 | DISTS: 0.1529
-25-12-23 21:11:21.866 :   -> [Base JSCC] Init | PSNR: 27.69dB | LPIPS: 0.2973 | DISTS: 0.2548
-25-12-23 21:11:21.882 :   -> [Corr] Smoothed: 0.4964 | Raw: 0.3910
-25-12-23 21:11:22.048 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:11:22.090 :      [Smooth JSCC] PSNR: 27.40dB | LPIPS: 0.3113 | DISTS: 0.2611
-25-12-23 21:12:36.588 :      [Smooth] Ratio: 9.99% | PSNR: 25.27dB | LPIPS: 0.1938 | DISTS: 0.1620
-25-12-23 21:12:36.642 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:12:36.680 :      [Raw JSCC   ] PSNR: 27.60dB | LPIPS: 0.3096 | DISTS: 0.2597
-25-12-23 21:13:52.440 :      [Raw   ] Ratio: 9.99% | PSNR: 25.30dB | LPIPS: 0.1547 | DISTS: 0.1602
-25-12-23 21:13:52.504 : --------------------------------------------
-25-12-23 21:13:52.530 : Batch 99/100: Phase 1 (Initial)...
-25-12-23 21:15:07.643 :   -> Phase 1 | PSNR: 21.47dB | LPIPS: 0.2570 | DISTS: 0.1773
-25-12-23 21:15:07.658 :   -> [Base JSCC] Init | PSNR: 23.55dB | LPIPS: 0.3329 | DISTS: 0.2288
-25-12-23 21:15:07.664 :   -> [Corr] Smoothed: 0.3567 | Raw: 0.2870
-25-12-23 21:15:07.850 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:15:07.888 :      [Smooth JSCC] PSNR: 23.61dB | LPIPS: 0.3395 | DISTS: 0.2313
-25-12-23 21:16:21.685 :      [Smooth] Ratio: 9.99% | PSNR: 21.56dB | LPIPS: 0.2421 | DISTS: 0.1799
-25-12-23 21:16:21.739 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:16:21.777 :      [Raw JSCC   ] PSNR: 23.86dB | LPIPS: 0.3335 | DISTS: 0.2266
-25-12-23 21:17:35.734 :      [Raw   ] Ratio: 9.99% | PSNR: 21.36dB | LPIPS: 0.2494 | DISTS: 0.1766
-25-12-23 21:17:35.792 : --------------------------------------------
-25-12-23 21:17:35.817 : Batch 100/100: Phase 1 (Initial)...
-25-12-23 21:18:49.621 :   -> Phase 1 | PSNR: 23.79dB | LPIPS: 0.1466 | DISTS: 0.1371
-25-12-23 21:18:49.636 :   -> [Base JSCC] Init | PSNR: 25.82dB | LPIPS: 0.3345 | DISTS: 0.2382
-25-12-23 21:18:49.654 :   -> [Corr] Smoothed: 0.3553 | Raw: 0.2691
-25-12-23 21:18:49.805 :   -> Processing Phase 2 (Smoothed)...
-25-12-23 21:18:49.843 :      [Smooth JSCC] PSNR: 26.09dB | LPIPS: 0.3549 | DISTS: 0.2520
-25-12-23 21:20:03.872 :      [Smooth] Ratio: 9.99% | PSNR: 24.13dB | LPIPS: 0.1671 | DISTS: 0.1561
-25-12-23 21:20:03.927 :   -> Processing Phase 2 (Raw)...
-25-12-23 21:20:03.965 :      [Raw JSCC   ] PSNR: 26.12dB | LPIPS: 0.3439 | DISTS: 0.2450
-25-12-23 21:21:17.713 :      [Raw   ] Ratio: 9.99% | PSNR: 24.07dB | LPIPS: 0.1562 | DISTS: 0.1442
-25-12-23 21:21:17.775 : --------------------------------------------
-25-12-23 21:21:17.782 : Saved 100 results to /home/naaa/diffcom/results_retrans_comparison/ffhq_demo/hifi_diffcom/djscc_2/awgn_00dB/RetransComparison_rate_0.1_zeta0.3_seed22/retransmission_comparison.json
-25-12-23 21:21:17.782 : Final Avg | P2(Smooth) PSNR: 22.63dB | P2(Raw) PSNR: 22.70dB
+25-12-24 16:44:51.214 : 【Channel】: Built awgn channel, SNR 0 dB
+25-12-24 16:44:51.588 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-24 16:44:51.588 : 【Config】: Retransmission Mode: rate, Value: 0.1
+25-12-24 16:44:54.814 : Batch 1/100: Phase 1 (Initial)...
+25-12-24 16:45:54.546 :   -> Phase 1 | PSNR: 20.77dB | LPIPS: 0.1649 | DISTS: 0.1785
+25-12-24 16:45:54.564 :   -> [Base JSCC] Init | PSNR: 22.82dB | LPIPS: 0.1946 | DISTS: 0.2209
+25-12-24 16:45:54.711 :   -> [Corr] Smoothed: 0.5124 | Raw: 0.5080
+25-12-24 16:45:54.891 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 16:45:54.976 :      [Smooth JSCC] PSNR: 23.44dB | LPIPS: 0.1852 | DISTS: 0.2192
+25-12-24 16:46:54.395 :      [Smooth] Ratio: 9.99% | PSNR: 21.03dB | LPIPS: 0.1985 | DISTS: 0.1839
+25-12-24 16:46:54.444 :   -> Processing Phase 2 (Raw)...
+25-12-24 16:46:54.478 :      [Raw JSCC   ] PSNR: 23.65dB | LPIPS: 0.1773 | DISTS: 0.2172
+25-12-24 16:47:54.077 :      [Raw   ] Ratio: 9.99% | PSNR: 20.95dB | LPIPS: 0.1963 | DISTS: 0.1794
+25-12-24 16:47:54.129 : --------------------------------------------
+25-12-24 16:47:54.144 : Batch 2/100: Phase 1 (Initial)...
+25-12-24 16:48:23.516 : 
+[!] Process Interrupted by User. Saving current results...
+25-12-24 16:48:23.521 : Saved 1 results to /home/naaa/diffcom/results_retrans_comparison/ffhq_demo/hifi_diffcom/djscc_2/awgn_00dB/RetransComparison_rate_0.1_zeta0.3_seed22/retransmission_comparison.json
+25-12-24 16:48:23.521 : Final Avg | P2(Smooth) PSNR: 21.03dB | P2(Raw) PSNR: 20.95dB
+25-12-24 16:51:30.213 : 【Channel】: Built awgn channel, SNR 0 dB
+25-12-24 16:51:30.520 : Start from timestep 252 with SNR from -4.394049644470215 to 3.999884605407715
+25-12-24 16:51:30.521 : 【Config】: Retransmission Mode: rate, Value: 0.1
+25-12-24 16:51:32.970 : Batch 1/100: Phase 1 (Initial)...
+25-12-24 16:52:33.172 :   -> Phase 1 | PSNR: 20.77dB | LPIPS: 0.1648 | DISTS: 0.1784
+25-12-24 16:52:33.185 :   -> [Base JSCC] Init | PSNR: 22.82dB | LPIPS: 0.1946 | DISTS: 0.2209
+25-12-24 16:52:33.256 :   -> [Corr] Smoothed: 0.5121 | Raw: 0.5076
+25-12-24 16:52:33.440 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 16:52:33.521 :      [Smooth JSCC] PSNR: 23.46dB
+25-12-24 16:53:33.577 :      [Smooth] Ratio: 9.99% | PSNR: 21.03dB | LPIPS: 0.1986 | DISTS: 0.1851
+25-12-24 16:53:33.628 :   -> Processing Phase 2 (Raw)...
+25-12-24 16:53:33.660 :      [Raw JSCC   ] PSNR: 23.64dB
+25-12-24 16:54:32.417 :      [Raw   ] Ratio: 9.99% | PSNR: 20.95dB | LPIPS: 0.1959 | DISTS: 0.1796
+25-12-24 16:54:32.468 :   -> Processing Phase 2 (Random)...
+25-12-24 16:54:32.517 :      [Random JSCC] PSNR: 23.14dB
+25-12-24 16:55:33.552 :      [Random] Ratio: 9.99% | PSNR: 21.32dB | LPIPS: 0.1706 | DISTS: 0.1657
+25-12-24 16:55:33.584 : --------------------------------------------
+25-12-24 16:55:33.600 : Batch 2/100: Phase 1 (Initial)...
+25-12-24 16:56:35.057 :   -> Phase 1 | PSNR: 20.72dB | LPIPS: 0.2389 | DISTS: 0.1616
+25-12-24 16:56:35.070 :   -> [Base JSCC] Init | PSNR: 23.12dB | LPIPS: 0.2565 | DISTS: 0.2346
+25-12-24 16:56:35.083 :   -> [Corr] Smoothed: 0.4137 | Raw: 0.4007
+25-12-24 16:56:35.263 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 16:56:35.297 :      [Smooth JSCC] PSNR: 23.78dB
+25-12-24 16:57:36.104 :      [Smooth] Ratio: 9.99% | PSNR: 21.12dB | LPIPS: 0.2193 | DISTS: 0.1810
+25-12-24 16:57:36.157 :   -> Processing Phase 2 (Raw)...
+25-12-24 16:57:36.188 :      [Raw JSCC   ] PSNR: 23.95dB
+25-12-24 16:58:36.472 :      [Raw   ] Ratio: 9.99% | PSNR: 21.57dB | LPIPS: 0.2019 | DISTS: 0.1637
+25-12-24 16:58:36.550 :   -> Processing Phase 2 (Random)...
+25-12-24 16:58:36.596 :      [Random JSCC] PSNR: 23.50dB
+25-12-24 16:59:37.029 :      [Random] Ratio: 9.99% | PSNR: 21.33dB | LPIPS: 0.1988 | DISTS: 0.1534
+25-12-24 16:59:37.064 : --------------------------------------------
+25-12-24 16:59:37.095 : Batch 3/100: Phase 1 (Initial)...
+25-12-24 17:00:36.351 :   -> Phase 1 | PSNR: 22.60dB | LPIPS: 0.2216 | DISTS: 0.1886
+25-12-24 17:00:36.365 :   -> [Base JSCC] Init | PSNR: 24.98dB | LPIPS: 0.2953 | DISTS: 0.2521
+25-12-24 17:00:36.372 :   -> [Corr] Smoothed: 0.4568 | Raw: 0.3592
+25-12-24 17:00:36.540 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:00:36.572 :      [Smooth JSCC] PSNR: 25.33dB
+25-12-24 17:01:36.188 :      [Smooth] Ratio: 9.99% | PSNR: 22.95dB | LPIPS: 0.1883 | DISTS: 0.1845
+25-12-24 17:01:36.238 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:01:36.271 :      [Raw JSCC   ] PSNR: 25.33dB
+25-12-24 17:02:37.097 :      [Raw   ] Ratio: 9.99% | PSNR: 22.67dB | LPIPS: 0.1919 | DISTS: 0.1754
+25-12-24 17:02:37.152 :   -> Processing Phase 2 (Random)...
+25-12-24 17:02:37.183 :      [Random JSCC] PSNR: 25.31dB
+25-12-24 17:03:37.290 :      [Random] Ratio: 9.99% | PSNR: 22.73dB | LPIPS: 0.1855 | DISTS: 0.1721
+25-12-24 17:03:37.340 : --------------------------------------------
+25-12-24 17:03:37.356 : Batch 4/100: Phase 1 (Initial)...
+25-12-24 17:04:37.641 :   -> Phase 1 | PSNR: 22.75dB | LPIPS: 0.1772 | DISTS: 0.1851
+25-12-24 17:04:37.656 :   -> [Base JSCC] Init | PSNR: 25.06dB | LPIPS: 0.3556 | DISTS: 0.2895
+25-12-24 17:04:37.663 :   -> [Corr] Smoothed: 0.4565 | Raw: 0.3411
+25-12-24 17:04:37.831 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:04:37.863 :      [Smooth JSCC] PSNR: 25.09dB
+25-12-24 17:05:37.134 :      [Smooth] Ratio: 9.99% | PSNR: 22.67dB | LPIPS: 0.1875 | DISTS: 0.1873
+25-12-24 17:05:37.185 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:05:37.216 :      [Raw JSCC   ] PSNR: 25.21dB
+25-12-24 17:06:36.296 :      [Raw   ] Ratio: 9.99% | PSNR: 22.70dB | LPIPS: 0.1861 | DISTS: 0.1878
+25-12-24 17:06:36.357 :   -> Processing Phase 2 (Random)...
+25-12-24 17:06:36.388 :      [Random JSCC] PSNR: 25.29dB
+25-12-24 17:07:37.462 :      [Random] Ratio: 9.99% | PSNR: 22.96dB | LPIPS: 0.1796 | DISTS: 0.1734
+25-12-24 17:07:37.494 : --------------------------------------------
+25-12-24 17:07:37.511 : Batch 5/100: Phase 1 (Initial)...
+25-12-24 17:08:37.595 :   -> Phase 1 | PSNR: 22.23dB | LPIPS: 0.1595 | DISTS: 0.1618
+25-12-24 17:08:37.609 :   -> [Base JSCC] Init | PSNR: 24.30dB | LPIPS: 0.2400 | DISTS: 0.2113
+25-12-24 17:08:37.625 :   -> [Corr] Smoothed: 0.4196 | Raw: 0.3974
+25-12-24 17:08:37.787 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:08:37.820 :      [Smooth JSCC] PSNR: 24.57dB
+25-12-24 17:09:38.249 :      [Smooth] Ratio: 9.99% | PSNR: 22.37dB | LPIPS: 0.1552 | DISTS: 0.1495
+25-12-24 17:09:38.300 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:09:38.331 :      [Raw JSCC   ] PSNR: 24.73dB
+25-12-24 17:10:38.250 :      [Raw   ] Ratio: 9.99% | PSNR: 22.42dB | LPIPS: 0.1551 | DISTS: 0.1531
+25-12-24 17:10:38.309 :   -> Processing Phase 2 (Random)...
+25-12-24 17:10:38.340 :      [Random JSCC] PSNR: 24.64dB
+25-12-24 17:11:38.045 :      [Random] Ratio: 9.99% | PSNR: 22.85dB | LPIPS: 0.1489 | DISTS: 0.1432
+25-12-24 17:11:38.083 : --------------------------------------------
+25-12-24 17:11:38.099 : Batch 6/100: Phase 1 (Initial)...
+25-12-24 17:12:38.028 :   -> Phase 1 | PSNR: 19.58dB | LPIPS: 0.2828 | DISTS: 0.2029
+25-12-24 17:12:38.042 :   -> [Base JSCC] Init | PSNR: 21.53dB | LPIPS: 0.3729 | DISTS: 0.2750
+25-12-24 17:12:38.060 :   -> [Corr] Smoothed: 0.4480 | Raw: 0.4022
+25-12-24 17:12:38.205 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:12:38.238 :      [Smooth JSCC] PSNR: 21.70dB
+25-12-24 17:13:39.636 :      [Smooth] Ratio: 9.99% | PSNR: 19.57dB | LPIPS: 0.3345 | DISTS: 0.2030
+25-12-24 17:13:39.682 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:13:39.716 :      [Raw JSCC   ] PSNR: 22.03dB
+25-12-24 17:14:40.221 :      [Raw   ] Ratio: 9.99% | PSNR: 19.87dB | LPIPS: 0.3105 | DISTS: 0.1992
+25-12-24 17:14:40.273 :   -> Processing Phase 2 (Random)...
+25-12-24 17:14:40.304 :      [Random JSCC] PSNR: 21.79dB
+25-12-24 17:15:40.455 :      [Random] Ratio: 9.99% | PSNR: 19.61dB | LPIPS: 0.3305 | DISTS: 0.2135
+25-12-24 17:15:40.496 : --------------------------------------------
+25-12-24 17:15:40.518 : Batch 7/100: Phase 1 (Initial)...
+25-12-24 17:16:40.523 :   -> Phase 1 | PSNR: 19.74dB | LPIPS: 0.3097 | DISTS: 0.2025
+25-12-24 17:16:40.538 :   -> [Base JSCC] Init | PSNR: 21.87dB | LPIPS: 0.3797 | DISTS: 0.2529
+25-12-24 17:16:40.545 :   -> [Corr] Smoothed: 0.3074 | Raw: 0.2638
+25-12-24 17:16:40.690 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:16:40.722 :      [Smooth JSCC] PSNR: 22.25dB
+25-12-24 17:17:41.367 :      [Smooth] Ratio: 9.99% | PSNR: 20.13dB | LPIPS: 0.2923 | DISTS: 0.2157
+25-12-24 17:17:41.423 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:17:41.453 :      [Raw JSCC   ] PSNR: 22.34dB
+25-12-24 17:18:40.657 :      [Raw   ] Ratio: 9.99% | PSNR: 20.14dB | LPIPS: 0.2897 | DISTS: 0.2038
+25-12-24 17:18:40.716 :   -> Processing Phase 2 (Random)...
+25-12-24 17:18:40.749 :      [Random JSCC] PSNR: 22.24dB
+25-12-24 17:19:39.655 :      [Random] Ratio: 9.99% | PSNR: 20.13dB | LPIPS: 0.3023 | DISTS: 0.2250
+25-12-24 17:19:39.687 : --------------------------------------------
+25-12-24 17:19:39.712 : Batch 8/100: Phase 1 (Initial)...
+25-12-24 17:20:38.663 :   -> Phase 1 | PSNR: 23.34dB | LPIPS: 0.1489 | DISTS: 0.1688
+25-12-24 17:20:38.677 :   -> [Base JSCC] Init | PSNR: 26.48dB | LPIPS: 0.2577 | DISTS: 0.2492
+25-12-24 17:20:38.684 :   -> [Corr] Smoothed: 0.4033 | Raw: 0.3210
+25-12-24 17:20:38.840 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:20:38.871 :      [Smooth JSCC] PSNR: 26.71dB
+25-12-24 17:21:37.511 :      [Smooth] Ratio: 9.99% | PSNR: 23.56dB | LPIPS: 0.1672 | DISTS: 0.1899
+25-12-24 17:21:37.565 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:21:37.597 :      [Raw JSCC   ] PSNR: 26.86dB
+25-12-24 17:22:37.108 :      [Raw   ] Ratio: 9.99% | PSNR: 23.33dB | LPIPS: 0.1445 | DISTS: 0.1796
+25-12-24 17:22:37.164 :   -> Processing Phase 2 (Random)...
+25-12-24 17:22:37.194 :      [Random JSCC] PSNR: 26.92dB
+25-12-24 17:23:36.198 :      [Random] Ratio: 9.99% | PSNR: 23.63dB | LPIPS: 0.1697 | DISTS: 0.1865
+25-12-24 17:23:36.230 : --------------------------------------------
+25-12-24 17:23:36.245 : Batch 9/100: Phase 1 (Initial)...
+25-12-24 17:24:35.527 :   -> Phase 1 | PSNR: 22.08dB | LPIPS: 0.2659 | DISTS: 0.1918
+25-12-24 17:24:35.541 :   -> [Base JSCC] Init | PSNR: 23.77dB | LPIPS: 0.3988 | DISTS: 0.2691
+25-12-24 17:24:35.550 :   -> [Corr] Smoothed: 0.3652 | Raw: 0.2624
+25-12-24 17:24:35.700 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:24:35.731 :      [Smooth JSCC] PSNR: 24.03dB
+25-12-24 17:25:35.048 :      [Smooth] Ratio: 9.99% | PSNR: 21.85dB | LPIPS: 0.2159 | DISTS: 0.1483
+25-12-24 17:25:35.099 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:25:35.131 :      [Raw JSCC   ] PSNR: 24.09dB
+25-12-24 17:26:33.651 :      [Raw   ] Ratio: 9.99% | PSNR: 22.09dB | LPIPS: 0.2076 | DISTS: 0.1523
+25-12-24 17:26:33.711 :   -> Processing Phase 2 (Random)...
+25-12-24 17:26:33.742 :      [Random JSCC] PSNR: 23.92dB
+25-12-24 17:27:32.724 :      [Random] Ratio: 9.99% | PSNR: 21.94dB | LPIPS: 0.2205 | DISTS: 0.1672
+25-12-24 17:27:32.756 : --------------------------------------------
+25-12-24 17:27:32.770 : Batch 10/100: Phase 1 (Initial)...
+25-12-24 17:28:32.135 :   -> Phase 1 | PSNR: 22.73dB | LPIPS: 0.1756 | DISTS: 0.2041
+25-12-24 17:28:32.149 :   -> [Base JSCC] Init | PSNR: 25.02dB | LPIPS: 0.2424 | DISTS: 0.2444
+25-12-24 17:28:32.170 :   -> [Corr] Smoothed: 0.3712 | Raw: 0.2922
+25-12-24 17:28:32.340 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:28:32.372 :      [Smooth JSCC] PSNR: 25.45dB
+25-12-24 17:29:31.597 :      [Smooth] Ratio: 9.99% | PSNR: 23.37dB | LPIPS: 0.1720 | DISTS: 0.1766
+25-12-24 17:29:31.653 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:29:31.684 :      [Raw JSCC   ] PSNR: 25.33dB
+25-12-24 17:30:30.855 :      [Raw   ] Ratio: 9.99% | PSNR: 23.17dB | LPIPS: 0.1718 | DISTS: 0.2086
+25-12-24 17:30:30.918 :   -> Processing Phase 2 (Random)...
+25-12-24 17:30:30.949 :      [Random JSCC] PSNR: 25.45dB
+25-12-24 17:31:29.700 :      [Random] Ratio: 9.99% | PSNR: 23.53dB | LPIPS: 0.1868 | DISTS: 0.1959
+25-12-24 17:31:29.735 : --------------------------------------------
+25-12-24 17:31:29.759 : Batch 11/100: Phase 1 (Initial)...
+25-12-24 17:32:29.046 :   -> Phase 1 | PSNR: 23.12dB | LPIPS: 0.1234 | DISTS: 0.1578
+25-12-24 17:32:29.060 :   -> [Base JSCC] Init | PSNR: 25.04dB | LPIPS: 0.2916 | DISTS: 0.2665
+25-12-24 17:32:29.067 :   -> [Corr] Smoothed: 0.4345 | Raw: 0.3427
+25-12-24 17:32:29.226 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:32:29.258 :      [Smooth JSCC] PSNR: 25.21dB
+25-12-24 17:33:28.458 :      [Smooth] Ratio: 9.99% | PSNR: 22.98dB | LPIPS: 0.1426 | DISTS: 0.1487
+25-12-24 17:33:28.509 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:33:28.541 :      [Raw JSCC   ] PSNR: 25.30dB
+25-12-24 17:34:27.710 :      [Raw   ] Ratio: 9.99% | PSNR: 23.32dB | LPIPS: 0.1469 | DISTS: 0.1488
+25-12-24 17:34:27.768 :   -> Processing Phase 2 (Random)...
+25-12-24 17:34:27.799 :      [Random JSCC] PSNR: 25.56dB
+25-12-24 17:35:27.138 :      [Random] Ratio: 9.99% | PSNR: 23.45dB | LPIPS: 0.1521 | DISTS: 0.1447
+25-12-24 17:35:27.172 : --------------------------------------------
+25-12-24 17:35:27.196 : Batch 12/100: Phase 1 (Initial)...
+25-12-24 17:36:25.698 :   -> Phase 1 | PSNR: 22.94dB | LPIPS: 0.1758 | DISTS: 0.1821
+25-12-24 17:36:25.712 :   -> [Base JSCC] Init | PSNR: 24.86dB | LPIPS: 0.3236 | DISTS: 0.2555
+25-12-24 17:36:25.719 :   -> [Corr] Smoothed: 0.3469 | Raw: 0.3212
+25-12-24 17:36:25.870 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:36:25.902 :      [Smooth JSCC] PSNR: 24.91dB
+25-12-24 17:37:24.861 :      [Smooth] Ratio: 9.99% | PSNR: 22.89dB | LPIPS: 0.1881 | DISTS: 0.1885
+25-12-24 17:37:24.911 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:37:24.943 :      [Raw JSCC   ] PSNR: 25.10dB
+25-12-24 17:38:24.283 :      [Raw   ] Ratio: 9.99% | PSNR: 22.88dB | LPIPS: 0.2006 | DISTS: 0.1736
+25-12-24 17:38:24.342 :   -> Processing Phase 2 (Random)...
+25-12-24 17:38:24.373 :      [Random JSCC] PSNR: 25.24dB
+25-12-24 17:39:23.475 :      [Random] Ratio: 9.99% | PSNR: 23.09dB | LPIPS: 0.1736 | DISTS: 0.1854
+25-12-24 17:39:23.510 : --------------------------------------------
+25-12-24 17:39:23.527 : Batch 13/100: Phase 1 (Initial)...
+25-12-24 17:40:22.881 :   -> Phase 1 | PSNR: 19.35dB | LPIPS: 0.2088 | DISTS: 0.1544
+25-12-24 17:40:22.895 :   -> [Base JSCC] Init | PSNR: 21.33dB | LPIPS: 0.3238 | DISTS: 0.2588
+25-12-24 17:40:22.902 :   -> [Corr] Smoothed: 0.2499 | Raw: 0.2168
+25-12-24 17:40:23.033 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:40:23.065 :      [Smooth JSCC] PSNR: 21.62dB
+25-12-24 17:41:21.791 :      [Smooth] Ratio: 9.99% | PSNR: 19.65dB | LPIPS: 0.2079 | DISTS: 0.1589
+25-12-24 17:41:21.839 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:41:21.870 :      [Raw JSCC   ] PSNR: 21.71dB
+25-12-24 17:42:21.993 :      [Raw   ] Ratio: 9.99% | PSNR: 19.61dB | LPIPS: 0.2063 | DISTS: 0.1547
+25-12-24 17:42:22.052 :   -> Processing Phase 2 (Random)...
+25-12-24 17:42:22.084 :      [Random JSCC] PSNR: 21.67dB
+25-12-24 17:43:20.952 :      [Random] Ratio: 9.99% | PSNR: 19.53dB | LPIPS: 0.1986 | DISTS: 0.1582
+25-12-24 17:43:20.979 : --------------------------------------------
+25-12-24 17:43:21.001 : Batch 14/100: Phase 1 (Initial)...
+25-12-24 17:44:19.880 :   -> Phase 1 | PSNR: 21.50dB | LPIPS: 0.2181 | DISTS: 0.1815
+25-12-24 17:44:19.895 :   -> [Base JSCC] Init | PSNR: 23.78dB | LPIPS: 0.3240 | DISTS: 0.2507
+25-12-24 17:44:19.901 :   -> [Corr] Smoothed: 0.3420 | Raw: 0.3425
+25-12-24 17:44:20.079 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:44:20.113 :      [Smooth JSCC] PSNR: 24.07dB
+25-12-24 17:45:19.527 :      [Smooth] Ratio: 9.99% | PSNR: 21.82dB | LPIPS: 0.1957 | DISTS: 0.1840
+25-12-24 17:45:19.580 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:45:19.611 :      [Raw JSCC   ] PSNR: 24.24dB
+25-12-24 17:46:18.665 :      [Raw   ] Ratio: 9.99% | PSNR: 21.68dB | LPIPS: 0.2176 | DISTS: 0.1771
+25-12-24 17:46:18.724 :   -> Processing Phase 2 (Random)...
+25-12-24 17:46:18.755 :      [Random JSCC] PSNR: 24.23dB
+25-12-24 17:47:18.082 :      [Random] Ratio: 9.99% | PSNR: 21.97dB | LPIPS: 0.2016 | DISTS: 0.1848
+25-12-24 17:47:18.117 : --------------------------------------------
+25-12-24 17:47:18.140 : Batch 15/100: Phase 1 (Initial)...
+25-12-24 17:48:17.027 :   -> Phase 1 | PSNR: 21.33dB | LPIPS: 0.2544 | DISTS: 0.1884
+25-12-24 17:48:17.042 :   -> [Base JSCC] Init | PSNR: 23.15dB | LPIPS: 0.4042 | DISTS: 0.2858
+25-12-24 17:48:17.049 :   -> [Corr] Smoothed: 0.3731 | Raw: 0.2889
+25-12-24 17:48:17.224 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:48:17.257 :      [Smooth JSCC] PSNR: 23.42dB
+25-12-24 17:49:15.495 :      [Smooth] Ratio: 9.99% | PSNR: 21.73dB | LPIPS: 0.2302 | DISTS: 0.1787
+25-12-24 17:49:15.544 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:49:15.576 :      [Raw JSCC   ] PSNR: 23.54dB
+25-12-24 17:50:14.444 :      [Raw   ] Ratio: 9.99% | PSNR: 21.54dB | LPIPS: 0.2308 | DISTS: 0.1883
+25-12-24 17:50:14.503 :   -> Processing Phase 2 (Random)...
+25-12-24 17:50:14.534 :      [Random JSCC] PSNR: 23.44dB
+25-12-24 17:51:13.413 :      [Random] Ratio: 9.99% | PSNR: 21.75dB | LPIPS: 0.2336 | DISTS: 0.1648
+25-12-24 17:51:13.445 : --------------------------------------------
+25-12-24 17:51:13.484 : Batch 16/100: Phase 1 (Initial)...
+25-12-24 17:52:12.478 :   -> Phase 1 | PSNR: 17.35dB | LPIPS: 0.4039 | DISTS: 0.2529
+25-12-24 17:52:12.492 :   -> [Base JSCC] Init | PSNR: 18.51dB | LPIPS: 0.5027 | DISTS: 0.3141
+25-12-24 17:52:12.500 :   -> [Corr] Smoothed: 0.5121 | Raw: 0.3768
+25-12-24 17:52:12.650 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:52:12.681 :      [Smooth JSCC] PSNR: 18.71dB
+25-12-24 17:53:11.727 :      [Smooth] Ratio: 9.99% | PSNR: 17.58dB | LPIPS: 0.3715 | DISTS: 0.2526
+25-12-24 17:53:11.778 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:53:11.810 :      [Raw JSCC   ] PSNR: 18.71dB
+25-12-24 17:54:09.863 :      [Raw   ] Ratio: 9.99% | PSNR: 17.57dB | LPIPS: 0.3951 | DISTS: 0.2494
+25-12-24 17:54:09.923 :   -> Processing Phase 2 (Random)...
+25-12-24 17:54:09.954 :      [Random JSCC] PSNR: 18.61dB
+25-12-24 17:55:09.097 :      [Random] Ratio: 9.99% | PSNR: 17.56dB | LPIPS: 0.3907 | DISTS: 0.2575
+25-12-24 17:55:09.127 : --------------------------------------------
+25-12-24 17:55:09.166 : Batch 17/100: Phase 1 (Initial)...
+25-12-24 17:56:08.030 :   -> Phase 1 | PSNR: 23.23dB | LPIPS: 0.2016 | DISTS: 0.1733
+25-12-24 17:56:08.044 :   -> [Base JSCC] Init | PSNR: 25.76dB | LPIPS: 0.3780 | DISTS: 0.2599
+25-12-24 17:56:08.056 :   -> [Corr] Smoothed: 0.5419 | Raw: 0.4440
+25-12-24 17:56:08.220 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 17:56:08.251 :      [Smooth JSCC] PSNR: 25.78dB
+25-12-24 17:57:07.293 :      [Smooth] Ratio: 9.99% | PSNR: 23.14dB | LPIPS: 0.2083 | DISTS: 0.1656
+25-12-24 17:57:07.346 :   -> Processing Phase 2 (Raw)...
+25-12-24 17:57:07.378 :      [Raw JSCC   ] PSNR: 25.94dB
+25-12-24 17:58:05.584 :      [Raw   ] Ratio: 9.99% | PSNR: 23.23dB | LPIPS: 0.2122 | DISTS: 0.1483
+25-12-24 17:58:05.646 :   -> Processing Phase 2 (Random)...
+25-12-24 17:58:05.677 :      [Random JSCC] PSNR: 26.05dB
+25-12-24 17:59:04.659 :      [Random] Ratio: 9.99% | PSNR: 23.57dB | LPIPS: 0.1878 | DISTS: 0.1556
+25-12-24 17:59:04.696 : --------------------------------------------
+25-12-24 17:59:04.735 : Batch 18/100: Phase 1 (Initial)...
+25-12-24 18:00:03.922 :   -> Phase 1 | PSNR: 22.05dB | LPIPS: 0.1754 | DISTS: 0.1482
+25-12-24 18:00:03.936 :   -> [Base JSCC] Init | PSNR: 23.78dB | LPIPS: 0.3028 | DISTS: 0.2388
+25-12-24 18:00:03.942 :   -> [Corr] Smoothed: 0.4461 | Raw: 0.3641
+25-12-24 18:00:04.121 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:00:04.152 :      [Smooth JSCC] PSNR: 24.07dB
+25-12-24 18:01:03.322 :      [Smooth] Ratio: 9.99% | PSNR: 22.04dB | LPIPS: 0.1951 | DISTS: 0.1561
+25-12-24 18:01:03.368 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:01:03.399 :      [Raw JSCC   ] PSNR: 24.11dB
+25-12-24 18:02:02.753 :      [Raw   ] Ratio: 9.99% | PSNR: 22.18dB | LPIPS: 0.1887 | DISTS: 0.1475
+25-12-24 18:02:02.806 :   -> Processing Phase 2 (Random)...
+25-12-24 18:02:02.837 :      [Random JSCC] PSNR: 24.11dB
+25-12-24 18:03:01.263 :      [Random] Ratio: 9.99% | PSNR: 22.28dB | LPIPS: 0.1681 | DISTS: 0.1441
+25-12-24 18:03:01.295 : --------------------------------------------
+25-12-24 18:03:01.313 : Batch 19/100: Phase 1 (Initial)...
+25-12-24 18:04:00.592 :   -> Phase 1 | PSNR: 22.56dB | LPIPS: 0.1413 | DISTS: 0.1366
+25-12-24 18:04:00.606 :   -> [Base JSCC] Init | PSNR: 23.66dB | LPIPS: 0.2758 | DISTS: 0.2338
+25-12-24 18:04:00.612 :   -> [Corr] Smoothed: 0.4549 | Raw: 0.3611
+25-12-24 18:04:00.786 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:04:00.825 :      [Smooth JSCC] PSNR: 23.83dB
+25-12-24 18:04:59.929 :      [Smooth] Ratio: 9.99% | PSNR: 22.08dB | LPIPS: 0.1573 | DISTS: 0.1610
+25-12-24 18:04:59.980 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:05:00.010 :      [Raw JSCC   ] PSNR: 24.03dB
+25-12-24 18:05:58.873 :      [Raw   ] Ratio: 9.99% | PSNR: 22.28dB | LPIPS: 0.1396 | DISTS: 0.1487
+25-12-24 18:05:58.929 :   -> Processing Phase 2 (Random)...
+25-12-24 18:05:58.960 :      [Random JSCC] PSNR: 23.95dB
+25-12-24 18:06:57.812 :      [Random] Ratio: 9.99% | PSNR: 22.68dB | LPIPS: 0.1386 | DISTS: 0.1528
+25-12-24 18:06:57.848 : --------------------------------------------
+25-12-24 18:06:57.886 : Batch 20/100: Phase 1 (Initial)...
+25-12-24 18:07:56.009 :   -> Phase 1 | PSNR: 23.49dB | LPIPS: 0.1276 | DISTS: 0.1576
+25-12-24 18:07:56.023 :   -> [Base JSCC] Init | PSNR: 26.41dB | LPIPS: 0.2341 | DISTS: 0.2585
+25-12-24 18:07:56.030 :   -> [Corr] Smoothed: 0.4586 | Raw: 0.3973
+25-12-24 18:07:56.199 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:07:56.244 :      [Smooth JSCC] PSNR: 26.66dB
+25-12-24 18:08:55.614 :      [Smooth] Ratio: 9.99% | PSNR: 23.99dB | LPIPS: 0.1414 | DISTS: 0.1592
+25-12-24 18:08:55.664 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:08:55.696 :      [Raw JSCC   ] PSNR: 26.70dB
+25-12-24 18:09:54.781 :      [Raw   ] Ratio: 9.99% | PSNR: 24.02dB | LPIPS: 0.1251 | DISTS: 0.1357
+25-12-24 18:09:54.837 :   -> Processing Phase 2 (Random)...
+25-12-24 18:09:54.867 :      [Random JSCC] PSNR: 27.03dB
+25-12-24 18:10:54.033 :      [Random] Ratio: 9.99% | PSNR: 24.12dB | LPIPS: 0.1216 | DISTS: 0.1479
+25-12-24 18:10:54.066 : --------------------------------------------
+25-12-24 18:10:54.104 : Batch 21/100: Phase 1 (Initial)...
+25-12-24 18:11:53.224 :   -> Phase 1 | PSNR: 26.35dB | LPIPS: 0.2494 | DISTS: 0.1722
+25-12-24 18:11:53.238 :   -> [Base JSCC] Init | PSNR: 28.12dB | LPIPS: 0.3633 | DISTS: 0.2493
+25-12-24 18:11:53.244 :   -> [Corr] Smoothed: 0.3871 | Raw: 0.3405
+25-12-24 18:11:53.413 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:11:53.446 :      [Smooth JSCC] PSNR: 28.02dB
+25-12-24 18:12:52.042 :      [Smooth] Ratio: 9.99% | PSNR: 25.98dB | LPIPS: 0.2523 | DISTS: 0.1674
+25-12-24 18:12:52.096 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:12:52.127 :      [Raw JSCC   ] PSNR: 28.15dB
+25-12-24 18:13:51.184 :      [Raw   ] Ratio: 9.99% | PSNR: 26.06dB | LPIPS: 0.2245 | DISTS: 0.1688
+25-12-24 18:13:51.242 :   -> Processing Phase 2 (Random)...
+25-12-24 18:13:51.273 :      [Random JSCC] PSNR: 28.22dB
+25-12-24 18:14:50.221 :      [Random] Ratio: 9.99% | PSNR: 26.53dB | LPIPS: 0.2101 | DISTS: 0.1677
+25-12-24 18:14:50.261 : --------------------------------------------
+25-12-24 18:14:50.284 : Batch 22/100: Phase 1 (Initial)...
+25-12-24 18:15:49.199 :   -> Phase 1 | PSNR: 23.53dB | LPIPS: 0.1475 | DISTS: 0.1515
+25-12-24 18:15:49.213 :   -> [Base JSCC] Init | PSNR: 25.95dB | LPIPS: 0.2711 | DISTS: 0.2402
+25-12-24 18:15:49.220 :   -> [Corr] Smoothed: 0.3865 | Raw: 0.2883
+25-12-24 18:15:49.398 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:15:49.429 :      [Smooth JSCC] PSNR: 26.23dB
+25-12-24 18:16:48.192 :      [Smooth] Ratio: 9.99% | PSNR: 23.68dB | LPIPS: 0.1593 | DISTS: 0.1590
+25-12-24 18:16:48.245 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:16:48.276 :      [Raw JSCC   ] PSNR: 26.20dB
+25-12-24 18:17:46.373 :      [Raw   ] Ratio: 9.99% | PSNR: 23.72dB | LPIPS: 0.1519 | DISTS: 0.1455
+25-12-24 18:17:46.435 :   -> Processing Phase 2 (Random)...
+25-12-24 18:17:46.466 :      [Random JSCC] PSNR: 26.35dB
+25-12-24 18:18:45.295 :      [Random] Ratio: 9.99% | PSNR: 23.78dB | LPIPS: 0.1396 | DISTS: 0.1412
+25-12-24 18:18:45.330 : --------------------------------------------
+25-12-24 18:18:45.355 : Batch 23/100: Phase 1 (Initial)...
+25-12-24 18:19:44.067 :   -> Phase 1 | PSNR: 21.99dB | LPIPS: 0.2491 | DISTS: 0.1673
+25-12-24 18:19:44.081 :   -> [Base JSCC] Init | PSNR: 24.12dB | LPIPS: 0.4214 | DISTS: 0.2615
+25-12-24 18:19:44.088 :   -> [Corr] Smoothed: 0.3492 | Raw: 0.2918
+25-12-24 18:19:44.244 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:19:44.275 :      [Smooth JSCC] PSNR: 24.26dB
+25-12-24 18:20:43.070 :      [Smooth] Ratio: 9.99% | PSNR: 22.15dB | LPIPS: 0.2781 | DISTS: 0.1913
+25-12-24 18:20:43.121 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:20:43.152 :      [Raw JSCC   ] PSNR: 24.38dB
+25-12-24 18:21:41.324 :      [Raw   ] Ratio: 9.99% | PSNR: 22.34dB | LPIPS: 0.2462 | DISTS: 0.1723
+25-12-24 18:21:41.382 :   -> Processing Phase 2 (Random)...
+25-12-24 18:21:41.413 :      [Random JSCC] PSNR: 24.33dB
+25-12-24 18:22:40.334 :      [Random] Ratio: 9.99% | PSNR: 22.07dB | LPIPS: 0.2775 | DISTS: 0.1965
+25-12-24 18:22:40.368 : --------------------------------------------
+25-12-24 18:22:40.391 : Batch 24/100: Phase 1 (Initial)...
+25-12-24 18:23:39.264 :   -> Phase 1 | PSNR: 19.88dB | LPIPS: 0.2209 | DISTS: 0.1720
+25-12-24 18:23:39.278 :   -> [Base JSCC] Init | PSNR: 21.53dB | LPIPS: 0.2379 | DISTS: 0.2212
+25-12-24 18:23:39.287 :   -> [Corr] Smoothed: 0.4569 | Raw: 0.4191
+25-12-24 18:23:39.443 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:23:39.476 :      [Smooth JSCC] PSNR: 22.06dB
+25-12-24 18:24:37.999 :      [Smooth] Ratio: 9.99% | PSNR: 20.05dB | LPIPS: 0.2068 | DISTS: 0.1732
+25-12-24 18:24:38.050 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:24:38.081 :      [Raw JSCC   ] PSNR: 22.13dB
+25-12-24 18:25:37.561 :      [Raw   ] Ratio: 9.99% | PSNR: 20.21dB | LPIPS: 0.1995 | DISTS: 0.1715
+25-12-24 18:25:37.618 :   -> Processing Phase 2 (Random)...
+25-12-24 18:25:37.649 :      [Random JSCC] PSNR: 21.81dB
+25-12-24 18:26:36.533 :      [Random] Ratio: 9.99% | PSNR: 19.95dB | LPIPS: 0.2056 | DISTS: 0.1576
+25-12-24 18:26:36.566 : --------------------------------------------
+25-12-24 18:26:36.590 : Batch 25/100: Phase 1 (Initial)...
+25-12-24 18:27:35.763 :   -> Phase 1 | PSNR: 21.78dB | LPIPS: 0.2380 | DISTS: 0.1867
+25-12-24 18:27:35.777 :   -> [Base JSCC] Init | PSNR: 23.82dB | LPIPS: 0.3420 | DISTS: 0.2574
+25-12-24 18:27:35.784 :   -> [Corr] Smoothed: 0.3361 | Raw: 0.2609
+25-12-24 18:27:35.949 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:27:35.981 :      [Smooth JSCC] PSNR: 24.00dB
+25-12-24 18:28:34.207 :      [Smooth] Ratio: 9.99% | PSNR: 22.38dB | LPIPS: 0.2199 | DISTS: 0.1867
+25-12-24 18:28:34.260 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:28:34.292 :      [Raw JSCC   ] PSNR: 24.14dB
+25-12-24 18:29:33.436 :      [Raw   ] Ratio: 9.99% | PSNR: 22.10dB | LPIPS: 0.2224 | DISTS: 0.1829
+25-12-24 18:29:33.496 :   -> Processing Phase 2 (Random)...
+25-12-24 18:29:33.528 :      [Random JSCC] PSNR: 24.10dB
+25-12-24 18:30:32.557 :      [Random] Ratio: 9.99% | PSNR: 22.47dB | LPIPS: 0.2172 | DISTS: 0.1813
+25-12-24 18:30:32.591 : --------------------------------------------
+25-12-24 18:30:32.616 : Batch 26/100: Phase 1 (Initial)...
+25-12-24 18:31:31.812 :   -> Phase 1 | PSNR: 21.48dB | LPIPS: 0.2450 | DISTS: 0.2003
+25-12-24 18:31:31.826 :   -> [Base JSCC] Init | PSNR: 23.45dB | LPIPS: 0.3385 | DISTS: 0.2592
+25-12-24 18:31:31.832 :   -> [Corr] Smoothed: 0.5245 | Raw: 0.4328
+25-12-24 18:31:31.991 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:31:32.022 :      [Smooth JSCC] PSNR: 23.73dB
+25-12-24 18:32:31.125 :      [Smooth] Ratio: 9.99% | PSNR: 21.58dB | LPIPS: 0.2567 | DISTS: 0.2151
+25-12-24 18:32:31.179 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:32:31.211 :      [Raw JSCC   ] PSNR: 23.86dB
+25-12-24 18:33:29.332 :      [Raw   ] Ratio: 9.99% | PSNR: 21.47dB | LPIPS: 0.2505 | DISTS: 0.2343
+25-12-24 18:33:29.392 :   -> Processing Phase 2 (Random)...
+25-12-24 18:33:29.423 :      [Random JSCC] PSNR: 23.78dB
+25-12-24 18:34:28.388 :      [Random] Ratio: 9.99% | PSNR: 21.51dB | LPIPS: 0.2311 | DISTS: 0.1924
+25-12-24 18:34:28.423 : --------------------------------------------
+25-12-24 18:34:28.446 : Batch 27/100: Phase 1 (Initial)...
+25-12-24 18:35:27.421 :   -> Phase 1 | PSNR: 21.07dB | LPIPS: 0.1479 | DISTS: 0.1726
+25-12-24 18:35:27.435 :   -> [Base JSCC] Init | PSNR: 22.84dB | LPIPS: 0.2184 | DISTS: 0.2368
+25-12-24 18:35:27.441 :   -> [Corr] Smoothed: 0.2865 | Raw: 0.3092
+25-12-24 18:35:27.606 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:35:27.639 :      [Smooth JSCC] PSNR: 22.86dB
+25-12-24 18:36:26.968 :      [Smooth] Ratio: 9.99% | PSNR: 21.13dB | LPIPS: 0.1493 | DISTS: 0.1621
+25-12-24 18:36:27.016 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:36:27.047 :      [Raw JSCC   ] PSNR: 22.79dB
+25-12-24 18:37:26.159 :      [Raw   ] Ratio: 9.99% | PSNR: 21.17dB | LPIPS: 0.1245 | DISTS: 0.1455
+25-12-24 18:37:26.218 :   -> Processing Phase 2 (Random)...
+25-12-24 18:37:26.249 :      [Random JSCC] PSNR: 23.43dB
+25-12-24 18:38:24.731 :      [Random] Ratio: 9.99% | PSNR: 21.71dB | LPIPS: 0.1327 | DISTS: 0.1621
+25-12-24 18:38:24.766 : --------------------------------------------
+25-12-24 18:38:24.797 : Batch 28/100: Phase 1 (Initial)...
+25-12-24 18:39:24.100 :   -> Phase 1 | PSNR: 24.25dB | LPIPS: 0.1519 | DISTS: 0.1617
+25-12-24 18:39:24.113 :   -> [Base JSCC] Init | PSNR: 26.46dB | LPIPS: 0.3237 | DISTS: 0.2371
+25-12-24 18:39:24.121 :   -> [Corr] Smoothed: 0.3984 | Raw: 0.3500
+25-12-24 18:39:24.265 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:39:24.296 :      [Smooth JSCC] PSNR: 26.52dB
+25-12-24 18:40:23.045 :      [Smooth] Ratio: 9.99% | PSNR: 23.92dB | LPIPS: 0.1517 | DISTS: 0.1282
+25-12-24 18:40:23.094 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:40:23.126 :      [Raw JSCC   ] PSNR: 26.79dB
+25-12-24 18:41:21.360 :      [Raw   ] Ratio: 9.99% | PSNR: 23.97dB | LPIPS: 0.1527 | DISTS: 0.1433
+25-12-24 18:41:21.414 :   -> Processing Phase 2 (Random)...
+25-12-24 18:41:21.445 :      [Random JSCC] PSNR: 26.92dB
+25-12-24 18:42:20.068 :      [Random] Ratio: 9.99% | PSNR: 24.58dB | LPIPS: 0.1485 | DISTS: 0.1489
+25-12-24 18:42:20.101 : --------------------------------------------
+25-12-24 18:42:20.124 : Batch 29/100: Phase 1 (Initial)...
+25-12-24 18:43:18.591 :   -> Phase 1 | PSNR: 26.87dB | LPIPS: 0.1209 | DISTS: 0.1454
+25-12-24 18:43:18.606 :   -> [Base JSCC] Init | PSNR: 29.20dB | LPIPS: 0.2112 | DISTS: 0.2040
+25-12-24 18:43:18.612 :   -> [Corr] Smoothed: 0.3548 | Raw: 0.3244
+25-12-24 18:43:18.772 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:43:18.804 :      [Smooth JSCC] PSNR: 29.55dB
+25-12-24 18:44:18.024 :      [Smooth] Ratio: 9.99% | PSNR: 26.60dB | LPIPS: 0.1082 | DISTS: 0.1367
+25-12-24 18:44:18.078 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:44:18.109 :      [Raw JSCC   ] PSNR: 29.51dB
+25-12-24 18:45:17.037 :      [Raw   ] Ratio: 9.99% | PSNR: 26.74dB | LPIPS: 0.0973 | DISTS: 0.1291
+25-12-24 18:45:17.094 :   -> Processing Phase 2 (Random)...
+25-12-24 18:45:17.125 :      [Random JSCC] PSNR: 29.42dB
+25-12-24 18:46:16.403 :      [Random] Ratio: 9.99% | PSNR: 27.23dB | LPIPS: 0.0919 | DISTS: 0.1349
+25-12-24 18:46:16.438 : --------------------------------------------
+25-12-24 18:46:16.470 : Batch 30/100: Phase 1 (Initial)...
+25-12-24 18:47:15.543 :   -> Phase 1 | PSNR: 22.38dB | LPIPS: 0.1322 | DISTS: 0.1325
+25-12-24 18:47:15.557 :   -> [Base JSCC] Init | PSNR: 24.47dB | LPIPS: 0.3130 | DISTS: 0.2468
+25-12-24 18:47:15.565 :   -> [Corr] Smoothed: 0.4615 | Raw: 0.3652
+25-12-24 18:47:15.741 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:47:15.775 :      [Smooth JSCC] PSNR: 24.66dB
+25-12-24 18:48:14.051 :      [Smooth] Ratio: 9.99% | PSNR: 22.55dB | LPIPS: 0.1560 | DISTS: 0.1826
+25-12-24 18:48:14.104 :   -> Processing Phase 2 (Raw)...
+25-12-24 18:48:14.135 :      [Raw JSCC   ] PSNR: 24.65dB
+25-12-24 18:49:13.133 :      [Raw   ] Ratio: 9.99% | PSNR: 22.57dB | LPIPS: 0.1371 | DISTS: 0.1345
+25-12-24 18:49:13.192 :   -> Processing Phase 2 (Random)...
+25-12-24 18:49:13.223 :      [Random JSCC] PSNR: 24.88dB
+25-12-24 18:50:12.546 :      [Random] Ratio: 9.99% | PSNR: 22.50dB | LPIPS: 0.1479 | DISTS: 0.1418
+25-12-24 18:50:12.582 : --------------------------------------------
+25-12-24 18:50:12.605 : Batch 31/100: Phase 1 (Initial)...
+25-12-24 18:51:10.782 :   -> Phase 1 | PSNR: 24.84dB | LPIPS: 0.1664 | DISTS: 0.1799
+25-12-24 18:51:10.796 :   -> [Base JSCC] Init | PSNR: 27.41dB | LPIPS: 0.2943 | DISTS: 0.2585
+25-12-24 18:51:10.802 :   -> [Corr] Smoothed: 0.3645 | Raw: 0.2907
+25-12-24 18:51:10.993 :   -> Processing Phase 2 (Smoothed)...
+25-12-24 18:51:11.025 :      [Smooth JSCC] PSNR: 27.20dB
+25-12-24 18:51:55.283 : 
+[!] Process Interrupted by User. Saving current results...
+25-12-24 18:51:55.295 : Saved 30 results to /home/naaa/diffcom/results_retrans_comparison/ffhq_demo/hifi_diffcom/djscc_2/awgn_00dB/RetransComparison_rate_0.1_zeta0.3_seed22/retransmission_comparison.json
+25-12-24 18:51:55.295 : Final Avg | Smooth PSNR: 22.22dB | Raw PSNR: 22.25dB | Random PSNR: 22.41dB

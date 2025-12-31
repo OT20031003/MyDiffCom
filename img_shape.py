@@ -55,6 +55,6 @@ if __name__ == "__main__":
     # Mac/Linuxの例: "/Users/Name/Pictures/Input"
     
     OUTPUT_FOLDER = "testsets/ffhq_demo/"  # 元画像のフォルダ
-    INPUT_FOLDER = "testsets/resized"  # 保存先のフォルダ
+    INPUT_FOLDER = "ffhq-text-images"  # 保存先のフォルダ
 
     resize_images(INPUT_FOLDER, OUTPUT_FOLDER)
