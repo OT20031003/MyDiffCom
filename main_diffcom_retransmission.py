@@ -328,16 +328,21 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
     
     return x_recon, final_uncertainty
 
-
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}')
     
     metric_wrapper = MetricWrapper().to(device)
     
-    # メトリクス記録用
+    # --- [変更点] Diffusion復元後のメトリクス用メーター ---
     results_smooth = DictAverageMeter()
     results_raw = DictAverageMeter()
-    results_random = DictAverageMeter() # Random用
+    results_random = DictAverageMeter()
+    
+    # --- [追加] JSCC (再送直後・Diffusion前) のメトリクス用メーター ---
+    results_jscc_p1 = DictAverageMeter()      # Phase 1 Init JSCC
+    results_jscc_smooth = DictAverageMeter()  # Smooth JSCC
+    results_jscc_raw = DictAverageMeter()     # Raw JSCC
+    results_jscc_random = DictAverageMeter()  # Random JSCC
     
     loss_wrapper = ConsistencyLoss(config, device)
     
@@ -346,7 +351,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         return cond_method(*args, **kwargs)
 
     all_results_history = []
-    json_path = os.path.join(config.save_path, 'retransmission_comparison.json')
+
+    json_filename = f"{config.result_name}.json"
+    json_path = os.path.join(config.save_path, json_filename)
 
     try:
         for idx, batch in enumerate(dataloader):
@@ -373,8 +380,11 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             metrics_p1 = metric_wrapper(x_recon_p1.detach(), input_image)
             logger.info(f"  -> Phase 1 | PSNR: {metrics_p1['psnr']:.2f}dB | LPIPS: {metrics_p1['lpips']:.4f} | DISTS: {metrics_p1['dists']:.4f}")
 
-            # 【追加】Phase 1 JSCC (Baseline) の診断
+            # Phase 1 JSCC (Baseline) の診断
             metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
+            # --- [追加] Phase 1 JSCC の記録 ---
+            results_jscc_p1.update(metrics_jscc_p1)
+            
             log_msg_jscc = f"  -> [Base JSCC] Init | PSNR: {metrics_jscc_p1['psnr']:.2f}dB"
             if 'lpips' in metrics_jscc_p1: log_msg_jscc += f" | LPIPS: {metrics_jscc_p1['lpips']:.4f}"
             if 'dists' in metrics_jscc_p1: log_msg_jscc += f" | DISTS: {metrics_jscc_p1['dists']:.4f}"
@@ -385,7 +395,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             corr_smooth, corr_raw = 0.0, 0.0
 
             if uncertainty_container_p1 is not None:
-                # 誤差マップ計算
                 error_map = torch.abs(x_recon_p1 - input_image).mean(dim=1, keepdim=True)
                 e_flat = error_map.detach().cpu().flatten().numpy()
                 
@@ -409,7 +418,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             # Step 2 & 3: Retransmission Simulation & Phase 2 Refinement
             # ---------------------------------------------------------------------
             
-            # 基本情報を記録 (Phase2の結果は後で追加)
             batch_record = {
                 "batch_idx": idx + 1,
                 "filename": names[0],
@@ -437,11 +445,12 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     mode=config.retrans_mode, value=config.retrans_value, logger=None
                 )
 
-                # 【追加】再送後のJSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_s = metric_wrapper(meas_p2_s['x_mse'].detach(), input_image)
+                # --- [追加] Smooth JSCC の記録 ---
+                results_jscc_smooth.update(metrics_jscc_p2_s)
+
                 log_msg_jscc_s = f"     [Smooth JSCC] PSNR: {metrics_jscc_p2_s['psnr']:.2f}dB"
                 if 'lpips' in metrics_jscc_p2_s: log_msg_jscc_s += f" | LPIPS: {metrics_jscc_p2_s['lpips']:.4f}"
-                if 'dists' in metrics_jscc_p2_s: log_msg_jscc_s += f" | DISTS: {metrics_jscc_p2_s['dists']:.4f}"
                 logger.info(log_msg_jscc_s)
                 
                 x_recon_p2_s, _ = run_diffusion_process(
@@ -452,13 +461,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_s = metric_wrapper(x_recon_p2_s.detach(), input_image)
                 results_smooth.update(metrics_p2_s)
                 
-                # 詳細なログ出力を作成 (LPIPS/DISTS追加)
                 log_msg = f"     [Smooth] Ratio: {ratio_s:.2%} | PSNR: {metrics_p2_s['psnr']:.2f}dB"
-                if 'lpips' in metrics_p2_s: log_msg += f" | LPIPS: {metrics_p2_s['lpips']:.4f}"
-                if 'dists' in metrics_p2_s: log_msg += f" | DISTS: {metrics_p2_s['dists']:.4f}"
                 logger.info(log_msg)
                 
-                # JSON用データの更新
                 batch_record['phase2_smooth'] = {k: float(v) for k, v in metrics_p2_s.items()}
                 batch_record['phase2_smooth']['ratio'] = ratio_s
                 batch_record['phase2_smooth']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_s.items()}
@@ -481,11 +486,12 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     mode=config.retrans_mode, value=config.retrans_value, logger=None
                 )
                 
-                # 【追加】再送後のJSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_r = metric_wrapper(meas_p2_r['x_mse'].detach(), input_image)
+                # --- [追加] Raw JSCC の記録 ---
+                results_jscc_raw.update(metrics_jscc_p2_r)
+
                 log_msg_jscc_r = f"     [Raw JSCC   ] PSNR: {metrics_jscc_p2_r['psnr']:.2f}dB"
                 if 'lpips' in metrics_jscc_p2_r: log_msg_jscc_r += f" | LPIPS: {metrics_jscc_p2_r['lpips']:.4f}"
-                if 'dists' in metrics_jscc_p2_r: log_msg_jscc_r += f" | DISTS: {metrics_jscc_p2_r['dists']:.4f}"
                 logger.info(log_msg_jscc_r)
                 
                 x_recon_p2_r, _ = run_diffusion_process(
@@ -496,13 +502,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_r = metric_wrapper(x_recon_p2_r.detach(), input_image)
                 results_raw.update(metrics_p2_r)
                 
-                # 詳細なログ出力を作成 (LPIPS/DISTS追加)
                 log_msg = f"     [Raw   ] Ratio: {ratio_r:.2%} | PSNR: {metrics_p2_r['psnr']:.2f}dB"
-                if 'lpips' in metrics_p2_r: log_msg += f" | LPIPS: {metrics_p2_r['lpips']:.4f}"
-                if 'dists' in metrics_p2_r: log_msg += f" | DISTS: {metrics_p2_r['dists']:.4f}"
                 logger.info(log_msg)
                 
-                # JSON用データの更新
                 batch_record['phase2_raw'] = {k: float(v) for k, v in metrics_p2_r.items()}
                 batch_record['phase2_raw']['ratio'] = ratio_r
                 batch_record['phase2_raw']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_r.items()}
@@ -518,18 +520,18 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             if config.retrans_mode != 'oracle':
                 logger.info(f"  -> Processing Phase 2 (Random)...")
                 
-                # Random モードでシミュレーション (uncertainty_map=None でOK)
                 meas_p2_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
                     operator, input_image, measurement_phase1, 
                     None, 
                     mode='random', value=config.retrans_value, logger=None
                 )
                 
-                # JSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_rnd = metric_wrapper(meas_p2_rnd['x_mse'].detach(), input_image)
+                # --- [追加] Random JSCC の記録 ---
+                results_jscc_random.update(metrics_jscc_p2_rnd)
+
                 log_msg_jscc_rnd = f"     [Random JSCC] PSNR: {metrics_jscc_p2_rnd['psnr']:.2f}dB"
                 if 'lpips' in metrics_jscc_p2_rnd: log_msg_jscc_rnd += f" | LPIPS: {metrics_jscc_p2_rnd['lpips']:.4f}"
-                if 'dists' in metrics_jscc_p2_rnd: log_msg_jscc_rnd += f" | DISTS: {metrics_jscc_p2_rnd['dists']:.4f}"
                 logger.info(log_msg_jscc_rnd)
                 
                 x_recon_p2_rnd, _ = run_diffusion_process(
@@ -540,18 +542,13 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_rnd = metric_wrapper(x_recon_p2_rnd.detach(), input_image)
                 results_random.update(metrics_p2_rnd)
                 
-                # ログ (LPIPS/DISTS追加)
                 log_msg = f"     [Random] Ratio: {ratio_rnd:.2%} | PSNR: {metrics_p2_rnd['psnr']:.2f}dB"
-                if 'lpips' in metrics_p2_rnd: log_msg += f" | LPIPS: {metrics_p2_rnd['lpips']:.4f}"
-                if 'dists' in metrics_p2_rnd: log_msg += f" | DISTS: {metrics_p2_rnd['dists']:.4f}"
                 logger.info(log_msg)
                 
-                # JSON更新
                 batch_record['phase2_random'] = {k: float(v) for k, v in metrics_p2_rnd.items()}
                 batch_record['phase2_random']['ratio'] = ratio_rnd
                 batch_record['phase2_random']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_rnd.items()}
                 
-                # 画像保存
                 torchvision.utils.save_image(x_recon_p2_rnd[0].cpu(), os.path.join(save_dir, '3_Phase2_Refined_Random.png'))
                 plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
 
@@ -565,27 +562,43 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         import traceback
         traceback.print_exc()
     finally:
-        # 最後に必ず保存 (中断・エラー・正常終了すべてに対応)
+        # --- [変更点] JSCCの平均も含めてSummaryを作成 ---
+        
+        final_averages = {
+            "diffusion_smooth": results_smooth.avg,
+            "diffusion_raw": results_raw.avg,
+            "diffusion_random": results_random.avg,
+            # JSCC Averages
+            "jscc_p1_init": results_jscc_p1.avg,
+            "jscc_smooth": results_jscc_smooth.avg,
+            "jscc_raw": results_jscc_raw.avg,
+            "jscc_random": results_jscc_random.avg
+        }
+        
+        output_data = {
+            "summary": final_averages,
+            "history": all_results_history
+        }
+
         if len(all_results_history) > 0:
             with open(json_path, 'w') as f:
-                json.dump(all_results_history, f, indent=4)
+                json.dump(output_data, f, indent=4)
             logger.info(f"Saved {len(all_results_history)} results to {json_path}")
         
-        # 最終平均ログの拡張
-        final_msg = f"Final Avg | Smooth PSNR: {results_smooth.avg.get('psnr', 0):.2f}dB"
+        # 最終ログ（既存のものに加え、代表してJSCCのPSNRなども表示したければここに追加可能）
+        final_msg = f"Final Avg (Diffusion) | Smooth PSNR: {results_smooth.avg.get('psnr', 0):.2f}dB"
         if 'lpips' in results_smooth.avg: final_msg += f" LPIPS: {results_smooth.avg['lpips']:.4f}"
-        if 'dists' in results_smooth.avg: final_msg += f" DISTS: {results_smooth.avg['dists']:.4f}"
         
         final_msg += f" | Raw PSNR: {results_raw.avg.get('psnr', 0):.2f}dB"
-        if 'lpips' in results_raw.avg: final_msg += f" LPIPS: {results_raw.avg['lpips']:.4f}"
-        
         final_msg += f" | Random PSNR: {results_random.avg.get('psnr', 0):.2f}dB"
-        if 'lpips' in results_random.avg: final_msg += f" LPIPS: {results_random.avg['lpips']:.4f}"
 
         logger.info(final_msg)
+        
+        # JSCCのAverageログ（オプション）
+        final_jscc_msg = f"Final Avg (JSCC Only)| Smooth: {results_jscc_smooth.avg.get('psnr', 0):.2f}dB | Raw: {results_jscc_raw.avg.get('psnr', 0):.2f}dB | Random: {results_jscc_random.avg.get('psnr', 0):.2f}dB"
+        logger.info(final_jscc_msg)
 
     return results_smooth
-
 
 def main():
     config = parse_args_and_config()

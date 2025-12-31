@@ -19,7 +19,7 @@ djscc:
 
 #channel_type: 'awgn' # 'ofdm_tdl', 'awgn'
 channel_type: 'awgn'
-CSNR: 0
+CSNR: -1
 ofdm_tdl:
   P: 1
   S: 16
@@ -55,7 +55,8 @@ diffcom_series:
   num_train_timesteps: 1000
   iter_num: 1000
   save_recon_every: 20
-
+  #uncertainty_mode: 'perturbation' 
+  uncertainty_mode: 'temporal'
   diffcom:
     lr_schedule: constant
     learning_rate: 1.0
