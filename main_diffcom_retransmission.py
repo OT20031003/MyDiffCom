@@ -18,6 +18,15 @@ import yaml
 from tqdm.auto import tqdm
 from scipy.stats import pearsonr
 
+# --- [FID計算用のライブラリ] ---
+try:
+    from torchmetrics.image.fid import FrechetInceptionDistance
+    IS_TORCHMETRICS_AVAILABLE = True
+except ImportError:
+    IS_TORCHMETRICS_AVAILABLE = False
+    print("Warning: torchmetrics not installed. FID calculation will be skipped.")
+# ----------------------------------
+
 # カスタムモジュール
 import conditioning_method.diffcom as diffcom_module
 from conditioning_method.diffcom import get_conditioning_method, ConsistencyLoss
@@ -301,13 +310,47 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
     loss_wrapper = ConsistencyLoss(config, device)
     
     # 結果保存用の動的なDictionary Meterを作成
-    # results_meters は、"temporal_smooth" や "temporal_smooth_jscc" などのキーを自動生成します
     results_meters = {}
 
+    # FID計測用の辞書
+    fid_meters = {}
+    
     def get_meter(key):
         if key not in results_meters:
             results_meters[key] = DictAverageMeter()
         return results_meters[key]
+
+    # --- [修正版] FID更新ヘルパー (Robust) ---
+    def update_fid(key, real_img, fake_img):
+        """
+        real_img, fake_img: Tensor [B, C, H, W]
+        """
+        # グローバルスコープの変数を参照
+        global IS_TORCHMETRICS_AVAILABLE
+        
+        if not IS_TORCHMETRICS_AVAILABLE:
+            return
+
+        # キーが存在しなければ新規作成
+        if key not in fid_meters:
+            try:
+                # feature=2048 is standard for FID
+                fid_meters[key] = FrechetInceptionDistance(feature=2048, normalize=True).to(device)
+            except (ModuleNotFoundError, ImportError, RuntimeError) as e:
+                # torch-fidelity不足などのエラーをキャッチ
+                logger.warning(f"\n[Warning] FID initialization failed: {e}")
+                logger.warning("FID calculation will be DISABLED for this run to prevent crash.")
+                
+                IS_TORCHMETRICS_AVAILABLE = False
+                return
+        
+        # 正規化: [0, 1] にクランプ
+        real_norm = torch.clamp(real_img, 0, 1)
+        fake_norm = torch.clamp(fake_img, 0, 1)
+
+        fid_meters[key].update(real_norm, real=True)
+        fid_meters[key].update(fake_norm, real=False)
+    # ----------------------------
 
     def wrapped_cond_method(*args, **kwargs):
         kwargs['loss_wrapper'] = loss_wrapper
@@ -366,6 +409,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             metrics_p1 = metric_wrapper(x_recon_p1.detach(), input_image)
             get_meter('phase1_recon').update(metrics_p1)
             batch_record['phase1'] = {k: float(v) for k, v in metrics_p1.items()}
+
+            # Phase 1 FID Update
+            update_fid('phase1', input_image, x_recon_p1.detach())
 
             # ログ: Phase 1 Diffusion Result
             log_msg_p1 = f"  -> Phase 1        | PSNR: {metrics_p1['psnr']:.2f}dB"
@@ -445,6 +491,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         # Phase 2 Diffusionの平均値を記録
                         meter_key = f"{u_mode}_{sub_key}"
                         get_meter(meter_key).update(metrics_p2)
+
+                        # Phase 2 FID Update (Dynamic Key)
+                        update_fid(meter_key, input_image, x_recon_p2.detach())
                         
                         mode_result["results"][sub_key] = {k: float(v) for k, v in metrics_p2.items()}
                         mode_result["results"][sub_key]['ratio'] = ratio
@@ -497,6 +546,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                  # Random Diffusionの平均値を記録
                  get_meter('random').update(metrics_rnd)
                  
+                 # Random FID Update
+                 update_fid('random', input_image, x_recon_rnd.detach())
+
                  batch_record['random'] = {k: float(v) for k, v in metrics_rnd.items()}
                  batch_record['random']['ratio'] = ratio_rnd
                  batch_record['random']['jscc'] = {k: float(v) for k, v in metrics_jscc_rnd.items()}
@@ -525,6 +577,22 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         for k, meter in results_meters.items():
             final_summary[k] = meter.avg
         
+        # Calculate Final FID
+        if IS_TORCHMETRICS_AVAILABLE and len(fid_meters) > 0:
+            logger.info("Calculating FID scores... (This may take a moment)")
+            fid_summary = {}
+            for k, fid_obj in fid_meters.items():
+                try:
+                    score = fid_obj.compute().item()
+                    fid_summary[k] = score
+                    # 既存のサマリーにもFIDを追加
+                    if k not in final_summary:
+                        final_summary[k] = {}
+                    final_summary[k]['fid'] = score
+                    logger.info(f"  -> FID [{k}]: {score:.4f}")
+                except Exception as e:
+                    logger.error(f"Failed to compute FID for {k}: {e}")
+        
         output_data = {
             "summary": final_summary,
             "history": all_results_history
@@ -538,23 +606,32 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         # 最終ログ表示
         logger.info("=== Final Comparison Summary ===")
         
+        def format_metrics(m):
+            s = f"PSNR: {m.get('psnr', 0):.2f}dB"
+            if 'lpips' in m: s += f" | LPIPS: {m['lpips']:.4f}"
+            if 'dists' in m: s += f" | DISTS: {m['dists']:.4f}"
+            if 'fid' in m:   s += f" | FID: {m['fid']:.4f}"
+            return s
+
         # 1. Base JSCC
         if 'jscc_init' in final_summary:
-            m = final_summary['jscc_init']
-            logger.info(f"Init (Base)  | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
+            logger.info(f"Init (Base)  | {format_metrics(final_summary['jscc_init'])}")
         
-        # 2. Random
-        if 'random' in final_summary:
-            m = final_summary['random']
-            logger.info(f"Random       | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
+        # 2. Phase 1 Recon
+        if 'phase1_recon' in final_summary:
+            logger.info(f"Phase 1      | {format_metrics(final_summary['phase1_recon'])}")
 
-        # 3. Dynamic Modes (JSCC results will appear here automatically because they are in keys)
-        # ソートして出力することで、同じモードのJSCCとReconが近くに並びます
+        # 3. Random
+        if 'random' in final_summary:
+            logger.info(f"Random       | {format_metrics(final_summary['random'])}")
+
+        # 4. Dynamic Modes
         for k in sorted(final_summary.keys()):
-            if k in ['jscc_init', 'random', 'phase1_recon']: continue
+            if k in ['jscc_init', 'random', 'phase1_recon', 'random_jscc']: continue
+            if 'jscc' in k: continue 
+            
             m = final_summary[k]
-            # キー名が長くなる可能性があるため、フォーマット調整
-            logger.info(f"{k:20s} | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
+            logger.info(f"{k:20s} | {format_metrics(m)}")
 
     return results_meters
 
