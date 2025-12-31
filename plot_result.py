@@ -18,11 +18,11 @@ TARGET_SNRS = [-4.0, -2.0, 0.0]
 
 # 3. プロットしたい手法のリスト
 TARGET_METHODS = [
-    "jscc_init", 
+    #"jscc_init", 
     "phase1_recon", 
-    "temporal_smooth_jscc", 
     "temporal_smooth",
-    "random_jscc"
+    "temporal_raw",
+    "random"
 ]
 
 # 4. 凡例の表示名マッピング

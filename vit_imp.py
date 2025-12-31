@@ -103,6 +103,6 @@ def visualize_attention(image_path):
 
 # --- 実行 ---
 # visualize_attention("path/to/image.jpg")
-path = "testsets/ffhq_demo/69904.png"
-#path = "val2017/000000000139.jpg"
+path = "testsets/ffhq_demo/69910.png"
+#path = "val2017/000000000724.jpg"
 visualize_attention(path)

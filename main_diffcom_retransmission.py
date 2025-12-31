@@ -357,7 +357,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         return cond_method(*args, **kwargs)
 
     all_results_history = []
-    json_filename = f"{config.result_name}.json"
+    json_filename = f"SNR{config.CSNR}_{config.result_name}.json"
     json_path = os.path.join(config.save_path, json_filename)
 
     try:
