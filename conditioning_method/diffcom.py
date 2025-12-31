@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np # Added numpy import which was missing in get_lr context
 
 from utils import utils_model
 
 __CONDITIONING_METHOD__ = {}
 
 # 評価・可視化用に不確実性マップを一時保存するグローバル変数
-# {'raw': ..., 'smoothed': ...} の辞書を保持する
-latest_uncertainty_map = None
+# 変更後構造: {'temporal': {'raw': ..., 'smoothed': ...}, 'perturbation': {...}}
+latest_uncertainty_map = {}
 
 
 def register_conditioning_method(name: str):
@@ -30,8 +31,6 @@ def get_conditioning_method(name: str, **kwargs):
 def calculate_temporal_uncertainty(x0_preds_list, k_s=16):
     """
     時間的分散 (Temporal Variance) を計算するヘルパー関数
-    x0_preds_list: List of tensor (B, C, H, W) - 各ステップの予測結果
-    k_s: 平滑化カーネルサイズ
     """
     if len(x0_preds_list) < 2:
         return None, None
@@ -50,6 +49,40 @@ def calculate_temporal_uncertainty(x0_preds_list, k_s=16):
     else:
         U_t = V_t
         
+    return V_t, U_t
+
+def calculate_perturbation_uncertainty(unet, diffusion, x_0_hat, sigma_t, ns, t_step, M, k_s, config):
+    """
+    摂動分散 (Perturbation Variance) を計算するヘルパー関数
+    """
+    with torch.no_grad():
+        alpha_bar = ns.alphas_cumprod[t_step].to(x_0_hat.device)
+        sqrt_alpha = torch.sqrt(alpha_bar)
+        sqrt_one_minus_alpha = torch.sqrt(1 - alpha_bar)
+
+        preds = []
+        for _ in range(M):
+            eps_k = torch.randn_like(x_0_hat)
+            x_t_k = sqrt_alpha * x_0_hat + sqrt_one_minus_alpha * eps_k
+            x_0_hat_k = utils_model.model_fn(
+                x_t_k,
+                noise_level=sigma_t * 255,
+                model_out_type='pred_xstart',
+                model_diffusion=unet,
+                diffusion=diffusion,
+                ddim_sample=config.ddim_sample
+            )
+            preds.append(x_0_hat_k)
+
+        preds_stack = torch.stack(preds) 
+        V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
+        
+        if V_t.shape[-1] >= k_s: 
+            U_t = F.avg_pool2d(V_t, kernel_size=k_s, stride=1, padding=k_s//2)
+            U_t = F.interpolate(U_t, size=V_t.shape[-2:], mode='bilinear', align_corners=False)
+        else:
+            U_t = V_t
+            
     return V_t, U_t
 
 
@@ -81,7 +114,6 @@ class ConsistencyLoss(nn.Module):
                 'x_mse': x_0_hat
             }
         elif operation_mode == 'joint':
-            # HiFi-DiffCom用: 潜在空間とピクセル空間の両方で計算
             ofdm_sig = operator.forward(s, cof)
             s_hat = operator.transpose(ofdm_sig, cof)
             x_confirming = operator.decode(s_hat)
@@ -92,22 +124,18 @@ class ConsistencyLoss(nn.Module):
         
         loss = {}
         for key in recon_measurement.keys():
-            # ノルム計算により損失を算出
             loss[key] = self.weight[key] * torch.linalg.norm(measurement[key] - recon_measurement[key])
         return loss
 
 
 def get_lr(config, t, T):
     lr_base = config['learning_rate']
-    # exponential decay to 0
     if config['lr_schedule'] == 'exp':
         lr_min = config['lr_min']
         lr = lr_min + (lr_base - lr_min) * np.exp(-t / T)
-    # linear decay
     elif config['lr_schedule'] == 'linear':
         lr_min = config['lr_min']
         lr = lr_min + (lr_base - lr_min) * (t / T)
-    # constant
     else:
         lr = lr_base
     return lr
@@ -119,23 +147,25 @@ class DiffCom(nn.Module):
         super().__init__()
         self.conditioning_method = 'latent'
         
-        # --- 不確かさ推定パラメータ ---
-        self.M = 5            # Perturbation samples (摂動サンプルの数)
-        self.k_s = 16         # 平滑化カーネルサイズ
+        self.M = 5            
+        self.k_s = 16         
         
-        # 履歴保存用 (Temporal Variance用)
         self.x0_history = []
-        self.uncertainty_mode = 'perturbation' # デフォルト
+        self.uncertainty_modes = ['perturbation'] # デフォルトはリスト
 
     def conditioning(self, config, i, ns, x_t, h_t, power,
                      measurement, unet, diffusion, operator, loss_wrapper, last_timestep):
-        # 可視化用にグローバル変数を参照
         global latest_uncertainty_map
         
-        # 初回ステップで設定を読み込む
+        # 初回ステップで設定を読み込み、リスト化して保持
         if i == 0:
-            self.uncertainty_mode = config.diffcom_series.get('uncertainty_mode', 'perturbation')
-            self.x0_history = [] # 履歴リセット
+            u_mode = config.diffcom_series.get('uncertainty_mode', 'perturbation')
+            if isinstance(u_mode, str):
+                self.uncertainty_modes = [u_mode]
+            else:
+                self.uncertainty_modes = u_mode
+                
+            self.x0_history = [] 
 
         h_0_hat = h_t
         h_t_minus_1_prime = h_t
@@ -145,9 +175,7 @@ class DiffCom(nn.Module):
         sigma_t = ns.reduced_alpha_cumprod[t_step].cpu().numpy()
         x_t = x_t.requires_grad_()
         
-        # -----------------------------------------------------------
-        # 1. Prediction Step (通常のリバース拡散ステップ)
-        # -----------------------------------------------------------
+        # 1. Prediction Step
         x_t_minus_1_prime, x_0_hat, _ = utils_model.model_fn(x_t,
                                                              noise_level=sigma_t * 255,
                                                              model_out_type='pred_x_prev_and_start', \
@@ -155,72 +183,40 @@ class DiffCom(nn.Module):
                                                              diffusion=diffusion,
                                                              ddim_sample=config.ddim_sample)
 
-        # -----------------------------------------------------------
-        # 2. Uncertainty Estimation (不確かさの計算)
-        # -----------------------------------------------------------
-        
-        # Temporal Modeの場合、常に履歴を保存
-        if self.uncertainty_mode == 'temporal':
-            # メモリ節約のため detach して保存
+        # 2. Uncertainty Estimation
+        # Temporalが含まれる場合は履歴保存
+        if 'temporal' in self.uncertainty_modes:
             self.x0_history.append(x_0_hat.detach())
 
-        # 計算を実行するかどうかの判定
-        # (a) t > 0: 最後のステップは除く
-        # (b) i % 20 == 0: 計算コスト削減のため20ステップに1回だけ更新
         should_calc_uncertainty = (t_step > 0) and (i % 20 == 0)
 
         if not last_timestep and should_calc_uncertainty:
-            V_t, U_t = None, None
-
-            # === Branch A: Temporal Variance (新手法) ===
-            if self.uncertainty_mode == 'temporal':
-                # 蓄積した履歴から分散を計算
-                V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
-
-            # === Branch B: Perturbation Variance (既存手法) ===
-            elif self.uncertainty_mode == 'perturbation':
-                with torch.no_grad():
-                    alpha_bar = ns.alphas_cumprod[t_step].to(x_0_hat.device)
-                    sqrt_alpha = torch.sqrt(alpha_bar)
-                    sqrt_one_minus_alpha = torch.sqrt(1 - alpha_bar)
-
-                    preds = []
-                    for _ in range(self.M):
-                        eps_k = torch.randn_like(x_0_hat)
-                        x_t_k = sqrt_alpha * x_0_hat + sqrt_one_minus_alpha * eps_k
-                        x_0_hat_k = utils_model.model_fn(
-                            x_t_k,
-                            noise_level=sigma_t * 255,
-                            model_out_type='pred_xstart',
-                            model_diffusion=unet,
-                            diffusion=diffusion,
-                            ddim_sample=config.ddim_sample
-                        )
-                        preds.append(x_0_hat_k)
-
-                    preds_stack = torch.stack(preds) 
-                    V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
-                    
-                    if V_t.shape[-1] >= self.k_s: 
-                        U_t = F.avg_pool2d(V_t, kernel_size=self.k_s, stride=1, padding=self.k_s//2)
-                        U_t = F.interpolate(U_t, size=V_t.shape[-2:], mode='bilinear', align_corners=False)
-                    else:
-                        U_t = V_t
-
-            # グローバル変数への保存とマスク生成
-            if V_t is not None and U_t is not None:
-                latest_uncertainty_map = {
-                    'raw': V_t.detach().cpu(),
-                    'smoothed': U_t.detach().cpu()
-                }
+            current_maps = {}
+            
+            # 各モードについて計算
+            for mode in self.uncertainty_modes:
+                V_t, U_t = None, None
                 
-                u_min = U_t.flatten(2).min(2, keepdim=True)[0].unsqueeze(2)
-                u_max = U_t.flatten(2).max(2, keepdim=True)[0].unsqueeze(2)
-                self.uncertainty_mask = (U_t - u_min) / (u_max - u_min + 1e-8)
+                if mode == 'temporal':
+                    V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
+                
+                elif mode == 'perturbation':
+                    V_t, U_t = calculate_perturbation_uncertainty(
+                        unet, diffusion, x_0_hat, sigma_t, ns, t_step, 
+                        self.M, self.k_s, config
+                    )
+                
+                if V_t is not None and U_t is not None:
+                    current_maps[mode] = {
+                        'raw': V_t.detach().cpu(),
+                        'smoothed': U_t.detach().cpu()
+                    }
+            
+            # グローバル変数を更新 (空でなければ)
+            if current_maps:
+                latest_uncertainty_map = current_maps
 
-        # -----------------------------------------------------------
         # 3. Gradient Update
-        # -----------------------------------------------------------
         if last_timestep:
             loss = loss_wrapper.forward(measurement, x_0_hat, h_0_hat, operator, self.conditioning_method)
             return x_0_hat, h_0_hat, x_t_minus_1_prime, h_t_minus_1_prime, loss
@@ -239,14 +235,10 @@ class DiffCom(nn.Module):
 
 @register_conditioning_method(name='hifi_diffcom')
 class HiFiDiffCom(DiffCom):
-    """
-    Uncertainty-Aware HiFi-DiffCom Implementation with selectable Uncertainty Mode
-    """
     def __init__(self):
         super().__init__()
         self.conditioning_method = 'joint'
         
-        # --- 不確かさ推定のためのパラメータ ---
         self.M = 5            
         self.kappa = 1.0      
         self.k_s = 16         
@@ -255,15 +247,19 @@ class HiFiDiffCom(DiffCom):
         self.mask_suppress = None
         
         self.x0_history = []
-        self.uncertainty_mode = 'perturbation'
+        self.uncertainty_modes = ['perturbation']
 
     def conditioning(self, config, i, ns, x_t, h_t, power,
                      measurement, unet, diffusion, operator, loss_wrapper, last_timestep):
         global latest_uncertainty_map
 
-        # 初回ステップで設定を読み込む
         if i == 0:
-            self.uncertainty_mode = config.diffcom_series.get('uncertainty_mode', 'perturbation')
+            u_mode = config.diffcom_series.get('uncertainty_mode', 'perturbation')
+            if isinstance(u_mode, str):
+                self.uncertainty_modes = [u_mode]
+            else:
+                self.uncertainty_modes = u_mode
+            
             self.x0_history = [] 
 
         h_0_hat = h_t
@@ -283,58 +279,43 @@ class HiFiDiffCom(DiffCom):
                                                              ddim_sample=config.ddim_sample)
 
         # 2. Uncertainty Estimation
-        if self.uncertainty_mode == 'temporal':
+        if 'temporal' in self.uncertainty_modes:
             self.x0_history.append(x_0_hat.detach())
 
         should_calc_uncertainty = (t_step > 0) and (i % 20 == 0)
 
         if not last_timestep and should_calc_uncertainty:
-            V_t, U_t = None, None
+            current_maps = {}
+            primary_U_t = None # HiFiガイダンス用に使用するマップ
 
-            # === Branch A: Temporal Variance ===
-            if self.uncertainty_mode == 'temporal':
-                V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
+            for mode in self.uncertainty_modes:
+                V_t, U_t = None, None
+                
+                if mode == 'temporal':
+                    V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
+                elif mode == 'perturbation':
+                    V_t, U_t = calculate_perturbation_uncertainty(
+                        unet, diffusion, x_0_hat, sigma_t, ns, t_step, 
+                        self.M, self.k_s, config
+                    )
+                
+                if V_t is not None and U_t is not None:
+                    current_maps[mode] = {
+                        'raw': V_t.detach().cpu(),
+                        'smoothed': U_t.detach().cpu()
+                    }
+                    # 最初の有効なマップをガイダンス用として保持（複数ある場合、リストの先頭優先）
+                    if primary_U_t is None:
+                        primary_U_t = U_t
 
-            # === Branch B: Perturbation Variance ===
-            elif self.uncertainty_mode == 'perturbation':
-                with torch.no_grad():
-                    alpha_bar = ns.alphas_cumprod[t_step].to(x_0_hat.device)
-                    sqrt_alpha = torch.sqrt(alpha_bar)
-                    sqrt_one_minus_alpha = torch.sqrt(1 - alpha_bar)
+            if current_maps:
+                latest_uncertainty_map = current_maps
 
-                    preds = []
-                    for _ in range(self.M):
-                        eps_k = torch.randn_like(x_0_hat)
-                        x_t_k = sqrt_alpha * x_0_hat + sqrt_one_minus_alpha * eps_k
-                        x_0_hat_k = utils_model.model_fn(
-                            x_t_k,
-                            noise_level=sigma_t * 255,
-                            model_out_type='pred_xstart',
-                            model_diffusion=unet,
-                            diffusion=diffusion,
-                            ddim_sample=config.ddim_sample
-                        )
-                        preds.append(x_0_hat_k)
-
-                    preds_stack = torch.stack(preds) 
-                    V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
-                    
-                    if V_t.shape[-1] >= self.k_s: 
-                        U_t = F.avg_pool2d(V_t, kernel_size=self.k_s, stride=1, padding=self.k_s//2)
-                        U_t = F.interpolate(U_t, size=V_t.shape[-2:], mode='bilinear', align_corners=False)
-                    else:
-                        U_t = V_t
-            
-            # Mask Generation Logic (共通)
-            if V_t is not None and U_t is not None:
-                latest_uncertainty_map = {
-                    'raw': V_t.detach().cpu(),
-                    'smoothed': U_t.detach().cpu()
-                }
-
-                u_min = U_t.flatten(2).min(2, keepdim=True)[0].unsqueeze(2)
-                u_max = U_t.flatten(2).max(2, keepdim=True)[0].unsqueeze(2)
-                U_norm = (U_t - u_min) / (u_max - u_min + 1e-8)
+            # HiFi Guidance Mask Update (プライマリマップを使用)
+            if primary_U_t is not None:
+                u_min = primary_U_t.flatten(2).min(2, keepdim=True)[0].unsqueeze(2)
+                u_max = primary_U_t.flatten(2).max(2, keepdim=True)[0].unsqueeze(2)
+                U_norm = (primary_U_t - u_min) / (u_max - u_min + 1e-8)
                 
                 self.mask_boost = 1.0 + self.kappa * U_norm
                 self.mask_suppress = 1.0 / (1.0 + self.kappa * U_norm)

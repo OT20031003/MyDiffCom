@@ -5,3 +5,6 @@ Final Avg | Smooth PSNR: 22.27dB LPIPS: 0.1791 DISTS: 0.1630 | Raw PSNR: 22.45dB
 
 nsmission_comparison.json
 Final Avg | Smooth PSNR: 22.26dB LPIPS: 0.1831 DISTS: 0.1771 | Raw PSNR: 22.33dB LPIPS: 0.1769 | Random PSNR: 22.29dB LPIPS: 0.1864
+
+
+default="results_retrans_comparison/ffhq_demo_100/diffcom/djscc_2/awgn_-2dB/Retrans_rate_0.1_Comparison_zeta0.3_seed22/visuals"

@@ -38,22 +38,17 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
     """
     device = input_image.device
     
-    # -------------------------------------------------------------------------
     # 1. 送信時の状態(State)の復元
-    # -------------------------------------------------------------------------
     channel_wrapper = operator.channel
     
     if not hasattr(channel_wrapper, 'shuffled_indices') or channel_wrapper.shuffled_indices is None:
         if logger: logger.warning("Channel indices not found. Is this run after observe? Skipping.")
         return measurement, 0.0, None, None
 
-    # インデックスをGPUへ
     saved_indices = channel_wrapper.shuffled_indices.to(device)
     saved_avg_pwr = channel_wrapper.avg_pwr
     
-    # -------------------------------------------------------------------------
     # 2. 理想的な受信信号 (y_clean) の生成
-    # -------------------------------------------------------------------------
     with torch.no_grad():
         s_raw = operator.encode(input_image) 
         B, N_s = s_raw.shape
@@ -74,9 +69,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
     # 実際の受信信号
     y_dirty = measurement['ofdm_sig']
 
-    # -------------------------------------------------------------------------
     # 3. 再送マスクの生成 (Pixel -> Latent)
-    # -------------------------------------------------------------------------
     mask_vis = None
     
     if mode == 'oracle':
@@ -92,8 +85,6 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_vis = torch.zeros(B, 1, input_image.shape[2], input_image.shape[3]).to(device)
 
     elif mode == 'random':
-        # ランダムマスク生成
-        # Latentサイズの取得
         if hasattr(operator, 's_shape'):
             latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
             C_feat = operator.s_shape[1]
@@ -101,10 +92,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
             C_feat = s_raw.shape[1] // (latent_H * latent_W)
         
-        # ランダムマップ [B, 1, H, W]
         u_map_lat = torch.rand(B, 1, latent_H, latent_W, device=device)
-        
-        # マスク生成 (rateモードと同じロジックでTop-Kを選択)
         u_flat = u_map_lat.view(B, -1)
         k = int(u_flat.shape[1] * value)
         if k < 1: k = 1
@@ -112,7 +100,6 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         thresh = top_val[:, -1].view(B, 1, 1, 1)
         mask_lat_spatial = (u_map_lat >= thresh).float()
         
-        # 共通処理へ
         mask_vis = F.interpolate(mask_lat_spatial, size=input_image.shape[-2:], mode='nearest')
         mask_expanded = mask_lat_spatial.repeat(1, C_feat, 1, 1)
         mask_flat = mask_expanded.view(B, -1)
@@ -121,7 +108,6 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         current_len = mask_flat.shape[1]
         
         if current_len != target_len:
-            if logger: logger.warning(f"Resizing mask from {current_len} to {target_len}")
             if current_len < target_len:
                 padding = torch.zeros(B, target_len - current_len, device=device)
                 mask_flat = torch.cat([mask_flat, padding], dim=1)
@@ -132,13 +118,12 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_for_y = mask_shuffled.view(y_dirty.shape)
         
     else:
-        # 通常モード: 不確かさマップに基づく
+        # 通常モード
         if uncertainty_map is None:
             return measurement, 0.0, None, None
 
-        u_map = uncertainty_map.to(device) # [B, 1, H, W]
+        u_map = uncertainty_map.to(device) 
         
-        # 3-1. Latentサイズの取得
         if hasattr(operator, 's_shape'):
             latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
             C_feat = operator.s_shape[1]
@@ -146,11 +131,8 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
             C_feat = s_raw.shape[1] // (latent_H * latent_W)
 
-        # 3-2. ダウンサンプリング
-        # Rawマップの場合、ここでLatentサイズへのグリッド化（平均）が行われる
         u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
         
-        # 3-3. マスク生成 (空間方向 1xHxW)
         if mode == 'rate':
             u_flat = u_map_lat.view(B, -1)
             k = int(u_flat.shape[1] * value)
@@ -161,20 +143,14 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         else: 
             mask_lat_spatial = (u_map_lat > value).float()
 
-        # 可視化用
         mask_vis = F.interpolate(mask_lat_spatial, size=input_image.shape[-2:], mode='nearest')
-        
-        # 3-4. チャネル方向への拡張
         mask_expanded = mask_lat_spatial.repeat(1, C_feat, 1, 1)
-        
-        # 3-5. フラット化とシャッフル
         mask_flat = mask_expanded.view(B, -1)
         
         target_len = indices_expanded.shape[1]
         current_len = mask_flat.shape[1]
         
         if current_len != target_len:
-            if logger: logger.warning(f"Resizing mask from {current_len} to {target_len}")
             if current_len < target_len:
                 padding = torch.zeros(B, target_len - current_len, device=device)
                 mask_flat = torch.cat([mask_flat, padding], dim=1)
@@ -186,26 +162,21 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
 
     retransmission_ratio = mask_for_y.float().mean().item()
 
-    # -------------------------------------------------------------------------
-    # 4. 観測値の更新 (Signal Replacement)
-    # -------------------------------------------------------------------------
+    # 4. 観測値の更新
     new_measurement = copy.deepcopy(measurement)
     
-    # (A) 受信信号 y の更新
     if y_clean.shape != y_dirty.shape:
         y_clean = y_clean.view(y_dirty.shape)
         
     y_new = (1 - mask_for_y) * y_dirty + mask_for_y * y_clean
     new_measurement['ofdm_sig'] = y_new
     
-    # (B) チャネル推定値 H の更新
     h_dirty = measurement.get('cof_est', None)
     if h_dirty is not None:
          if h_dirty.shape == y_dirty.shape:
              h_new = (1 - mask_for_y) * h_dirty + mask_for_y * torch.ones_like(h_dirty)
              new_measurement['cof_est'] = h_new
 
-    # (C) ガイド画像 x_mse の更新
     with torch.no_grad():
         cof_for_transpose = new_measurement.get('cof_est', None)
         s_hat_new = operator.transpose(y_new, cof_for_transpose)
@@ -248,7 +219,11 @@ def parse_args_and_config():
     
     config.results = os.path.join(config.results, f'{config.channel_type}_{config.CSNR.__str__().zfill(2)}dB')
     
-    config.result_name = f'RetransComparison_{config.retrans_mode}_{config.retrans_value}'
+    # uncertainty_modeがリストか文字列かでファイル名を変える
+    u_mode = cond_config.uncertainty_mode
+    u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
+    
+    config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}'
     config.result_name += f'_zeta{conditioning_method.zeta}_seed{config.seed}'
     
     config.model_path = os.path.join(config.model_zoo, config.model_name + '.pt')
@@ -268,7 +243,6 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
                           measurement, input_image, device, phase_name="Phase1"):
     
     ofdm_config = Config(config.ofdm_tdl)
-    metric_wrapper = MetricWrapper().to(device)
     
     x_ref = measurement['x_mse'] 
     
@@ -292,7 +266,8 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
     x_t = x_init
     h_t = cof_init
     
-    pbar = tqdm(range(len(seq)), ncols=165, desc=f"{phase_name}", leave=False)
+    # プログレスバーの表示
+    pbar = tqdm(range(len(seq)), ncols=120, desc=f"{phase_name}", leave=False)
     
     for i in pbar:
         t_step = seq[i]
@@ -310,48 +285,35 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
         x_t = x_t_prev
         h_t = h_t_prev
         
-        with torch.no_grad():
-            metrics_inter = metric_wrapper((x_0_hat / 2 + 0.5).detach(), input_image)
-        
-        l_m_val = norm['ofdm_sig'].item() if 'ofdm_sig' in norm.keys() else 0.0
-        
-        message = {
-            't': t_step,
-            'L_m': f"{l_m_val:.3f}",
-            'PSNR': f"{metrics_inter['psnr']:.2f}",
-            'LPIPS': f"{metrics_inter['lpips']:.3f}", 
-        }
-        pbar.set_postfix(message, refresh=True)
-
     x_recon = (x_t / 2 + 0.5)
-    final_uncertainty = diffcom_module.latest_uncertainty_map
+    final_uncertainty_maps = diffcom_module.latest_uncertainty_map
     
-    return x_recon, final_uncertainty
+    return x_recon, final_uncertainty_maps
 
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}')
     
+    # 実行する不確かさモード（リスト or 文字列）
+    config_modes = config.diffcom_series['uncertainty_mode']
+    logger.info(f"Target Uncertainty Modes: {config_modes}")
+
     metric_wrapper = MetricWrapper().to(device)
-    
-    # --- [変更点] Diffusion復元後のメトリクス用メーター ---
-    results_smooth = DictAverageMeter()
-    results_raw = DictAverageMeter()
-    results_random = DictAverageMeter()
-    
-    # --- [追加] JSCC (再送直後・Diffusion前) のメトリクス用メーター ---
-    results_jscc_p1 = DictAverageMeter()      # Phase 1 Init JSCC
-    results_jscc_smooth = DictAverageMeter()  # Smooth JSCC
-    results_jscc_raw = DictAverageMeter()     # Raw JSCC
-    results_jscc_random = DictAverageMeter()  # Random JSCC
-    
     loss_wrapper = ConsistencyLoss(config, device)
     
+    # 結果保存用の動的なDictionary Meterを作成
+    # results_meters は、"temporal_smooth" や "temporal_smooth_jscc" などのキーを自動生成します
+    results_meters = {}
+
+    def get_meter(key):
+        if key not in results_meters:
+            results_meters[key] = DictAverageMeter()
+        return results_meters[key]
+
     def wrapped_cond_method(*args, **kwargs):
         kwargs['loss_wrapper'] = loss_wrapper
         return cond_method(*args, **kwargs)
 
     all_results_history = []
-
     json_filename = f"{config.result_name}.json"
     json_path = os.path.join(config.save_path, json_filename)
 
@@ -361,199 +323,195 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             input_image = input_image.to(device)
             config.batch_size = input_image.shape[0]
             
-            # Step 0: Initial Transmission
+            # Step 0: Initial Transmission (共通)
+            torch.manual_seed(config.seed + idx)
             measurement_phase1 = operator.observe_and_transpose(input_image)
             
+            # Phase 1 JSCC (Baseline) Init
+            metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
+            get_meter('jscc_init').update(metrics_jscc_p1)
+            
+            # ログ: Phase 1 Init JSCC
+            log_msg_jscc = f"Batch {idx+1}/{len(dataloader)} | [Base JSCC] Init | PSNR: {metrics_jscc_p1['psnr']:.2f}dB"
+            if 'lpips' in metrics_jscc_p1: log_msg_jscc += f" | LPIPS: {metrics_jscc_p1['lpips']:.4f}"
+            if 'dists' in metrics_jscc_p1: log_msg_jscc += f" | DISTS: {metrics_jscc_p1['dists']:.4f}"
+            logger.info(log_msg_jscc)
+
+            # 保存用ディレクトリ作成
+            save_dir = os.path.join(config.save_path, 'visuals', str(idx))
+            util.mkdir(save_dir)
+            torchvision.utils.save_image(input_image[0].cpu(), os.path.join(save_dir, '0_GT.png'))
+            torchvision.utils.save_image(measurement_phase1['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Init.png'))
+
+            # バッチ結果レコード初期化
+            batch_record = {
+                "batch_idx": idx + 1,
+                "filename": names[0],
+                "jscc_init": {k: float(v) for k, v in metrics_jscc_p1.items()},
+                "modes": {}
+            }
+
+            # -----------------------------------------------------
+            # Step 1: Phase 1 (Diffusion & Calc Uncertainty)
+            # -----------------------------------------------------
+            # シードをリセットしてPhase 1実行
             torch.manual_seed(config.seed + idx)
-            
-            # ---------------------------------------------------------------------
-            # Step 1: Phase 1 (Initial Reconstruction)
-            # ---------------------------------------------------------------------
-            logger.info(f"Batch {idx+1}/{len(dataloader)}: Phase 1 (Initial)...")
-            diffcom_module.latest_uncertainty_map = None
-            
+            diffcom_module.latest_uncertainty_map = {} # グローバル変数リセット
+
             x_recon_p1, uncertainty_container_p1 = run_diffusion_process(
                 config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
                 measurement_phase1, input_image, device, phase_name="Phase1"
             )
             
             metrics_p1 = metric_wrapper(x_recon_p1.detach(), input_image)
-            logger.info(f"  -> Phase 1 | PSNR: {metrics_p1['psnr']:.2f}dB | LPIPS: {metrics_p1['lpips']:.4f} | DISTS: {metrics_p1['dists']:.4f}")
+            get_meter('phase1_recon').update(metrics_p1)
+            batch_record['phase1'] = {k: float(v) for k, v in metrics_p1.items()}
 
-            # Phase 1 JSCC (Baseline) の診断
-            metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
-            # --- [追加] Phase 1 JSCC の記録 ---
-            results_jscc_p1.update(metrics_jscc_p1)
+            # ログ: Phase 1 Diffusion Result
+            log_msg_p1 = f"  -> Phase 1        | PSNR: {metrics_p1['psnr']:.2f}dB"
+            if 'lpips' in metrics_p1: log_msg_p1 += f" | LPIPS: {metrics_p1['lpips']:.4f}"
+            if 'dists' in metrics_p1: log_msg_p1 += f" | DISTS: {metrics_p1['dists']:.4f}"
+            logger.info(log_msg_p1)
+
+            torchvision.utils.save_image(x_recon_p1[0].cpu(), os.path.join(save_dir, f'2_Phase1_Recon.png'))
             
-            log_msg_jscc = f"  -> [Base JSCC] Init | PSNR: {metrics_jscc_p1['psnr']:.2f}dB"
-            if 'lpips' in metrics_jscc_p1: log_msg_jscc += f" | LPIPS: {metrics_jscc_p1['lpips']:.4f}"
-            if 'dists' in metrics_jscc_p1: log_msg_jscc += f" | DISTS: {metrics_jscc_p1['dists']:.4f}"
-            logger.info(log_msg_jscc)
+            # エラーマップ（相関計算用）
+            error_map = torch.abs(x_recon_p1 - input_image).mean(dim=1, keepdim=True)
+            e_flat = error_map.detach().cpu().flatten().numpy()
 
-            # 相関分析 & マップ準備
-            u_smooth, u_raw = None, None
-            corr_smooth, corr_raw = 0.0, 0.0
+            # -----------------------------------------------------
+            # Step 2: Phase 2 (Retransmission Comparison Loop)
+            # -----------------------------------------------------
+            
+            available_modes = list(uncertainty_container_p1.keys()) if uncertainty_container_p1 else []
+            if not available_modes and config.retrans_mode != 'oracle':
+                 logger.warning("No uncertainty maps found!")
 
-            if uncertainty_container_p1 is not None:
-                error_map = torch.abs(x_recon_p1 - input_image).mean(dim=1, keepdim=True)
-                e_flat = error_map.detach().cpu().flatten().numpy()
+            # モードごとループ (Temporal / Perturbation)
+            for u_mode in available_modes:
+                mode_maps = uncertainty_container_p1[u_mode]
+                mode_result = {"correlation": {}, "results": {}}
                 
-                u_smooth = uncertainty_container_p1.get('smoothed', None)
-                u_raw = uncertainty_container_p1.get('raw', None)
+                # サブタイプごとループ (Smoothed / Raw)
+                sub_types = [('smooth', mode_maps.get('smoothed')), ('raw', mode_maps.get('raw'))]
                 
-                if u_smooth is not None:
-                    corr_smooth, _ = pearsonr(u_smooth.detach().cpu().flatten().numpy(), e_flat)
-                
-                if u_raw is not None:
-                    if u_raw.shape[-2:] != error_map.shape[-2:]:
-                        u_raw_resized = F.interpolate(u_raw, size=error_map.shape[-2:], mode='bilinear')
-                        u_raw_flat = u_raw_resized.detach().cpu().flatten().numpy()
+                for sub_key, u_map_tensor in sub_types:
+                    if u_map_tensor is None: continue
+
+                    # 相関計算
+                    corr = 0.0
+                    if sub_key == 'smooth':
+                        corr, _ = pearsonr(u_map_tensor.flatten().numpy(), e_flat)
                     else:
-                        u_raw_flat = u_raw.detach().cpu().flatten().numpy()
-                    corr_raw, _ = pearsonr(u_raw_flat, e_flat)
-                
-                logger.info(f"  -> [Corr] Smoothed: {corr_smooth:.4f} | Raw: {corr_raw:.4f}")
-            
-            # ---------------------------------------------------------------------
-            # Step 2 & 3: Retransmission Simulation & Phase 2 Refinement
-            # ---------------------------------------------------------------------
-            
-            batch_record = {
-                "batch_idx": idx + 1,
-                "filename": names[0],
-                "phase1": {k: float(v) for k, v in metrics_p1.items()},
-                "jscc_init": {k: float(v) for k, v in metrics_jscc_p1.items()},
-                "correlation": {"smooth": corr_smooth, "raw": corr_raw},
-                "phase2_smooth": None,
-                "phase2_raw": None,
-                "phase2_random": None
-            }
-            
-            save_dir = os.path.join(config.save_path, 'visuals', str(idx))
-            util.mkdir(save_dir)
-            torchvision.utils.save_image(input_image[0].cpu(), os.path.join(save_dir, '0_GT.png'))
-            torchvision.utils.save_image(measurement_phase1['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Init.png'))
-            torchvision.utils.save_image(x_recon_p1[0].cpu(), os.path.join(save_dir, '2_Phase1_Recon.png'))
-            
-            # ====== Branch A: Smoothed Map ======
-            if config.retrans_mode == 'oracle' or u_smooth is not None:
-                logger.info(f"  -> Processing Phase 2 (Smoothed)...")
-                
-                meas_p2_s, ratio_s, mask_vis_s, _ = simulate_semantic_retransmission(
-                    operator, input_image, measurement_phase1, 
-                    u_smooth if config.retrans_mode != 'oracle' else None,
-                    mode=config.retrans_mode, value=config.retrans_value, logger=None
-                )
+                        if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
+                             u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
+                             u_flat_val = u_raw_resized.flatten().numpy()
+                        else:
+                             u_flat_val = u_map_tensor.flatten().numpy()
+                        corr, _ = pearsonr(u_flat_val, e_flat)
+                    
+                    mode_result["correlation"][sub_key] = corr
 
-                metrics_jscc_p2_s = metric_wrapper(meas_p2_s['x_mse'].detach(), input_image)
-                # --- [追加] Smooth JSCC の記録 ---
-                results_jscc_smooth.update(metrics_jscc_p2_s)
+                    # Oracle以外なら再送シミュレーション実行
+                    if config.retrans_mode != 'oracle':
+                        meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
+                            operator, input_image, measurement_phase1, 
+                            u_map_tensor, 
+                            mode=config.retrans_mode, value=config.retrans_value
+                        )
+                        
+                        # Phase 2 JSCC の品質評価
+                        metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
+                        
+                        # [重要] JSCCの平均値を記録
+                        meter_key_jscc = f"{u_mode}_{sub_key}_jscc"
+                        get_meter(meter_key_jscc).update(metrics_jscc_p2)
+                        
+                        # ログ: JSCC品質の詳細表示
+                        log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s} JSCC] PSNR: {metrics_jscc_p2['psnr']:.2f}dB"
+                        if 'lpips' in metrics_jscc_p2: log_msg_jscc += f" | LPIPS: {metrics_jscc_p2['lpips']:.4f}"
+                        if 'dists' in metrics_jscc_p2: log_msg_jscc += f" | DISTS: {metrics_jscc_p2['dists']:.4f}"
+                        logger.info(log_msg_jscc)
 
-                log_msg_jscc_s = f"     [Smooth JSCC] PSNR: {metrics_jscc_p2_s['psnr']:.2f}dB"
-                if 'lpips' in metrics_jscc_p2_s: log_msg_jscc_s += f" | LPIPS: {metrics_jscc_p2_s['lpips']:.4f}"
-                logger.info(log_msg_jscc_s)
-                
-                x_recon_p2_s, _ = run_diffusion_process(
-                    config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                    meas_p2_s, input_image, device, phase_name="P2_Smooth"
-                )
-                
-                metrics_p2_s = metric_wrapper(x_recon_p2_s.detach(), input_image)
-                results_smooth.update(metrics_p2_s)
-                
-                log_msg = f"     [Smooth] Ratio: {ratio_s:.2%} | PSNR: {metrics_p2_s['psnr']:.2f}dB"
-                logger.info(log_msg)
-                
-                batch_record['phase2_smooth'] = {k: float(v) for k, v in metrics_p2_s.items()}
-                batch_record['phase2_smooth']['ratio'] = ratio_s
-                batch_record['phase2_smooth']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_s.items()}
-                
-                torchvision.utils.save_image(x_recon_p2_s[0].cpu(), os.path.join(save_dir, '3_Phase2_Refined_Smooth.png'))
-                plt.imsave(os.path.join(save_dir, 'Mask_Smooth.png'), mask_vis_s[0, 0].cpu().numpy(), cmap='gray')
-                
-                if u_smooth is not None:
-                    u_vis = u_smooth[0, 0].cpu().numpy()
-                    u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
-                    plt.imsave(os.path.join(save_dir, 'Uncertainty_Smooth.png'), u_vis, cmap='jet')
+                        # Phase 2 Diffusion
+                        torch.manual_seed(config.seed + idx)
+                        x_recon_p2, _ = run_diffusion_process(
+                            config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
+                            meas_p2, input_image, device, phase_name=f"P2_{u_mode}_{sub_key}"
+                        )
+                        
+                        metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
+                        
+                        # Phase 2 Diffusionの平均値を記録
+                        meter_key = f"{u_mode}_{sub_key}"
+                        get_meter(meter_key).update(metrics_p2)
+                        
+                        mode_result["results"][sub_key] = {k: float(v) for k, v in metrics_p2.items()}
+                        mode_result["results"][sub_key]['ratio'] = ratio
+                        mode_result["results"][sub_key]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
+                        
+                        # ログ: Diffusion後の詳細表示
+                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}] Ratio: {ratio:.2%} | PSNR: {metrics_p2['psnr']:.2f}dB"
+                        if 'lpips' in metrics_p2: log_msg_p2 += f" | LPIPS: {metrics_p2['lpips']:.4f}"
+                        if 'dists' in metrics_p2: log_msg_p2 += f" | DISTS: {metrics_p2['dists']:.4f}"
+                        log_msg_p2 += f" | Corr: {corr:.3f}"
+                        logger.info(log_msg_p2)
 
-            # ====== Branch B: Raw Map ======
-            if config.retrans_mode != 'oracle' and u_raw is not None:
-                logger.info(f"  -> Processing Phase 2 (Raw)...")
+                        # 画像保存
+                        torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{u_mode}_{sub_key}.png'))
+                        plt.imsave(os.path.join(save_dir, f'Mask_{u_mode}_{sub_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
+                        
+                        u_vis = u_map_tensor[0, 0].numpy()
+                        u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
+                        plt.imsave(os.path.join(save_dir, f'Uncertainty_{u_mode}_{sub_key}.png'), u_vis, cmap='jet')
                 
-                meas_p2_r, ratio_r, mask_vis_r, _ = simulate_semantic_retransmission(
-                    operator, input_image, measurement_phase1, 
-                    u_raw, 
-                    mode=config.retrans_mode, value=config.retrans_value, logger=None
-                )
-                
-                metrics_jscc_p2_r = metric_wrapper(meas_p2_r['x_mse'].detach(), input_image)
-                # --- [追加] Raw JSCC の記録 ---
-                results_jscc_raw.update(metrics_jscc_p2_r)
+                batch_record["modes"][u_mode] = mode_result
 
-                log_msg_jscc_r = f"     [Raw JSCC   ] PSNR: {metrics_jscc_p2_r['psnr']:.2f}dB"
-                if 'lpips' in metrics_jscc_p2_r: log_msg_jscc_r += f" | LPIPS: {metrics_jscc_p2_r['lpips']:.4f}"
-                logger.info(log_msg_jscc_r)
-                
-                x_recon_p2_r, _ = run_diffusion_process(
-                    config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                    meas_p2_r, input_image, device, phase_name="P2_Raw"
-                )
-                
-                metrics_p2_r = metric_wrapper(x_recon_p2_r.detach(), input_image)
-                results_raw.update(metrics_p2_r)
-                
-                log_msg = f"     [Raw   ] Ratio: {ratio_r:.2%} | PSNR: {metrics_p2_r['psnr']:.2f}dB"
-                logger.info(log_msg)
-                
-                batch_record['phase2_raw'] = {k: float(v) for k, v in metrics_p2_r.items()}
-                batch_record['phase2_raw']['ratio'] = ratio_r
-                batch_record['phase2_raw']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_r.items()}
-                
-                torchvision.utils.save_image(x_recon_p2_r[0].cpu(), os.path.join(save_dir, '3_Phase2_Refined_Raw.png'))
-                plt.imsave(os.path.join(save_dir, 'Mask_Raw.png'), mask_vis_r[0, 0].cpu().numpy(), cmap='gray')
-                
-                u_raw_vis = u_raw[0, 0].cpu().numpy()
-                u_raw_vis = (u_raw_vis - u_raw_vis.min()) / (u_raw_vis.max() - u_raw_vis.min() + 1e-8)
-                plt.imsave(os.path.join(save_dir, 'Uncertainty_Raw.png'), u_raw_vis, cmap='jet')
-            
-            # ====== Branch C: Random Map (Baseline) ======
+            # -----------------------------------------------------------------
+            # Random Baseline (Once per batch)
+            # -----------------------------------------------------------------
             if config.retrans_mode != 'oracle':
-                logger.info(f"  -> Processing Phase 2 (Random)...")
-                
-                meas_p2_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
-                    operator, input_image, measurement_phase1, 
-                    None, 
-                    mode='random', value=config.retrans_value, logger=None
-                )
-                
-                metrics_jscc_p2_rnd = metric_wrapper(meas_p2_rnd['x_mse'].detach(), input_image)
-                # --- [追加] Random JSCC の記録 ---
-                results_jscc_random.update(metrics_jscc_p2_rnd)
+                 meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
+                     operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value
+                 )
+                 
+                 # Random JSCC品質
+                 metrics_jscc_rnd = metric_wrapper(meas_rnd['x_mse'].detach(), input_image)
+                 
+                 # [重要] Random JSCCの平均値を記録
+                 get_meter('random_jscc').update(metrics_jscc_rnd)
+                 
+                 # ログ: Random JSCC詳細
+                 log_msg_jscc_rnd = f"    [Random      JSCC] PSNR: {metrics_jscc_rnd['psnr']:.2f}dB"
+                 if 'lpips' in metrics_jscc_rnd: log_msg_jscc_rnd += f" | LPIPS: {metrics_jscc_rnd['lpips']:.4f}"
+                 if 'dists' in metrics_jscc_rnd: log_msg_jscc_rnd += f" | DISTS: {metrics_jscc_rnd['dists']:.4f}"
+                 logger.info(log_msg_jscc_rnd)
 
-                log_msg_jscc_rnd = f"     [Random JSCC] PSNR: {metrics_jscc_p2_rnd['psnr']:.2f}dB"
-                if 'lpips' in metrics_jscc_p2_rnd: log_msg_jscc_rnd += f" | LPIPS: {metrics_jscc_p2_rnd['lpips']:.4f}"
-                logger.info(log_msg_jscc_rnd)
-                
-                x_recon_p2_rnd, _ = run_diffusion_process(
-                    config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                    meas_p2_rnd, input_image, device, phase_name="P2_Random"
-                )
-                
-                metrics_p2_rnd = metric_wrapper(x_recon_p2_rnd.detach(), input_image)
-                results_random.update(metrics_p2_rnd)
-                
-                log_msg = f"     [Random] Ratio: {ratio_rnd:.2%} | PSNR: {metrics_p2_rnd['psnr']:.2f}dB"
-                logger.info(log_msg)
-                
-                batch_record['phase2_random'] = {k: float(v) for k, v in metrics_p2_rnd.items()}
-                batch_record['phase2_random']['ratio'] = ratio_rnd
-                batch_record['phase2_random']['jscc'] = {k: float(v) for k, v in metrics_jscc_p2_rnd.items()}
-                
-                torchvision.utils.save_image(x_recon_p2_rnd[0].cpu(), os.path.join(save_dir, '3_Phase2_Refined_Random.png'))
-                plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
+                 torch.manual_seed(config.seed + idx)
+                 x_recon_rnd, _ = run_diffusion_process(
+                     config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
+                     meas_rnd, input_image, device, phase_name="P2_Random"
+                 )
+                 metrics_rnd = metric_wrapper(x_recon_rnd.detach(), input_image)
+                 
+                 # Random Diffusionの平均値を記録
+                 get_meter('random').update(metrics_rnd)
+                 
+                 batch_record['random'] = {k: float(v) for k, v in metrics_rnd.items()}
+                 batch_record['random']['ratio'] = ratio_rnd
+                 batch_record['random']['jscc'] = {k: float(v) for k, v in metrics_jscc_rnd.items()}
+                 
+                 # ログ: Random Diffusion詳細
+                 log_msg_rnd = f"    [Random         ] Ratio: {ratio_rnd:.2%} | PSNR: {metrics_rnd['psnr']:.2f}dB"
+                 if 'lpips' in metrics_rnd: log_msg_rnd += f" | LPIPS: {metrics_rnd['lpips']:.4f}"
+                 if 'dists' in metrics_rnd: log_msg_rnd += f" | DISTS: {metrics_rnd['dists']:.4f}"
+                 logger.info(log_msg_rnd)
+
+                 torchvision.utils.save_image(x_recon_rnd[0].cpu(), os.path.join(save_dir, '3_P2_Random.png'))
+                 plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
 
             all_results_history.append(batch_record)
-            logger.info('--------------------------------------------')
+            logger.info('-' * 80)
 
     except KeyboardInterrupt:
         logger.info("\n[!] Process Interrupted by User. Saving current results...")
@@ -562,21 +520,13 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         import traceback
         traceback.print_exc()
     finally:
-        # --- [変更点] JSCCの平均も含めてSummaryを作成 ---
-        
-        final_averages = {
-            "diffusion_smooth": results_smooth.avg,
-            "diffusion_raw": results_raw.avg,
-            "diffusion_random": results_random.avg,
-            # JSCC Averages
-            "jscc_p1_init": results_jscc_p1.avg,
-            "jscc_smooth": results_jscc_smooth.avg,
-            "jscc_raw": results_jscc_raw.avg,
-            "jscc_random": results_jscc_random.avg
-        }
+        # サマリー作成
+        final_summary = {}
+        for k, meter in results_meters.items():
+            final_summary[k] = meter.avg
         
         output_data = {
-            "summary": final_averages,
+            "summary": final_summary,
             "history": all_results_history
         }
 
@@ -585,20 +535,28 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 json.dump(output_data, f, indent=4)
             logger.info(f"Saved {len(all_results_history)} results to {json_path}")
         
-        # 最終ログ（既存のものに加え、代表してJSCCのPSNRなども表示したければここに追加可能）
-        final_msg = f"Final Avg (Diffusion) | Smooth PSNR: {results_smooth.avg.get('psnr', 0):.2f}dB"
-        if 'lpips' in results_smooth.avg: final_msg += f" LPIPS: {results_smooth.avg['lpips']:.4f}"
+        # 最終ログ表示
+        logger.info("=== Final Comparison Summary ===")
         
-        final_msg += f" | Raw PSNR: {results_raw.avg.get('psnr', 0):.2f}dB"
-        final_msg += f" | Random PSNR: {results_random.avg.get('psnr', 0):.2f}dB"
-
-        logger.info(final_msg)
+        # 1. Base JSCC
+        if 'jscc_init' in final_summary:
+            m = final_summary['jscc_init']
+            logger.info(f"Init (Base)  | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
         
-        # JSCCのAverageログ（オプション）
-        final_jscc_msg = f"Final Avg (JSCC Only)| Smooth: {results_jscc_smooth.avg.get('psnr', 0):.2f}dB | Raw: {results_jscc_raw.avg.get('psnr', 0):.2f}dB | Random: {results_jscc_random.avg.get('psnr', 0):.2f}dB"
-        logger.info(final_jscc_msg)
+        # 2. Random
+        if 'random' in final_summary:
+            m = final_summary['random']
+            logger.info(f"Random       | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
 
-    return results_smooth
+        # 3. Dynamic Modes (JSCC results will appear here automatically because they are in keys)
+        # ソートして出力することで、同じモードのJSCCとReconが近くに並びます
+        for k in sorted(final_summary.keys()):
+            if k in ['jscc_init', 'random', 'phase1_recon']: continue
+            m = final_summary[k]
+            # キー名が長くなる可能性があるため、フォーマット調整
+            logger.info(f"{k:20s} | PSNR: {m['psnr']:.2f}dB | LPIPS: {m.get('lpips',0):.4f} | DISTS: {m.get('dists',0):.4f}")
+
+    return results_meters
 
 def main():
     config = parse_args_and_config()
