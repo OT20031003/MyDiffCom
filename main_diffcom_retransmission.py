@@ -437,9 +437,11 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     mode=config.retrans_mode, value=config.retrans_value, logger=None
                 )
 
-                # 【追加】再送後のJSCC品質評価
+                # 【追加】再送後のJSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_s = metric_wrapper(meas_p2_s['x_mse'].detach(), input_image)
                 log_msg_jscc_s = f"     [Smooth JSCC] PSNR: {metrics_jscc_p2_s['psnr']:.2f}dB"
+                if 'lpips' in metrics_jscc_p2_s: log_msg_jscc_s += f" | LPIPS: {metrics_jscc_p2_s['lpips']:.4f}"
+                if 'dists' in metrics_jscc_p2_s: log_msg_jscc_s += f" | DISTS: {metrics_jscc_p2_s['dists']:.4f}"
                 logger.info(log_msg_jscc_s)
                 
                 x_recon_p2_s, _ = run_diffusion_process(
@@ -450,8 +452,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_s = metric_wrapper(x_recon_p2_s.detach(), input_image)
                 results_smooth.update(metrics_p2_s)
                 
-                # 詳細なログ出力を作成
+                # 詳細なログ出力を作成 (LPIPS/DISTS追加)
                 log_msg = f"     [Smooth] Ratio: {ratio_s:.2%} | PSNR: {metrics_p2_s['psnr']:.2f}dB"
+                if 'lpips' in metrics_p2_s: log_msg += f" | LPIPS: {metrics_p2_s['lpips']:.4f}"
+                if 'dists' in metrics_p2_s: log_msg += f" | DISTS: {metrics_p2_s['dists']:.4f}"
                 logger.info(log_msg)
                 
                 # JSON用データの更新
@@ -477,9 +481,11 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     mode=config.retrans_mode, value=config.retrans_value, logger=None
                 )
                 
-                # 【追加】再送後のJSCC品質評価
+                # 【追加】再送後のJSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_r = metric_wrapper(meas_p2_r['x_mse'].detach(), input_image)
                 log_msg_jscc_r = f"     [Raw JSCC   ] PSNR: {metrics_jscc_p2_r['psnr']:.2f}dB"
+                if 'lpips' in metrics_jscc_p2_r: log_msg_jscc_r += f" | LPIPS: {metrics_jscc_p2_r['lpips']:.4f}"
+                if 'dists' in metrics_jscc_p2_r: log_msg_jscc_r += f" | DISTS: {metrics_jscc_p2_r['dists']:.4f}"
                 logger.info(log_msg_jscc_r)
                 
                 x_recon_p2_r, _ = run_diffusion_process(
@@ -490,8 +496,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_r = metric_wrapper(x_recon_p2_r.detach(), input_image)
                 results_raw.update(metrics_p2_r)
                 
-                # 詳細なログ出力を作成
+                # 詳細なログ出力を作成 (LPIPS/DISTS追加)
                 log_msg = f"     [Raw   ] Ratio: {ratio_r:.2%} | PSNR: {metrics_p2_r['psnr']:.2f}dB"
+                if 'lpips' in metrics_p2_r: log_msg += f" | LPIPS: {metrics_p2_r['lpips']:.4f}"
+                if 'dists' in metrics_p2_r: log_msg += f" | DISTS: {metrics_p2_r['dists']:.4f}"
                 logger.info(log_msg)
                 
                 # JSON用データの更新
@@ -517,9 +525,11 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     mode='random', value=config.retrans_value, logger=None
                 )
                 
-                # JSCC品質評価
+                # JSCC品質評価 (LPIPS/DISTS追加)
                 metrics_jscc_p2_rnd = metric_wrapper(meas_p2_rnd['x_mse'].detach(), input_image)
                 log_msg_jscc_rnd = f"     [Random JSCC] PSNR: {metrics_jscc_p2_rnd['psnr']:.2f}dB"
+                if 'lpips' in metrics_jscc_p2_rnd: log_msg_jscc_rnd += f" | LPIPS: {metrics_jscc_p2_rnd['lpips']:.4f}"
+                if 'dists' in metrics_jscc_p2_rnd: log_msg_jscc_rnd += f" | DISTS: {metrics_jscc_p2_rnd['dists']:.4f}"
                 logger.info(log_msg_jscc_rnd)
                 
                 x_recon_p2_rnd, _ = run_diffusion_process(
@@ -530,8 +540,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 metrics_p2_rnd = metric_wrapper(x_recon_p2_rnd.detach(), input_image)
                 results_random.update(metrics_p2_rnd)
                 
-                # ログ
+                # ログ (LPIPS/DISTS追加)
                 log_msg = f"     [Random] Ratio: {ratio_rnd:.2%} | PSNR: {metrics_p2_rnd['psnr']:.2f}dB"
+                if 'lpips' in metrics_p2_rnd: log_msg += f" | LPIPS: {metrics_p2_rnd['lpips']:.4f}"
+                if 'dists' in metrics_p2_rnd: log_msg += f" | DISTS: {metrics_p2_rnd['dists']:.4f}"
                 logger.info(log_msg)
                 
                 # JSON更新
@@ -559,7 +571,18 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 json.dump(all_results_history, f, indent=4)
             logger.info(f"Saved {len(all_results_history)} results to {json_path}")
         
-        logger.info(f'Final Avg | Smooth PSNR: {results_smooth.avg.get("psnr", 0):.2f}dB | Raw PSNR: {results_raw.avg.get("psnr", 0):.2f}dB | Random PSNR: {results_random.avg.get("psnr", 0):.2f}dB')
+        # 最終平均ログの拡張
+        final_msg = f"Final Avg | Smooth PSNR: {results_smooth.avg.get('psnr', 0):.2f}dB"
+        if 'lpips' in results_smooth.avg: final_msg += f" LPIPS: {results_smooth.avg['lpips']:.4f}"
+        if 'dists' in results_smooth.avg: final_msg += f" DISTS: {results_smooth.avg['dists']:.4f}"
+        
+        final_msg += f" | Raw PSNR: {results_raw.avg.get('psnr', 0):.2f}dB"
+        if 'lpips' in results_raw.avg: final_msg += f" LPIPS: {results_raw.avg['lpips']:.4f}"
+        
+        final_msg += f" | Random PSNR: {results_random.avg.get('psnr', 0):.2f}dB"
+        if 'lpips' in results_random.avg: final_msg += f" LPIPS: {results_random.avg['lpips']:.4f}"
+
+        logger.info(final_msg)
 
     return results_smooth
 
