@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np # Added numpy import which was missing in get_lr context
+import numpy as np
 
 from utils import utils_model
 
 __CONDITIONING_METHOD__ = {}
 
 # 評価・可視化用に不確実性マップを一時保存するグローバル変数
-# 変更後構造: {'temporal': {'raw': ..., 'smoothed': ...}, 'perturbation': {...}}
+# 変更後構造: {'temporal': {'raw': ...}, 'perturbation': {'raw': ...}}
+# smoothキーは削除され、常にrawのみが格納されます
 latest_uncertainty_map = {}
 
 
@@ -28,12 +29,13 @@ def get_conditioning_method(name: str, **kwargs):
     return __CONDITIONING_METHOD__[name](**kwargs)
 
 
-def calculate_temporal_uncertainty(x0_preds_list, k_s=16):
+def calculate_temporal_uncertainty(x0_preds_list):
     """
     時間的分散 (Temporal Variance) を計算するヘルパー関数
+    Smoothing処理は削除されました。
     """
     if len(x0_preds_list) < 2:
-        return None, None
+        return None
 
     # Stack: (T, B, C, H, W)
     preds_stack = torch.stack(x0_preds_list)
@@ -42,18 +44,12 @@ def calculate_temporal_uncertainty(x0_preds_list, k_s=16):
     # Mean over channel dimension -> (B, 1, H, W)
     V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
     
-    # Spatial Smoothing
-    if V_t.shape[-1] >= k_s:
-        U_t = F.avg_pool2d(V_t, kernel_size=k_s, stride=1, padding=k_s//2)
-        U_t = F.interpolate(U_t, size=V_t.shape[-2:], mode='bilinear', align_corners=False)
-    else:
-        U_t = V_t
-        
-    return V_t, U_t
+    return V_t
 
-def calculate_perturbation_uncertainty(unet, diffusion, x_0_hat, sigma_t, ns, t_step, M, k_s, config):
+def calculate_perturbation_uncertainty(unet, diffusion, x_0_hat, sigma_t, ns, t_step, M, config):
     """
     摂動分散 (Perturbation Variance) を計算するヘルパー関数
+    Smoothing処理は削除されました。
     """
     with torch.no_grad():
         alpha_bar = ns.alphas_cumprod[t_step].to(x_0_hat.device)
@@ -76,14 +72,24 @@ def calculate_perturbation_uncertainty(unet, diffusion, x_0_hat, sigma_t, ns, t_
 
         preds_stack = torch.stack(preds) 
         V_t = torch.var(preds_stack, dim=0).mean(dim=1, keepdim=True)
-        
-        if V_t.shape[-1] >= k_s: 
-            U_t = F.avg_pool2d(V_t, kernel_size=k_s, stride=1, padding=k_s//2)
-            U_t = F.interpolate(U_t, size=V_t.shape[-2:], mode='bilinear', align_corners=False)
-        else:
-            U_t = V_t
             
-    return V_t, U_t
+    return V_t
+
+
+def average_uncertainty_buffer(buffer_list):
+    """
+    バッファ内の不確実性マップを平均化するヘルパー関数
+    buffer_list: list of Tensor (Raw maps)
+    return: Tensor (Averaged Raw map)
+    """
+    if not buffer_list:
+        return None
+    
+    # バッファ内の各要素を取り出してスタック
+    raw_stack = torch.stack(buffer_list)
+    
+    # 平均を計算 (dim=0 はバッファの要素方向)
+    return raw_stack.mean(dim=0)
 
 
 class ConsistencyLoss(nn.Module):
@@ -148,16 +154,16 @@ class DiffCom(nn.Module):
         self.conditioning_method = 'latent'
         
         self.M = 5            
-        self.k_s = 16         
         
         self.x0_history = []
         self.uncertainty_modes = ['perturbation'] # デフォルトはリスト
+        self.uncertainty_buffer = {} # 累積平均用のバッファ
 
     def conditioning(self, config, i, ns, x_t, h_t, power,
                      measurement, unet, diffusion, operator, loss_wrapper, last_timestep):
         global latest_uncertainty_map
         
-        # 初回ステップで設定を読み込み、リスト化して保持
+        # 初回ステップで設定を読み込み、リスト化して保持、バッファを初期化
         if i == 0:
             u_mode = config.diffcom_series.get('uncertainty_mode', 'perturbation')
             if isinstance(u_mode, str):
@@ -165,7 +171,8 @@ class DiffCom(nn.Module):
             else:
                 self.uncertainty_modes = u_mode
                 
-            self.x0_history = [] 
+            self.x0_history = []
+            self.uncertainty_buffer = {mode: [] for mode in self.uncertainty_modes}
 
         h_0_hat = h_t
         h_t_minus_1_prime = h_t
@@ -183,38 +190,42 @@ class DiffCom(nn.Module):
                                                              diffusion=diffusion,
                                                              ddim_sample=config.ddim_sample)
 
-        # 2. Uncertainty Estimation
-        # Temporalが含まれる場合は履歴保存
+        # 2. Uncertainty Estimation & Accumulation
         if 'temporal' in self.uncertainty_modes:
             self.x0_history.append(x_0_hat.detach())
 
         should_calc_uncertainty = (t_step > 0) and (i % 20 == 0)
 
         if not last_timestep and should_calc_uncertainty:
-            current_maps = {}
             
-            # 各モードについて計算
+            # 各モードについて計算し、バッファに追加
             for mode in self.uncertainty_modes:
-                V_t, U_t = None, None
+                V_t = None
                 
                 if mode == 'temporal':
-                    V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
+                    V_t = calculate_temporal_uncertainty(self.x0_history)
                 
                 elif mode == 'perturbation':
-                    V_t, U_t = calculate_perturbation_uncertainty(
+                    V_t = calculate_perturbation_uncertainty(
                         unet, diffusion, x_0_hat, sigma_t, ns, t_step, 
-                        self.M, self.k_s, config
+                        self.M, config
                     )
                 
-                if V_t is not None and U_t is not None:
-                    current_maps[mode] = {
-                        'raw': V_t.detach().cpu(),
-                        'smoothed': U_t.detach().cpu()
-                    }
+                if V_t is not None:
+                    # バッファに追加 (CPUへ退避してメモリ節約)
+                    self.uncertainty_buffer[mode].append(V_t.detach().cpu())
+
+            # 現在のバッファを用いて累積平均を計算し、グローバル変数を更新
+            # これにより、プロセスの途中でも最新の「アンサンブル平均」が参照可能になる
+            averaged_maps = {}
+            for mode in self.uncertainty_modes:
+                avg_tensor = average_uncertainty_buffer(self.uncertainty_buffer[mode])
+                if avg_tensor is not None:
+                    # mainスクリプトとの互換性のため 'raw' キーに格納
+                    averaged_maps[mode] = {'raw': avg_tensor}
             
-            # グローバル変数を更新 (空でなければ)
-            if current_maps:
-                latest_uncertainty_map = current_maps
+            if averaged_maps:
+                latest_uncertainty_map = averaged_maps
 
         # 3. Gradient Update
         if last_timestep:
@@ -241,13 +252,13 @@ class HiFiDiffCom(DiffCom):
         
         self.M = 5            
         self.kappa = 1.0      
-        self.k_s = 16         
         
         self.mask_boost = None
         self.mask_suppress = None
         
         self.x0_history = []
         self.uncertainty_modes = ['perturbation']
+        self.uncertainty_buffer = {}
 
     def conditioning(self, config, i, ns, x_t, h_t, power,
                      measurement, unet, diffusion, operator, loss_wrapper, last_timestep):
@@ -261,6 +272,7 @@ class HiFiDiffCom(DiffCom):
                 self.uncertainty_modes = u_mode
             
             self.x0_history = [] 
+            self.uncertainty_buffer = {mode: [] for mode in self.uncertainty_modes}
 
         h_0_hat = h_t
         h_t_minus_1_prime = h_t
@@ -278,47 +290,58 @@ class HiFiDiffCom(DiffCom):
                                                              diffusion=diffusion,
                                                              ddim_sample=config.ddim_sample)
 
-        # 2. Uncertainty Estimation
+        # 2. Uncertainty Estimation & Accumulation
         if 'temporal' in self.uncertainty_modes:
             self.x0_history.append(x_0_hat.detach())
 
         should_calc_uncertainty = (t_step > 0) and (i % 20 == 0)
 
         if not last_timestep and should_calc_uncertainty:
-            current_maps = {}
-            primary_U_t = None # HiFiガイダンス用に使用するマップ
-
+            
+            # 各モードについて計算し、バッファに追加
             for mode in self.uncertainty_modes:
-                V_t, U_t = None, None
+                V_t = None
                 
                 if mode == 'temporal':
-                    V_t, U_t = calculate_temporal_uncertainty(self.x0_history, k_s=self.k_s)
+                    V_t = calculate_temporal_uncertainty(self.x0_history)
                 elif mode == 'perturbation':
-                    V_t, U_t = calculate_perturbation_uncertainty(
+                    V_t = calculate_perturbation_uncertainty(
                         unet, diffusion, x_0_hat, sigma_t, ns, t_step, 
-                        self.M, self.k_s, config
+                        self.M, config
                     )
                 
-                if V_t is not None and U_t is not None:
-                    current_maps[mode] = {
-                        'raw': V_t.detach().cpu(),
-                        'smoothed': U_t.detach().cpu()
-                    }
-                    # 最初の有効なマップをガイダンス用として保持（複数ある場合、リストの先頭優先）
-                    if primary_U_t is None:
-                        primary_U_t = U_t
+                if V_t is not None:
+                    self.uncertainty_buffer[mode].append(V_t.detach().cpu())
 
-            if current_maps:
-                latest_uncertainty_map = current_maps
+            # バッファから累積平均を計算
+            averaged_maps = {}
+            for mode in self.uncertainty_modes:
+                avg_tensor = average_uncertainty_buffer(self.uncertainty_buffer[mode])
+                if avg_tensor is not None:
+                    averaged_maps[mode] = {'raw': avg_tensor}
 
-            # HiFi Guidance Mask Update (プライマリマップを使用)
-            if primary_U_t is not None:
-                u_min = primary_U_t.flatten(2).min(2, keepdim=True)[0].unsqueeze(2)
-                u_max = primary_U_t.flatten(2).max(2, keepdim=True)[0].unsqueeze(2)
-                U_norm = (primary_U_t - u_min) / (u_max - u_min + 1e-8)
+            if averaged_maps:
+                latest_uncertainty_map = averaged_maps
+
+                # HiFi Guidance Mask Update (累積平均マップを使用)
+                # 使用するモードの優先順位: リストの順序通り
+                primary_U_t = None
+                for mode in self.uncertainty_modes:
+                    if mode in averaged_maps:
+                        # Smoothingが削除されたため 'raw' を使用します
+                        primary_U_t = averaged_maps[mode]['raw']
+                        break
                 
-                self.mask_boost = 1.0 + self.kappa * U_norm
-                self.mask_suppress = 1.0 / (1.0 + self.kappa * U_norm)
+                if primary_U_t is not None:
+                    # デバイスを戻す (計算はCPUで行われている可能性があるため)
+                    primary_U_t = primary_U_t.to(x_t.device)
+                    
+                    u_min = primary_U_t.flatten(2).min(2, keepdim=True)[0].unsqueeze(2)
+                    u_max = primary_U_t.flatten(2).max(2, keepdim=True)[0].unsqueeze(2)
+                    U_norm = (primary_U_t - u_min) / (u_max - u_min + 1e-8)
+                    
+                    self.mask_boost = 1.0 + self.kappa * U_norm
+                    self.mask_suppress = 1.0 / (1.0 + self.kappa * U_norm)
 
         # 3. Guidance & Update
         if last_timestep:

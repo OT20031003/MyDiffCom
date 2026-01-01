@@ -18,10 +18,10 @@ TARGET_SNRS = None
 # 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 TARGET_METHODS = [
     #"jscc_init", 
-    "phase1_recon", 
-    # "temporal_smooth_Unc",
-    # "temporal_smooth_Sem",
-    "temporal_raw_Unc",
+    #"phase1_recon", 
+    #"temporal_smooth_Unc",
+    "temporal_smooth_Sem",
+    #"temporal_raw_Unc",
     "temporal_raw_Sem",
     "random"
 ]

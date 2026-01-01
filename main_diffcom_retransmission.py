@@ -267,7 +267,12 @@ def parse_args_and_config():
     config.sigma = np.sqrt(1.0 / (2 * 10 ** (config.CSNR / 10)))
 
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
+    
+    # ------------------ [FIXED HERE] ------------------
+    # 'config.testsets' がYAMLに存在しないため、cwdから生成する
     config.testsets = os.path.join(config.cwd, 'testsets')
+    # --------------------------------------------------
+
     config.results = os.path.join(config.cwd, 'results_retrans_comparison')
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
@@ -489,91 +494,90 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 mode_maps = uncertainty_container_p1[u_mode]
                 mode_result = {"correlation": {}, "results": {}}
                 
-                sub_types = [('smooth', mode_maps.get('smoothed')), ('raw', mode_maps.get('raw'))]
+                # Smoothを削除し、常にRawを使用
+                u_map_tensor = mode_maps.get('raw')
+                if u_map_tensor is None: continue
                 
-                for sub_key, u_map_tensor in sub_types:
-                    if u_map_tensor is None: continue
+                # キーは 'raw' で統一
+                sub_key = 'raw'
 
-                    # 相関計算
-                    corr = 0.0
-                    if sub_key == 'smooth':
-                        corr, _ = pearsonr(u_map_tensor.flatten().numpy(), e_flat)
-                    else:
-                        if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
-                             u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
-                             u_flat_val = u_raw_resized.flatten().numpy()
+                # 相関計算
+                # Rawの場合はサイズが異なる可能性があるためリサイズして計算
+                if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
+                        u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
+                        u_flat_val = u_raw_resized.flatten().numpy()
+                else:
+                        u_flat_val = u_map_tensor.flatten().numpy()
+                corr, _ = pearsonr(u_flat_val, e_flat)
+                mode_result["correlation"][sub_key] = corr
+
+                if config.retrans_mode != 'oracle':
+                    # 実行する再送方法のリストを作成
+                    strategies = []
+                    if config.retrans_basis in ['uncertainty', 'both']:
+                        strategies.append((None, "Unc")) # 元の手法 (ViTなし)
+                    if config.retrans_basis in ['semantic', 'both']:
+                        # ViTが取得できていれば実行、なければスキップ
+                        if vit_map is not None:
+                            strategies.append((vit_map, "Sem"))
                         else:
-                             u_flat_val = u_map_tensor.flatten().numpy()
-                        corr, _ = pearsonr(u_flat_val, e_flat)
-                    mode_result["correlation"][sub_key] = corr
+                            logger.warning("Skipping Semantic mode because ViT map is missing.")
 
-                    if config.retrans_mode != 'oracle':
-                        # 実行する再送方法のリストを作成
-                        strategies = []
-                        if config.retrans_basis in ['uncertainty', 'both']:
-                            strategies.append((None, "Unc")) # 元の手法 (ViTなし)
-                        if config.retrans_basis in ['semantic', 'both']:
-                            # ViTが取得できていれば実行、なければスキップ
-                            if vit_map is not None:
-                                strategies.append((vit_map, "Sem"))
-                            else:
-                                logger.warning("Skipping Semantic mode because ViT map is missing.")
+                    for v_map_arg, strategy_name in strategies:
+                        meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
+                            operator, input_image, measurement_phase1, 
+                            u_map_tensor, 
+                            mode=config.retrans_mode, value=config.retrans_value,
+                            vit_importance_map=v_map_arg
+                        )
+                        
+                        metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
+                        
+                        # キーの生成 (例: perturbation_raw_Unc_jscc)
+                        base_key = f"{u_mode}_{sub_key}_{strategy_name}"
+                        get_meter(f"{base_key}_jscc").update(metrics_jscc_p2)
+                        
+                        # [LOG UPDATED]
+                        log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s} JSCC] {format_metrics(metrics_jscc_p2)}"
+                        logger.info(log_msg_jscc)
 
-                        for v_map_arg, strategy_name in strategies:
-                            meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
-                                operator, input_image, measurement_phase1, 
-                                u_map_tensor, 
-                                mode=config.retrans_mode, value=config.retrans_value,
-                                vit_importance_map=v_map_arg
-                            )
-                            
-                            metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
-                            
-                            # キーの生成 (例: perturbation_smooth_Unc_jscc)
-                            base_key = f"{u_mode}_{sub_key}_{strategy_name}"
-                            get_meter(f"{base_key}_jscc").update(metrics_jscc_p2)
-                            
-                            # [LOG UPDATED]
-                            log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s} JSCC] {format_metrics(metrics_jscc_p2)}"
-                            logger.info(log_msg_jscc)
+                        # Diffusion
+                        torch.manual_seed(config.seed + idx)
+                        x_recon_p2, _ = run_diffusion_process(
+                            config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
+                            meas_p2, input_image, device, phase_name=f"P2_{base_key}"
+                        )
+                        
+                        metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
+                        get_meter(base_key).update(metrics_p2)
+                        update_fid(base_key, input_image, x_recon_p2.detach())
+                        
+                        if sub_key not in mode_result["results"]:
+                            mode_result["results"][sub_key] = {}
+                        
+                        # 結果辞書の構造: results[raw][Unc] = {...}
+                        mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
+                        mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
+                        mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
+                        
+                        # [LOG UPDATED]
+                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)} | Corr: {corr:.3f}"
+                        logger.info(log_msg_p2)
 
-                            # Diffusion
-                            torch.manual_seed(config.seed + idx)
-                            x_recon_p2, _ = run_diffusion_process(
-                                config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                                meas_p2, input_image, device, phase_name=f"P2_{base_key}"
-                            )
-                            
-                            metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
-                            get_meter(base_key).update(metrics_p2)
-                            update_fid(base_key, input_image, x_recon_p2.detach())
-                            
-                            if sub_key not in mode_result["results"]:
-                                mode_result["results"][sub_key] = {}
-                            
-                            # 結果辞書の構造: results[smooth][Unc] = {...}
-                            mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
-                            mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
-                            mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
-                            
-                            # [LOG UPDATED]
-                            log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)} | Corr: {corr:.3f}"
-                            logger.info(log_msg_p2)
-
-                            torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))
-                            plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
-                            
-                            # Priority mapの保存 (Semの場合)
-                            if strategy_name == "Sem":
-                                p_map = u_map_tensor.to(device) * v_map_arg.to(device)
-                                p_vis = p_map[0, 0].cpu().numpy()
-                                p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
-                                plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
-                            else:
-                                # Uncの場合は生のUncertaintyを保存
-                                u_vis = u_map_tensor[0, 0].numpy()
-                                u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
-                                plt.imsave(os.path.join(save_dir, f'Uncertainty_{base_key}.png'), u_vis, cmap='jet')
+                        torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))
+                        plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
+                        
+                        # Priority mapの保存 (Semの場合)
+                        if strategy_name == "Sem":
+                            p_map = u_map_tensor.to(device) * v_map_arg.to(device)
+                            p_vis = p_map[0, 0].cpu().numpy()
+                            p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
+                            plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
+                        else:
+                            # Uncの場合は生のUncertaintyを保存
+                            u_vis = u_map_tensor[0, 0].numpy()
+                            u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
+                            plt.imsave(os.path.join(save_dir, f'Uncertainty_{base_key}.png'), u_vis, cmap='jet')
 
                 batch_record["modes"][u_mode] = mode_result
 
