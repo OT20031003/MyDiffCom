@@ -4,7 +4,7 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(0 2 4)
+SNRS=(-4 -2 0 2 4)
 
 # ベースとなるテンプレート設定ファイル (configsフォルダ内にあると仮定)
 TEMPLATE_YAML="configs/diffcom_0.yaml"
@@ -16,7 +16,7 @@ PYTHON_SCRIPT="main_diffcom_retransmission.py"
 # mode options: 'rate', 'threshold', 'oracle'
 RETRANS_MODE="rate"
 # rateの場合は割合(0.0-1.0), thresholdの場合はしきい値
-RETRANS_VALUE=0.1
+RETRANS_VALUE=0.2
 # basis options: 'uncertainty', 'semantic', 'both'
 RETRANS_BASIS="both"  # ★ここを追加しました (以前は未定義でした)
 
