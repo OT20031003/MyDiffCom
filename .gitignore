@@ -15,3 +15,4 @@ results*
 results/*
 FFHQ0-1000
 ffhq-text-images
+configs/diffcom_*.yaml

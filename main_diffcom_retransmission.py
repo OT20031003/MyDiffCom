@@ -17,6 +17,7 @@ import torchvision
 import yaml
 from tqdm.auto import tqdm
 from scipy.stats import pearsonr
+from transformers import AutoImageProcessor, Dinov2Model
 
 # --- [FID計算用のライブラリ] ---
 try:
@@ -37,13 +38,51 @@ from guided_diffusion.script_util import model_and_diffusion_defaults, create_mo
 from utils.util import Config, MetricWrapper, DictAverageMeter
 from utils import util, utils_logger, utils_model
 
+# --- ViT重要度抽出クラス ---
+class ViTSaliencyExtractor:
+    def __init__(self, model_name="facebook/dinov2-with-registers-small", device="cuda"):
+        self.device = device
+        self.processor = AutoImageProcessor.from_pretrained(model_name)
+        self.model = Dinov2Model.from_pretrained(model_name, output_attentions=True).to(device)
+        self.model.eval()
+
+    @torch.no_grad()
+    def get_importance_map(self, images):
+        """
+        images: Tensor [B, 3, H, W] (0~1)
+        returns: Tensor [B, 1, H, W] (normalized 0~1)
+        """
+        B, C, H, W = images.shape
+        inputs = self.processor(images=images, return_tensors="pt").to(self.device)
+        outputs = self.model(**inputs)
+        
+        attentions = outputs.attentions 
+        last_layer_attn = attentions[-1] 
+        
+        num_registers = getattr(self.model.config, "num_registers", 0)
+        cls_attn = last_layer_attn[:, :, 0, 1 + num_registers:]
+        importance = cls_attn.mean(dim=1) 
+        
+        grid_size = int(importance.shape[-1]**0.5)
+        importance = importance.reshape(B, 1, grid_size, grid_size)
+        
+        importance_resized = F.interpolate(importance, size=(H, W), mode='bilinear', align_corners=False)
+        
+        i_min = importance_resized.flatten(2).min(2, keepdim=True)[0].unsqueeze(-1)
+        i_max = importance_resized.flatten(2).max(2, keepdim=True)[0].unsqueeze(-1)
+        importance_resized = (importance_resized - i_min) / (i_max - i_min + 1e-8)
+        
+        return importance_resized
+
 # =========================================================================
 # 提案法: 意味的再送シミュレーション関数 (Signal Replacement)
 # =========================================================================
 def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
-                                     mode='rate', value=0.1, logger=None):
+                                     mode='rate', value=0.1, logger=None, vit_importance_map=None):
     """
     不確かさマップに基づく信号置換 (Signal Replacement)
+    vit_importance_map が指定された場合、P = U * A (Uncertainty * ViT Attention) に基づく再送を行う。
+    Noneの場合は従来のUncertaintyのみ(U)に基づく再送を行う。
     """
     device = input_image.device
     
@@ -127,11 +166,18 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_for_y = mask_shuffled.view(y_dirty.shape)
         
     else:
-        # 通常モード
+        # 通常モード (不確実性 + [Optional] ViT重要度)
         if uncertainty_map is None:
             return measurement, 0.0, None, None
 
         u_map = uncertainty_map.to(device) 
+
+        # --- [ViT Integration Logic] ---
+        if vit_importance_map is not None:
+            # P = U * A (Uncertainty * ViT Attention)
+            priority_map = u_map * vit_importance_map.to(device)
+            u_map = priority_map
+        # -------------------------------
         
         if hasattr(operator, 's_shape'):
             latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
@@ -200,6 +246,8 @@ def parse_args_and_config():
     parser.add_argument("--opt", type=str, default='./configs/diffcom.yaml', help="Path to option YMAL file.")
     parser.add_argument("--retrans_mode", type=str, default='rate', choices=['rate', 'threshold', 'oracle'])
     parser.add_argument("--retrans_value", type=float, default=0.1)
+    parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
+                        help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
 
     args = parser.parse_args()
     
@@ -209,6 +257,7 @@ def parse_args_and_config():
     
     config.retrans_mode = args.retrans_mode
     config.retrans_value = args.retrans_value
+    config.retrans_basis = args.retrans_basis
     
     cond_config = Config(config.getattr('diffcom_series'))
     conditioning_method = Config(cond_config.getattr(config.conditioning_method))
@@ -228,11 +277,10 @@ def parse_args_and_config():
     
     config.results = os.path.join(config.results, f'{config.channel_type}_{config.CSNR.__str__().zfill(2)}dB')
     
-    # uncertainty_modeがリストか文字列かでファイル名を変える
     u_mode = cond_config.uncertainty_mode
     u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
     
-    config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}'
+    config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
     config.result_name += f'_zeta{conditioning_method.zeta}_seed{config.seed}'
     
     config.model_path = os.path.join(config.model_zoo, config.model_name + '.pt')
@@ -275,7 +323,6 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
     x_t = x_init
     h_t = cof_init
     
-    # プログレスバーの表示
     pbar = tqdm(range(len(seq)), ncols=120, desc=f"{phase_name}", leave=False)
     
     for i in pbar:
@@ -301,18 +348,37 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
 
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}')
+    logger.info(f'【Config】: Retransmission Basis: {config.retrans_basis} (Using ViT: {config.retrans_basis in ["semantic", "both"]})')
     
-    # 実行する不確かさモード（リスト or 文字列）
     config_modes = config.diffcom_series['uncertainty_mode']
     logger.info(f"Target Uncertainty Modes: {config_modes}")
 
     metric_wrapper = MetricWrapper().to(device)
     loss_wrapper = ConsistencyLoss(config, device)
     
-    # 結果保存用の動的なDictionary Meterを作成
-    results_meters = {}
+    # --- [METRICS FORMATTER] ---
+    def format_metrics(m):
+        """メトリクス辞書を文字列にフォーマットするヘルパー"""
+        s = f"PSNR: {m.get('psnr', 0):.2f}dB"
+        if 'lpips' in m: s += f" | LPIPS: {m['lpips']:.4f}"
+        if 'dists' in m: s += f" | DISTS: {m['dists']:.4f}"
+        if 'fid' in m:   s += f" | FID: {m['fid']:.4f}"
+        return s
+    # ---------------------------
 
-    # FID計測用の辞書
+    # --- [ViT Extractor Init (Conditional)] ---
+    vit_extractor = None
+    if config.retrans_basis in ['semantic', 'both']:
+        try:
+            vit_extractor = ViTSaliencyExtractor(device=device)
+            logger.info("[ViT] Saliency Extractor Initialized Successfully.")
+        except Exception as e:
+            logger.warning(f"[ViT] Initialization Failed: {e}. Falling back to standard uncertainty if possible.")
+    else:
+        logger.info("[ViT] Saliency Extractor Skipped (Basis is 'uncertainty' only).")
+    # ------------------------------------------
+
+    results_meters = {}
     fid_meters = {}
     
     def get_meter(key):
@@ -320,37 +386,20 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             results_meters[key] = DictAverageMeter()
         return results_meters[key]
 
-    # --- [修正版] FID更新ヘルパー (Robust) ---
     def update_fid(key, real_img, fake_img):
-        """
-        real_img, fake_img: Tensor [B, C, H, W]
-        """
-        # グローバルスコープの変数を参照
         global IS_TORCHMETRICS_AVAILABLE
-        
-        if not IS_TORCHMETRICS_AVAILABLE:
-            return
-
-        # キーが存在しなければ新規作成
+        if not IS_TORCHMETRICS_AVAILABLE: return
         if key not in fid_meters:
             try:
-                # feature=2048 is standard for FID
                 fid_meters[key] = FrechetInceptionDistance(feature=2048, normalize=True).to(device)
             except (ModuleNotFoundError, ImportError, RuntimeError) as e:
-                # torch-fidelity不足などのエラーをキャッチ
-                logger.warning(f"\n[Warning] FID initialization failed: {e}")
-                logger.warning("FID calculation will be DISABLED for this run to prevent crash.")
-                
+                logger.warning(f"\n[Warning] FID init failed: {e}. FID disabled.")
                 IS_TORCHMETRICS_AVAILABLE = False
                 return
-        
-        # 正規化: [0, 1] にクランプ
         real_norm = torch.clamp(real_img, 0, 1)
         fake_norm = torch.clamp(fake_img, 0, 1)
-
         fid_meters[key].update(real_norm, real=True)
         fid_meters[key].update(fake_norm, real=False)
-    # ----------------------------
 
     def wrapped_cond_method(*args, **kwargs):
         kwargs['loss_wrapper'] = loss_wrapper
@@ -365,28 +414,36 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             input_image, names = batch
             input_image = input_image.to(device)
             config.batch_size = input_image.shape[0]
+
+            # --- [ViT Importance Map Calculation] ---
+            vit_map = None
+            if vit_extractor is not None:
+                try:
+                    vit_map = vit_extractor.get_importance_map(input_image)
+                except Exception as e:
+                    logger.warning(f"Batch {idx}: ViT map calculation failed ({e}).")
+            # ----------------------------------------
             
-            # Step 0: Initial Transmission (共通)
+            # Step 0: Initial Transmission
             torch.manual_seed(config.seed + idx)
             measurement_phase1 = operator.observe_and_transpose(input_image)
             
-            # Phase 1 JSCC (Baseline) Init
             metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
             get_meter('jscc_init').update(metrics_jscc_p1)
             
-            # ログ: Phase 1 Init JSCC
-            log_msg_jscc = f"Batch {idx+1}/{len(dataloader)} | [Base JSCC] Init | PSNR: {metrics_jscc_p1['psnr']:.2f}dB"
-            if 'lpips' in metrics_jscc_p1: log_msg_jscc += f" | LPIPS: {metrics_jscc_p1['lpips']:.4f}"
-            if 'dists' in metrics_jscc_p1: log_msg_jscc += f" | DISTS: {metrics_jscc_p1['dists']:.4f}"
+            # [LOG UPDATED]
+            log_msg_jscc = f"Batch {idx+1}/{len(dataloader)} | [Base JSCC] Init | {format_metrics(metrics_jscc_p1)}"
             logger.info(log_msg_jscc)
 
-            # 保存用ディレクトリ作成
             save_dir = os.path.join(config.save_path, 'visuals', str(idx))
             util.mkdir(save_dir)
             torchvision.utils.save_image(input_image[0].cpu(), os.path.join(save_dir, '0_GT.png'))
             torchvision.utils.save_image(measurement_phase1['x_mse'][0].cpu(), os.path.join(save_dir, '1_JSCC_Init.png'))
+            
+            if vit_map is not None:
+                v_vis = vit_map[0, 0].cpu().numpy()
+                plt.imsave(os.path.join(save_dir, 'ViT_Importance.png'), v_vis, cmap='jet')
 
-            # バッチ結果レコード初期化
             batch_record = {
                 "batch_idx": idx + 1,
                 "filename": names[0],
@@ -395,11 +452,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             }
 
             # -----------------------------------------------------
-            # Step 1: Phase 1 (Diffusion & Calc Uncertainty)
+            # Step 1: Phase 1 (Diffusion)
             # -----------------------------------------------------
-            # シードをリセットしてPhase 1実行
             torch.manual_seed(config.seed + idx)
-            diffcom_module.latest_uncertainty_map = {} # グローバル変数リセット
+            diffcom_module.latest_uncertainty_map = {} 
 
             x_recon_p1, uncertainty_container_p1 = run_diffusion_process(
                 config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
@@ -410,35 +466,29 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             get_meter('phase1_recon').update(metrics_p1)
             batch_record['phase1'] = {k: float(v) for k, v in metrics_p1.items()}
 
-            # Phase 1 FID Update
             update_fid('phase1', input_image, x_recon_p1.detach())
 
-            # ログ: Phase 1 Diffusion Result
-            log_msg_p1 = f"  -> Phase 1        | PSNR: {metrics_p1['psnr']:.2f}dB"
-            if 'lpips' in metrics_p1: log_msg_p1 += f" | LPIPS: {metrics_p1['lpips']:.4f}"
-            if 'dists' in metrics_p1: log_msg_p1 += f" | DISTS: {metrics_p1['dists']:.4f}"
+            # [LOG UPDATED]
+            log_msg_p1 = f"  -> Phase 1        | {format_metrics(metrics_p1)}"
             logger.info(log_msg_p1)
 
             torchvision.utils.save_image(x_recon_p1[0].cpu(), os.path.join(save_dir, f'2_Phase1_Recon.png'))
             
-            # エラーマップ（相関計算用）
             error_map = torch.abs(x_recon_p1 - input_image).mean(dim=1, keepdim=True)
             e_flat = error_map.detach().cpu().flatten().numpy()
 
             # -----------------------------------------------------
-            # Step 2: Phase 2 (Retransmission Comparison Loop)
+            # Step 2: Phase 2 (Retransmission Loop)
             # -----------------------------------------------------
             
             available_modes = list(uncertainty_container_p1.keys()) if uncertainty_container_p1 else []
             if not available_modes and config.retrans_mode != 'oracle':
                  logger.warning("No uncertainty maps found!")
 
-            # モードごとループ (Temporal / Perturbation)
             for u_mode in available_modes:
                 mode_maps = uncertainty_container_p1[u_mode]
                 mode_result = {"correlation": {}, "results": {}}
                 
-                # サブタイプごとループ (Smoothed / Raw)
                 sub_types = [('smooth', mode_maps.get('smoothed')), ('raw', mode_maps.get('raw'))]
                 
                 for sub_key, u_map_tensor in sub_types:
@@ -455,85 +505,91 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         else:
                              u_flat_val = u_map_tensor.flatten().numpy()
                         corr, _ = pearsonr(u_flat_val, e_flat)
-                    
                     mode_result["correlation"][sub_key] = corr
 
-                    # Oracle以外なら再送シミュレーション実行
                     if config.retrans_mode != 'oracle':
-                        meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
-                            operator, input_image, measurement_phase1, 
-                            u_map_tensor, 
-                            mode=config.retrans_mode, value=config.retrans_value
-                        )
-                        
-                        # Phase 2 JSCC の品質評価
-                        metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
-                        
-                        # [重要] JSCCの平均値を記録
-                        meter_key_jscc = f"{u_mode}_{sub_key}_jscc"
-                        get_meter(meter_key_jscc).update(metrics_jscc_p2)
-                        
-                        # ログ: JSCC品質の詳細表示
-                        log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s} JSCC] PSNR: {metrics_jscc_p2['psnr']:.2f}dB"
-                        if 'lpips' in metrics_jscc_p2: log_msg_jscc += f" | LPIPS: {metrics_jscc_p2['lpips']:.4f}"
-                        if 'dists' in metrics_jscc_p2: log_msg_jscc += f" | DISTS: {metrics_jscc_p2['dists']:.4f}"
-                        logger.info(log_msg_jscc)
+                        # 実行する再送方法のリストを作成
+                        strategies = []
+                        if config.retrans_basis in ['uncertainty', 'both']:
+                            strategies.append((None, "Unc")) # 元の手法 (ViTなし)
+                        if config.retrans_basis in ['semantic', 'both']:
+                            # ViTが取得できていれば実行、なければスキップ
+                            if vit_map is not None:
+                                strategies.append((vit_map, "Sem"))
+                            else:
+                                logger.warning("Skipping Semantic mode because ViT map is missing.")
 
-                        # Phase 2 Diffusion
-                        torch.manual_seed(config.seed + idx)
-                        x_recon_p2, _ = run_diffusion_process(
-                            config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                            meas_p2, input_image, device, phase_name=f"P2_{u_mode}_{sub_key}"
-                        )
-                        
-                        metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
-                        
-                        # Phase 2 Diffusionの平均値を記録
-                        meter_key = f"{u_mode}_{sub_key}"
-                        get_meter(meter_key).update(metrics_p2)
+                        for v_map_arg, strategy_name in strategies:
+                            meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
+                                operator, input_image, measurement_phase1, 
+                                u_map_tensor, 
+                                mode=config.retrans_mode, value=config.retrans_value,
+                                vit_importance_map=v_map_arg
+                            )
+                            
+                            metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
+                            
+                            # キーの生成 (例: perturbation_smooth_Unc_jscc)
+                            base_key = f"{u_mode}_{sub_key}_{strategy_name}"
+                            get_meter(f"{base_key}_jscc").update(metrics_jscc_p2)
+                            
+                            # [LOG UPDATED]
+                            log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s} JSCC] {format_metrics(metrics_jscc_p2)}"
+                            logger.info(log_msg_jscc)
 
-                        # Phase 2 FID Update (Dynamic Key)
-                        update_fid(meter_key, input_image, x_recon_p2.detach())
-                        
-                        mode_result["results"][sub_key] = {k: float(v) for k, v in metrics_p2.items()}
-                        mode_result["results"][sub_key]['ratio'] = ratio
-                        mode_result["results"][sub_key]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
-                        
-                        # ログ: Diffusion後の詳細表示
-                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}] Ratio: {ratio:.2%} | PSNR: {metrics_p2['psnr']:.2f}dB"
-                        if 'lpips' in metrics_p2: log_msg_p2 += f" | LPIPS: {metrics_p2['lpips']:.4f}"
-                        if 'dists' in metrics_p2: log_msg_p2 += f" | DISTS: {metrics_p2['dists']:.4f}"
-                        log_msg_p2 += f" | Corr: {corr:.3f}"
-                        logger.info(log_msg_p2)
+                            # Diffusion
+                            torch.manual_seed(config.seed + idx)
+                            x_recon_p2, _ = run_diffusion_process(
+                                config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
+                                meas_p2, input_image, device, phase_name=f"P2_{base_key}"
+                            )
+                            
+                            metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
+                            get_meter(base_key).update(metrics_p2)
+                            update_fid(base_key, input_image, x_recon_p2.detach())
+                            
+                            if sub_key not in mode_result["results"]:
+                                mode_result["results"][sub_key] = {}
+                            
+                            # 結果辞書の構造: results[smooth][Unc] = {...}
+                            mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
+                            mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
+                            mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
+                            
+                            # [LOG UPDATED]
+                            log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)} | Corr: {corr:.3f}"
+                            logger.info(log_msg_p2)
 
-                        # 画像保存
-                        torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{u_mode}_{sub_key}.png'))
-                        plt.imsave(os.path.join(save_dir, f'Mask_{u_mode}_{sub_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
-                        
-                        u_vis = u_map_tensor[0, 0].numpy()
-                        u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
-                        plt.imsave(os.path.join(save_dir, f'Uncertainty_{u_mode}_{sub_key}.png'), u_vis, cmap='jet')
-                
+                            torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))
+                            plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
+                            
+                            # Priority mapの保存 (Semの場合)
+                            if strategy_name == "Sem":
+                                p_map = u_map_tensor.to(device) * v_map_arg.to(device)
+                                p_vis = p_map[0, 0].cpu().numpy()
+                                p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
+                                plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
+                            else:
+                                # Uncの場合は生のUncertaintyを保存
+                                u_vis = u_map_tensor[0, 0].numpy()
+                                u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
+                                plt.imsave(os.path.join(save_dir, f'Uncertainty_{base_key}.png'), u_vis, cmap='jet')
+
                 batch_record["modes"][u_mode] = mode_result
 
             # -----------------------------------------------------------------
-            # Random Baseline (Once per batch)
+            # Random Baseline
             # -----------------------------------------------------------------
             if config.retrans_mode != 'oracle':
                  meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
                      operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value
                  )
                  
-                 # Random JSCC品質
                  metrics_jscc_rnd = metric_wrapper(meas_rnd['x_mse'].detach(), input_image)
-                 
-                 # [重要] Random JSCCの平均値を記録
                  get_meter('random_jscc').update(metrics_jscc_rnd)
                  
-                 # ログ: Random JSCC詳細
-                 log_msg_jscc_rnd = f"    [Random      JSCC] PSNR: {metrics_jscc_rnd['psnr']:.2f}dB"
-                 if 'lpips' in metrics_jscc_rnd: log_msg_jscc_rnd += f" | LPIPS: {metrics_jscc_rnd['lpips']:.4f}"
-                 if 'dists' in metrics_jscc_rnd: log_msg_jscc_rnd += f" | DISTS: {metrics_jscc_rnd['dists']:.4f}"
+                 # [LOG UPDATED]
+                 log_msg_jscc_rnd = f"    [Random          JSCC] {format_metrics(metrics_jscc_rnd)}"
                  logger.info(log_msg_jscc_rnd)
 
                  torch.manual_seed(config.seed + idx)
@@ -542,21 +598,14 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                      meas_rnd, input_image, device, phase_name="P2_Random"
                  )
                  metrics_rnd = metric_wrapper(x_recon_rnd.detach(), input_image)
-                 
-                 # Random Diffusionの平均値を記録
                  get_meter('random').update(metrics_rnd)
-                 
-                 # Random FID Update
                  update_fid('random', input_image, x_recon_rnd.detach())
 
                  batch_record['random'] = {k: float(v) for k, v in metrics_rnd.items()}
                  batch_record['random']['ratio'] = ratio_rnd
-                 batch_record['random']['jscc'] = {k: float(v) for k, v in metrics_jscc_rnd.items()}
                  
-                 # ログ: Random Diffusion詳細
-                 log_msg_rnd = f"    [Random         ] Ratio: {ratio_rnd:.2%} | PSNR: {metrics_rnd['psnr']:.2f}dB"
-                 if 'lpips' in metrics_rnd: log_msg_rnd += f" | LPIPS: {metrics_rnd['lpips']:.4f}"
-                 if 'dists' in metrics_rnd: log_msg_rnd += f" | DISTS: {metrics_rnd['dists']:.4f}"
+                 # [LOG UPDATED]
+                 log_msg_rnd = f"    [Random             ] Ratio: {ratio_rnd:.2%} | {format_metrics(metrics_rnd)}"
                  logger.info(log_msg_rnd)
 
                  torchvision.utils.save_image(x_recon_rnd[0].cpu(), os.path.join(save_dir, '3_P2_Random.png'))
@@ -577,26 +626,18 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         for k, meter in results_meters.items():
             final_summary[k] = meter.avg
         
-        # Calculate Final FID
         if IS_TORCHMETRICS_AVAILABLE and len(fid_meters) > 0:
-            logger.info("Calculating FID scores... (This may take a moment)")
-            fid_summary = {}
+            logger.info("Calculating FID scores...")
             for k, fid_obj in fid_meters.items():
                 try:
                     score = fid_obj.compute().item()
-                    fid_summary[k] = score
-                    # 既存のサマリーにもFIDを追加
-                    if k not in final_summary:
-                        final_summary[k] = {}
+                    if k not in final_summary: final_summary[k] = {}
                     final_summary[k]['fid'] = score
                     logger.info(f"  -> FID [{k}]: {score:.4f}")
                 except Exception as e:
                     logger.error(f"Failed to compute FID for {k}: {e}")
         
-        output_data = {
-            "summary": final_summary,
-            "history": all_results_history
-        }
+        output_data = {"summary": final_summary, "history": all_results_history}
 
         if len(all_results_history) > 0:
             with open(json_path, 'w') as f:
@@ -605,33 +646,19 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         
         # 最終ログ表示
         logger.info("=== Final Comparison Summary ===")
-        
-        def format_metrics(m):
-            s = f"PSNR: {m.get('psnr', 0):.2f}dB"
-            if 'lpips' in m: s += f" | LPIPS: {m['lpips']:.4f}"
-            if 'dists' in m: s += f" | DISTS: {m['dists']:.4f}"
-            if 'fid' in m:   s += f" | FID: {m['fid']:.4f}"
-            return s
+        # format_metrics は関数の先頭ですでに定義されているものを利用
 
-        # 1. Base JSCC
         if 'jscc_init' in final_summary:
             logger.info(f"Init (Base)  | {format_metrics(final_summary['jscc_init'])}")
-        
-        # 2. Phase 1 Recon
         if 'phase1_recon' in final_summary:
             logger.info(f"Phase 1      | {format_metrics(final_summary['phase1_recon'])}")
-
-        # 3. Random
         if 'random' in final_summary:
             logger.info(f"Random       | {format_metrics(final_summary['random'])}")
 
-        # 4. Dynamic Modes
         for k in sorted(final_summary.keys()):
             if k in ['jscc_init', 'random', 'phase1_recon', 'random_jscc']: continue
             if 'jscc' in k: continue 
-            
-            m = final_summary[k]
-            logger.info(f"{k:20s} | {format_metrics(m)}")
+            logger.info(f"{k:30s} | {format_metrics(final_summary[k])}")
 
     return results_meters
 
