@@ -1,88 +1,77 @@
-![Python >=3.8](https://img.shields.io/badge/Python->=3.7-yellow.svg)
-![PyTorch >=1.9](https://img.shields.io/badge/PyTorch->=1.7-blue.svg)
+DiffCom: Semantic Retransmission with Uncertainty Guidance
 
-# DiffCom: Channel Received Signal is a Natural Condition to Guide Diffusion Posterior Sampling [[pdf]](https://arxiv.org/abs/2406.07390)
+このリポジトリは、論文 **"DiffCom: Channel Received Signal Is a Natural Condition to Guide Diffusion Posterior Sampling"** をベースに、不確実性（Uncertainty）と意味的重要度（Semantic Saliency）に基づく **「意味的再送（Semantic Retransmission）」** メカニズムを実装したものです。
 
-Here is the implementation of the
-paper "[DiffCom: Channel Received Signal is a Natural Condition to Guide Diffusion Posterior Sampling](https://semcomm.github.io/DiffCom/)".
+---
 
-Project website: [https://semcomm.github.io/DiffCom/](https://semcomm.github.io/DiffCom/)
+## 概要
 
-## Abstract
+従来の JSCC（Joint Source-Channel Coding）は、低 SNR 環境下で知覚的な劣化（ボケやアーティファクト）が生じやすいという課題がありました。  
+DiffCom は拡散モデルの生成能力を活用し、受信信号を「ガイド」として用いることで、高い忠実度と知覚品質を両立します。
 
-End-to-end visual communication systems typically optimize a trade-off between channel bandwidth costs and signal-level
-distortion metrics. However, under challenging physical conditions, this traditional coding and transmission paradigm
-often results in unrealistic reconstructions with perceptible blurring and aliasing artifacts, despite the inclusion of
-perceptual or adversarial losses for optimizing. This issue primarily stems from the receiver’s limited knowledge about
-the underlying data manifold and the use of deterministic decoding mechanisms. 
-To address these limitations, this paper
-introduces DiffCom, a novel end-to-end generative communication paradigm that utilizes off-the-shelf generative priors
-and probabilistic diffusion models for decoding, thereby improving perceptual quality without heavily relying on
-bandwidth costs and received signal quality. Unlike traditional systems that rely on deterministic decoders optimized
-solely for distortion metrics, our DiffCom leverages raw channel-received signal as a fine-grained condition to guide
-stochastic posterior sampling. Our approach ensures that reconstructions remain on the manifold of real data with a
-novel confirming constraint, enhancing the robustness and reliability of the generated outcomes.
+本プロジェクトでは、さらに復元過程の不確実性をリアルタイムで推定し、モデルが **自信のない領域** かつ **人間にとって重要な領域** を特定して部分的に再送（Signal Replacement）を行うことで、効率的な通信品質の向上を実現します。
 
-## Overview of the DiffCom system architecture
+---
 
-<img src="imgs/Fig_framework.png"  style="width: 70%;" />
+## 主な機能
 
-## RDP curves on [FFHQ](https://github.com/NVlabs/ffhq-dataset) testset
+- **DiffCom Series のサポート**: Standard DiffCom / HiFi-DiffCom / Blind-DiffCom の各モードを搭載。
+- **不確実性推定アルゴリズム**:
+  - **Perturbation Uncertainty**: 予測画像に微小ノイズを付与し、復元の安定性を分散として算出。
+  - **Temporal Uncertainty**: 逆拡散過程の各ステップにおける予測の一貫性を測定。
+- **ViT ベースの意味的抽出**: DINOv2（`facebook/dinov2-with-registers-small`）を用いて、画像内の視覚的に重要な領域を特定。
+- **2 段階復元プロセス**:
+  - **Phase 1**: 初期復元と不確実性マップの生成。
+  - **Phase 2**: 不確実性と ViT 重要度を掛け合わせた優先度 \(P = U \times A\) に基づく再送と再復元。
 
-<img src="imgs/Fig_RDP.png"  style="width: 88%;" />
+---
 
-## Generalization to unseen wireless conditions
-
-<img src="imgs/Fig_generalization.png"  style="width: 88%;" />
-
-## Blind-DiffCom Achieves Pilot-Free Transmission
-
-<img src="imgs/Fig_ce_free.png"  style="width: 88%;" />
-
-## Requirements
-
-Clone the repo and create a conda environment (we use PyTorch 1.9, CUDA 11.1).
-
-TODO: check the dependencies
-
-## Model Download
-
-We provide 3 pre-trained ADJSCC models in [this link](https://drive.google.com/drive/folders/1N0EzzxCv1wh6JeFr0g8vkmB0Qj23ozZJ?usp=sharing), please download them and put them in the `_djscc/ckpt` folder.
-
-The pre-trained Diffusion models are available at the following links, please download them and put them in the `model_zoo` folder.
-
-| Model                                                       |                                               Download link                                                |
-|-------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------:|
-| 256x256_diffusion_uncond.pt(ILSVRC 2012 subset of ImageNet) | [download link](https://openaipublic.blob.core.windows.net/diffusion/jul-2021/256x256_diffusion_uncond.pt) |
-| ffhq_10m.pt                                                 |   [download link](https://drive.google.com/drive/folders/1jElnRoFv7b31fG0v6pTSQkelbSX3xGZh?usp=sharing)    |
-
-TODO: provide implementations of DiffCom based on \`SwinJSCC\` and \`NTSCC+\`.
-
-## Inference Code
-
-```bash
-python main_diffcom.py --opt ./configs/diffcom.yaml
-```
-
-Please check the `diffcom.yaml` file for more details. 
-The codebase now supports `diffcom`, `hifi_diffcom`, and `blind_diffcom`.
-
-You can change the hyperparameters in the YAML file to run the corresponding method.
-
-## Acknowledgement
-
-The implementation is based on [DPS](https://github.com/DPS2022/diffusion-posterior-sampling), [PSLD](https://github.com/LituRout/PSLD).  
-We thank the authors for sharing their code.
-
-## Citation
-
-If you find this code useful for your research, please cite our paper
+## インストール
 
 ```
-@article{wang2024diffcom,
-  title={DiffCom: Channel Received Signal is a Natural Condition to Guide Diffusion Posterior Sampling},
+pip install torch torchvision transformers pyyaml scipy tqdm matplotlib
+
+# FID 計算を有効にする場合
+pip install torchmetrics
+```
+
+## 使用方法
+
+意味的再送のシミュレーションを実行するには、main_diffcom_retransmission.py を使用します。
+
+```
+python main_diffcom_retransmission.py \
+    --opt ./configs/diffcom.yaml \
+    --retrans_mode rate \
+    --retrans_value 0.1 \
+    --retrans_basis both
+```
+## 2. 優先度に基づく再送（Priority-based Retransmission）
+
+受信側で計算された **不確実性マップ** \(U\) と、ViT により抽出された **意味的重要度（Attention）マップ** \(A\) を合成し、再送の優先度 \(P\) を決定します。
+
+\[
+P = U \odot A
+\]
+
+ここで、\(\odot\) は要素ごとの積（Hadamard 積）を表します。
+
+得られた優先度マップ \(P\) に基づき、値の高い領域に対応する **潜在特徴量（Latent Features）** を選択します。  
+これらの特徴量に対応するチャネル信号を、再送によって得られた **クリーンな信号** で置き換えた後、拡散モデルへ再入力することで再復元を行います。
+
+この部分的な信号置換（Signal Replacement）により、通信レートを抑えつつも、  
+モデルが不確実かつ人間にとって重要な領域の復元品質を重点的に向上させることが可能になります。
+
+## 引用
+@article{wang2025diffcom,
+  title={DiffCom: Channel Received Signal Is a Natural Condition to Guide Diffusion Posterior Sampling},
   author={Wang, Sixian and Dai, Jincheng and Tan, Kailin and Qin, Xiaoqi and Niu, Kai and Zhang, Ping},
-  journal={arXiv preprint arXiv:2406.07390},
-  year={2024}
+  journal={IEEE Journal on Selected Areas in Communications},
+  volume={43},
+  number={7},
+  pages={2651--2666},
+  year={2025}
 }
-```
+
+
+
