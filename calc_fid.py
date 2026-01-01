@@ -18,10 +18,10 @@ def calculate_fids_from_disk(base_path):
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
-        '3_P2_perturbation_smooth',
-        '3_P2_perturbation_raw',
-        '3_P2_temporal_smooth',
-        '3_P2_temporal_raw',
+        '3_P2_perturbation_raw_Unc',
+        '3_P2_perturbation_raw_Sem',
+        '3_P2_temporal_raw_Unc',
+        '3_P2_temporal_raw_Sem',
         '3_P2_Random'
     ]
 
@@ -94,7 +94,6 @@ def calculate_fids_from_disk(base_path):
 
 if __name__ == "__main__":
     # 計算対象のディレクトリパスを指定
-    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-4dB/Retrans_rate_0.1_Comparison_zeta0.3_seed22"
-    
+    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-4dB/Retrans_rate_0.1_Comparison_both_zeta0.3_seed22"
     # FID計算実行
     calculate_fids_from_disk(target_results_path)

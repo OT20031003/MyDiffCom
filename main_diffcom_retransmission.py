@@ -503,6 +503,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
                 # 相関計算
                 # Rawの場合はサイズが異なる可能性があるためリサイズして計算
+                print(f"u_map_tensor.shape = {u_map_tensor.shape}, error_map.shape = {error_map.shape}")
                 if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
                         u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
                         u_flat_val = u_raw_resized.flatten().numpy()

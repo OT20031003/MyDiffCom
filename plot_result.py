@@ -12,46 +12,60 @@ import matplotlib.pyplot as plt
 ROOT_DIR = "results_retrans_comparison"
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-# 例: [-2.0, 0.0, 2.0]
 TARGET_SNRS = None 
 
 # 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
+# 提供されたJSONに含まれる新しいキーに対応させました
 TARGET_METHODS = [
     #"jscc_init", 
     #"phase1_recon", 
-    #"temporal_smooth_Unc",
-    "temporal_smooth_Sem",
-    #"temporal_raw_Unc",
+    
+    # Temporal (時間的分散) 系
+    "temporal_raw_Unc",
     "temporal_raw_Sem",
+    
+    # Perturbation (摂動分散) 系
+    "perturbation_raw_Unc",
+    "perturbation_raw_Sem",
+    
+    # ランダムベースライン
     "random"
 ]
 
 # 4. 凡例の表示名マッピング
 METHOD_LABELS = {
-    "jscc_init": "JSCC (Initial)",
-    "phase1_recon": "Phase 1 Recon",
-    "temporal_smooth_Unc": "Smooth (Unc)",
-    "temporal_smooth_Sem": "Smooth (Sem)",
-    "temporal_raw_Unc": "Raw (Unc)",
-    "temporal_raw_Sem": "Raw (Sem)",
-    "random": "Random Baseline",
+    "jscc_init":            "JSCC (Initial)",
+    "phase1_recon":         "Phase 1 Recon",
+    
+    "temporal_raw_Unc":     "Temporal (Unc)",
+    "temporal_raw_Sem":     "Temporal (Sem)",
+    
+    "perturbation_raw_Unc": "Perturbation (Unc)",
+    "perturbation_raw_Sem": "Perturbation (Sem)",
+    
+    "random":               "Random Baseline",
 }
 
 # 5. スタイル設定 (色とマーカーでグループ化)
+# 視認性を高めるため、系列ごとに色を統一し、実線/破線やマーカーで区別します
 STYLE_CONFIG = {
-    "jscc_init":      {"color": "black", "linestyle": "--", "marker": "x"},
-    "phase1_recon":   {"color": "blue",  "linestyle": "-",  "marker": "o"},
-    # Smooth系: 緑 (実線と破線でUnc/Semを区別)
-    "temporal_smooth_Unc": {"color": "green", "linestyle": "-",  "marker": "^"},
-    "temporal_smooth_Sem": {"color": "green", "linestyle": "--", "marker": "v"},
-    # Raw系: 赤 (実線と破線でUnc/Semを区別)
-    "temporal_raw_Unc":    {"color": "red",   "linestyle": "-",  "marker": "s"},
-    "temporal_raw_Sem":    {"color": "red",   "linestyle": "--", "marker": "D"},
-    "random":         {"color": "gray",  "linestyle": ":",  "marker": "d"},
+    "jscc_init":      {"color": "black", "linestyle": ":",  "marker": "x"}, # 初期JSCC: 黒点線
+    "phase1_recon":   {"color": "blue",  "linestyle": "-",  "marker": "o"}, # Phase1: 青実線
+    
+    # Temporal系: 緑色
+    "temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"}, # Unc: 実線・三角
+    "temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"}, # Sem: 破線・逆三角
+    
+    # Perturbation系: 赤色
+    "perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"}, # Unc: 実線・四角
+    "perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"}, # Sem: 破線・ダイヤ
+    
+    # Random: 灰色
+    "random":         {"color": "gray",  "linestyle": "-.", "marker": "d"}, # Random: 一点鎖線
 }
 
 # 6. プロット対象の指標 (JSONに含まれるキー)
-METRICS = ["psnr", "lpips", "dists", "msssim", "fid"]
+METRICS = ["psnr", "lpips", "dists", "msssim"]
 
 # ==========================================
 # 処理ロジック
@@ -139,7 +153,7 @@ def plot_custom_metrics(data_store):
         axes[i].axis('off')
 
     plt.tight_layout()
-    save_name = 'snr_metrics_comparison.png'
+    save_name = 'snr_metrics_comparison_updated.png'
     plt.savefig(save_name, dpi=300)
     print(f"グラフを保存しました: {save_name}")
     plt.show()
