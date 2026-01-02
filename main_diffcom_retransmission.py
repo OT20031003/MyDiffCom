@@ -240,7 +240,6 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
 
     return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial
 
-
 def parse_args_and_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--opt", type=str, default='./configs/diffcom.yaml', help="Path to option YMAL file.")
@@ -269,11 +268,13 @@ def parse_args_and_config():
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
     
     # ------------------ [FIXED HERE] ------------------
-    # 'config.testsets' がYAMLに存在しないため、cwdから生成する
     config.testsets = os.path.join(config.cwd, 'testsets')
     # --------------------------------------------------
 
+    # ▼▼▼ 修正箇所: ここで config.results を初期化します ▼▼▼
     config.results = os.path.join(config.cwd, 'results_retrans_comparison')
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
 
@@ -299,7 +300,6 @@ def parse_args_and_config():
     np.random.seed(config.seed)
     random.seed(config.seed)
     return config
-
 
 def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, cond_method, 
                           measurement, input_image, device, phase_name="Phase1"):
@@ -368,6 +368,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         if 'lpips' in m: s += f" | LPIPS: {m['lpips']:.4f}"
         if 'dists' in m: s += f" | DISTS: {m['dists']:.4f}"
         if 'fid' in m:   s += f" | FID: {m['fid']:.4f}"
+        if 'corr' in m:  s += f" | Corr: {m['corr']:.3f}"
         return s
     # ---------------------------
 
@@ -503,7 +504,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
                 # 相関計算
                 # Rawの場合はサイズが異なる可能性があるためリサイズして計算
-                print(f"u_map_tensor.shape = {u_map_tensor.shape}, error_map.shape = {error_map.shape}")
                 if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
                         u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
                         u_flat_val = u_raw_resized.flatten().numpy()
@@ -550,6 +550,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         )
                         
                         metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
+                        metrics_p2['corr'] = float(corr)
                         get_meter(base_key).update(metrics_p2)
                         update_fid(base_key, input_image, x_recon_p2.detach())
                         
@@ -562,7 +563,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
                         
                         # [LOG UPDATED]
-                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)} | Corr: {corr:.3f}"
+                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)}"
                         logger.info(log_msg_p2)
 
                         torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))

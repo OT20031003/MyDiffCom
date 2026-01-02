@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 ROOT_DIR = "results_retrans_comparison"
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = None 
-
+TARGET_SNRS = [0, 2, 4]
+TARGET_SNRS = None
 # 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 # 提供されたJSONに含まれる新しいキーに対応させました
 TARGET_METHODS = [
