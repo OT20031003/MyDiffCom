@@ -94,6 +94,6 @@ def calculate_fids_from_disk(base_path):
 
 if __name__ == "__main__":
     # 計算対象のディレクトリパスを指定
-    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_04dB/Retrans_rate_0.1_Comparison_both_zeta0.3_seed22"
+    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_00dB/Retrans_rate_0.2_Comparison_both_zeta0.3_seed22"
     # FID計算実行
     calculate_fids_from_disk(target_results_path)

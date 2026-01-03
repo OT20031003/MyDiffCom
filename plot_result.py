@@ -12,10 +12,15 @@ import matplotlib.pyplot as plt
 ROOT_DIR = "results_retrans_comparison"
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [0, 2, 4]
-TARGET_SNRS = None
+TARGET_SNRS = [-6, -4, -2, 0]
+# TARGET_SNRS = None
+
+# 【追加】 プロットしたい再送率 (Retrans_rate) のリスト
+# None または [] の場合は、見つかった全てのレートについて個別にプロットを作成します
+TARGET_RATES = [0.1, 0.2]
+# TARGET_RATES = None
+
 # 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
-# 提供されたJSONに含まれる新しいキーに対応させました
 TARGET_METHODS = [
     #"jscc_init", 
     #"phase1_recon", 
@@ -46,25 +51,21 @@ METHOD_LABELS = {
     "random":               "Random Baseline",
 }
 
-# 5. スタイル設定 (色とマーカーでグループ化)
-# 視認性を高めるため、系列ごとに色を統一し、実線/破線やマーカーで区別します
+# 5. スタイル設定
 STYLE_CONFIG = {
-    "jscc_init":      {"color": "black", "linestyle": ":",  "marker": "x"}, # 初期JSCC: 黒点線
-    "phase1_recon":   {"color": "blue",  "linestyle": "-",  "marker": "o"}, # Phase1: 青実線
+    "jscc_init":      {"color": "black", "linestyle": ":",  "marker": "x"}, 
+    "phase1_recon":   {"color": "blue",  "linestyle": "-",  "marker": "o"}, 
     
-    # Temporal系: 緑色
-    "temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"}, # Unc: 実線・三角
-    "temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"}, # Sem: 破線・逆三角
+    "temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"}, 
+    "temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"}, 
     
-    # Perturbation系: 赤色
-    "perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"}, # Unc: 実線・四角
-    "perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"}, # Sem: 破線・ダイヤ
+    "perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"}, 
+    "perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"}, 
     
-    # Random: 灰色
-    "random":         {"color": "gray",  "linestyle": "-.", "marker": "d"}, # Random: 一点鎖線
+    "random":         {"color": "gray",  "linestyle": "-.", "marker": "d"}, 
 }
 
-# 6. プロット対象の指標 (JSONに含まれるキー)
+# 6. プロット対象の指標
 METRICS = ["psnr", "lpips", "dists", "msssim"]
 
 # ==========================================
@@ -72,27 +73,35 @@ METRICS = ["psnr", "lpips", "dists", "msssim"]
 # ==========================================
 
 def load_summary_data_recursive():
-    # /**/ を使用して、 awgn_02dB などの深い階層にあるファイルを再帰的に探索します
     search_pattern = os.path.join(ROOT_DIR, "**", "SNR*_Comparison_*.json")
     print(f"Searching for files: {search_pattern}")
     
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
+    # 構造を変更: { rate: { snr: { method: metrics } } }
     data_store = {}
 
     for fpath in files:
         filename = os.path.basename(fpath)
-        # ファイル名 (SNR2_... や SNR0_...) から数値を抽出
-        # SNRの後に続く数字（小数・負数対応）を取得
-        match = re.search(r"SNR(-?\d+\.?\d*)", filename)
-        if not match:
-            continue
         
-        snr = float(match.group(1))
+        # 1. SNRの抽出
+        match_snr = re.search(r"SNR(-?\d+\.?\d*)", filename)
+        if not match_snr:
+            continue
+        snr = float(match_snr.group(1))
 
-        # SNRフィルタリング (指定がある場合)
+        # 2. Retrans_rateの抽出 (追加)
+        match_rate = re.search(r"Retrans_rate_(\d+\.?\d*)", filename)
+        if not match_rate:
+            # ファイル名にレートが含まれない場合はスキップ (必要に応じて変更)
+            continue
+        rate = float(match_rate.group(1))
+
+        # フィルタリング
         if TARGET_SNRS and snr not in TARGET_SNRS:
+            continue
+        if TARGET_RATES and rate not in TARGET_RATES:
             continue
 
         try:
@@ -100,12 +109,16 @@ def load_summary_data_recursive():
                 content = json.load(f)
             
             summary = content.get("summary", {})
-            if snr not in data_store:
-                data_store[snr] = {}
+            
+            # 階層構造の初期化
+            if rate not in data_store:
+                data_store[rate] = {}
+            if snr not in data_store[rate]:
+                data_store[rate][snr] = {}
 
             for method in TARGET_METHODS:
                 if method in summary:
-                    data_store[snr][method] = summary[method]
+                    data_store[rate][snr][method] = summary[method]
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
@@ -116,47 +129,68 @@ def plot_custom_metrics(data_store):
         print("表示対象のデータが見つかりませんでした。パスやファイル名を確認してください。")
         return
 
-    snr_list = sorted(data_store.keys())
+    # 見つかったレートごとにグラフを作成
+    rates = sorted(data_store.keys())
     
-    # 指標の数に合わせてグラフのレイアウトを調整 (3x2など)
-    num_metrics = len(METRICS)
-    cols = 2
-    rows = (num_metrics + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
-    axes = axes.flatten()
+    for rate in rates:
+        print(f"--- Plotting for Retrans Rate: {rate} ---")
+        
+        # このレートに対応するデータ (snr -> method -> metrics)
+        current_data = data_store[rate]
+        snr_list = sorted(current_data.keys())
+        
+        if not snr_list:
+            print(f"Rate {rate} に有効なSNRデータがありません。スキップします。")
+            continue
 
-    for idx, metric in enumerate(METRICS):
-        ax = axes[idx]
-        for method in TARGET_METHODS:
-            x_vals = []
-            y_vals = []
-            for snr in snr_list:
-                if method in data_store[snr] and metric in data_store[snr][method]:
-                    val = data_store[snr][method][metric]
-                    if val is not None:
-                        x_vals.append(snr)
-                        y_vals.append(val)
-            
-            if x_vals:
-                style = STYLE_CONFIG.get(method, {})
-                label = METHOD_LABELS.get(method, method)
-                ax.plot(x_vals, y_vals, label=label, **style)
+        # レイアウト設定
+        num_metrics = len(METRICS)
+        cols = 2
+        rows = (num_metrics + cols - 1) // cols
+        fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+        axes = axes.flatten()
+        
+        # タイトルにレートを表示
+        fig.suptitle(f"Comparison Metrics (Retrans Rate: {rate})", fontsize=16)
 
-        ax.set_title(metric.upper(), fontsize=14, fontweight='bold')
-        ax.set_xlabel("SNR (dB)")
-        ax.set_ylabel(metric)
-        ax.grid(True, linestyle='--', alpha=0.6)
-        ax.legend(loc='best', fontsize=9)
+        for idx, metric in enumerate(METRICS):
+            ax = axes[idx]
+            for method in TARGET_METHODS:
+                x_vals = []
+                y_vals = []
+                for snr in snr_list:
+                    if method in current_data[snr] and metric in current_data[snr][method]:
+                        val = current_data[snr][method][metric]
+                        if val is not None:
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    style = STYLE_CONFIG.get(method, {})
+                    label = METHOD_LABELS.get(method, method)
+                    ax.plot(x_vals, y_vals, label=label, **style)
 
-    # 余ったグラフ領域を非表示にする
-    for i in range(idx + 1, len(axes)):
-        axes[i].axis('off')
+            ax.set_title(metric.upper(), fontsize=14, fontweight='bold')
+            ax.set_xlabel("SNR (dB)")
+            ax.set_ylabel(metric)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.legend(loc='best', fontsize=9)
 
-    plt.tight_layout()
-    save_name = 'snr_metrics_comparison_updated.png'
-    plt.savefig(save_name, dpi=300)
-    print(f"グラフを保存しました: {save_name}")
-    plt.show()
+        # 余った領域を非表示
+        for i in range(idx + 1, len(axes)):
+            axes[i].axis('off')
+
+        plt.tight_layout()
+        # タイトルと被らないように調整
+        plt.subplots_adjust(top=0.92) 
+
+        # ファイル名にレートを含めて保存
+        save_name = f'snr_metrics_comparison_rate_{rate}.png'
+        plt.savefig(save_name, dpi=300)
+        print(f"グラフを保存しました: {save_name}")
+        
+        # 連続でプロットする場合は close してメモリ解放
+        plt.close(fig) 
 
 if __name__ == "__main__":
     data = load_summary_data_recursive()

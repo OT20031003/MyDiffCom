@@ -347,9 +347,32 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
         h_t = h_t_prev
         
     x_recon = (x_t / 2 + 0.5)
-    final_uncertainty_maps = diffcom_module.latest_uncertainty_map
+
+    # ▼▼▼ 修正: 計算グラフの切断とメモリ解放処理 ▼▼▼
+    # グローバル変数からマップを取得し、detachして新しい辞書にコピーする
+    raw_maps = diffcom_module.latest_uncertainty_map
+    final_uncertainty_maps = {}
+
+    if isinstance(raw_maps, dict):
+        for key, val in raw_maps.items():
+            if isinstance(val, dict):
+                final_uncertainty_maps[key] = {}
+                for sub_k, sub_v in val.items():
+                    if isinstance(sub_v, torch.Tensor):
+                        # 勾配情報を切り離し、クローンを作成して保持
+                        final_uncertainty_maps[key][sub_k] = sub_v.detach().clone()
+                    else:
+                        final_uncertainty_maps[key][sub_k] = sub_v
+            elif isinstance(val, torch.Tensor):
+                final_uncertainty_maps[key] = val.detach().clone()
+            else:
+                final_uncertainty_maps[key] = val
+
+    # グローバル変数をクリアして参照を削除（重要）
+    diffcom_module.latest_uncertainty_map = {}
     
-    return x_recon, final_uncertainty_maps
+    # x_recon も念のため detach して返す
+    return x_recon.detach(), final_uncertainty_maps
 
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}')
@@ -415,6 +438,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
     json_filename = f"SNR{config.CSNR}_{config.result_name}.json"
     json_path = os.path.join(config.save_path, json_filename)
 
+    # ガベージコレクション用
+    import gc
+
     try:
         for idx, batch in enumerate(dataloader):
             input_image, names = batch
@@ -425,7 +451,8 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             vit_map = None
             if vit_extractor is not None:
                 try:
-                    vit_map = vit_extractor.get_importance_map(input_image)
+                    # 修正: ViTマップもdetachする
+                    vit_map = vit_extractor.get_importance_map(input_image).detach()
                 except Exception as e:
                     logger.warning(f"Batch {idx}: ViT map calculation failed ({e}).")
             # ----------------------------------------
@@ -461,6 +488,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             # Step 1: Phase 1 (Diffusion)
             # -----------------------------------------------------
             torch.manual_seed(config.seed + idx)
+            # ここは念のため初期化（run_diffusion_process内でもクリアしているが二重対策）
             diffcom_module.latest_uncertainty_map = {} 
 
             x_recon_p1, uncertainty_container_p1 = run_diffusion_process(
@@ -495,30 +523,31 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 mode_maps = uncertainty_container_p1[u_mode]
                 mode_result = {"correlation": {}, "results": {}}
                 
-                # Smoothを削除し、常にRawを使用
                 u_map_tensor = mode_maps.get('raw')
                 if u_map_tensor is None: continue
                 
-                # キーは 'raw' で統一
                 sub_key = 'raw'
 
                 # 相関計算
-                # Rawの場合はサイズが異なる可能性があるためリサイズして計算
                 if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
                         u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
-                        u_flat_val = u_raw_resized.flatten().numpy()
+                        u_flat_val = u_raw_resized.flatten().cpu().numpy() # .cpu()を追加
                 else:
-                        u_flat_val = u_map_tensor.flatten().numpy()
-                corr, _ = pearsonr(u_flat_val, e_flat)
+                        u_flat_val = u_map_tensor.flatten().cpu().numpy() # .cpu()を追加
+                
+                # NaNチェックなど安全策
+                if np.isnan(u_flat_val).any() or np.isnan(e_flat).any():
+                    corr = 0.0
+                else:
+                    corr, _ = pearsonr(u_flat_val, e_flat)
+                
                 mode_result["correlation"][sub_key] = corr
 
                 if config.retrans_mode != 'oracle':
-                    # 実行する再送方法のリストを作成
                     strategies = []
                     if config.retrans_basis in ['uncertainty', 'both']:
-                        strategies.append((None, "Unc")) # 元の手法 (ViTなし)
+                        strategies.append((None, "Unc"))
                     if config.retrans_basis in ['semantic', 'both']:
-                        # ViTが取得できていれば実行、なければスキップ
                         if vit_map is not None:
                             strategies.append((vit_map, "Sem"))
                         else:
@@ -534,16 +563,14 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         
                         metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
                         
-                        # キーの生成 (例: perturbation_raw_Unc_jscc)
                         base_key = f"{u_mode}_{sub_key}_{strategy_name}"
                         get_meter(f"{base_key}_jscc").update(metrics_jscc_p2)
                         
-                        # [LOG UPDATED]
                         log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s} JSCC] {format_metrics(metrics_jscc_p2)}"
                         logger.info(log_msg_jscc)
 
-                        # Diffusion
                         torch.manual_seed(config.seed + idx)
+                        # Phase 2 Diffusion
                         x_recon_p2, _ = run_diffusion_process(
                             config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
                             meas_p2, input_image, device, phase_name=f"P2_{base_key}"
@@ -557,29 +584,31 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         if sub_key not in mode_result["results"]:
                             mode_result["results"][sub_key] = {}
                         
-                        # 結果辞書の構造: results[raw][Unc] = {...}
                         mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
                         mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
                         mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
                         
-                        # [LOG UPDATED]
                         log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)}"
                         logger.info(log_msg_p2)
 
                         torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))
-                        plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
+                        if mask_vis is not None:
+                            plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
                         
-                        # Priority mapの保存 (Semの場合)
-                        if strategy_name == "Sem":
+                        # Priority map保存
+                        if strategy_name == "Sem" and v_map_arg is not None:
                             p_map = u_map_tensor.to(device) * v_map_arg.to(device)
                             p_vis = p_map[0, 0].cpu().numpy()
                             p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
                             plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
                         else:
-                            # Uncの場合は生のUncertaintyを保存
-                            u_vis = u_map_tensor[0, 0].numpy()
+                            u_vis = u_map_tensor[0, 0].cpu().numpy()
                             u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
                             plt.imsave(os.path.join(save_dir, f'Uncertainty_{base_key}.png'), u_vis, cmap='jet')
+                        
+                        # Phase 2で使った一時変数を削除
+                        del meas_p2, x_recon_p2
+                        torch.cuda.empty_cache()
 
                 batch_record["modes"][u_mode] = mode_result
 
@@ -594,7 +623,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                  metrics_jscc_rnd = metric_wrapper(meas_rnd['x_mse'].detach(), input_image)
                  get_meter('random_jscc').update(metrics_jscc_rnd)
                  
-                 # [LOG UPDATED]
                  log_msg_jscc_rnd = f"    [Random          JSCC] {format_metrics(metrics_jscc_rnd)}"
                  logger.info(log_msg_jscc_rnd)
 
@@ -610,15 +638,29 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                  batch_record['random'] = {k: float(v) for k, v in metrics_rnd.items()}
                  batch_record['random']['ratio'] = ratio_rnd
                  
-                 # [LOG UPDATED]
                  log_msg_rnd = f"    [Random             ] Ratio: {ratio_rnd:.2%} | {format_metrics(metrics_rnd)}"
                  logger.info(log_msg_rnd)
 
                  torchvision.utils.save_image(x_recon_rnd[0].cpu(), os.path.join(save_dir, '3_P2_Random.png'))
-                 plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
+                 if mask_vis_rnd is not None:
+                     plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
+                
+                 # Randomの一時変数削除
+                 del meas_rnd, x_recon_rnd
+                 torch.cuda.empty_cache()
 
             all_results_history.append(batch_record)
             logger.info('-' * 80)
+            
+            # ▼▼▼ 修正: バッチ終了時の強力なメモリ解放 ▼▼▼
+            del input_image, measurement_phase1
+            if 'x_recon_p1' in locals(): del x_recon_p1
+            if 'uncertainty_container_p1' in locals(): del uncertainty_container_p1
+            if 'vit_map' in locals(): del vit_map
+            
+            gc.collect() # CPUメモリ解放
+            torch.cuda.empty_cache() # GPUキャッシュ解放
+            # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     except KeyboardInterrupt:
         logger.info("\n[!] Process Interrupted by User. Saving current results...")
@@ -652,8 +694,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         
         # 最終ログ表示
         logger.info("=== Final Comparison Summary ===")
-        # format_metrics は関数の先頭ですでに定義されているものを利用
-
+        
         if 'jscc_init' in final_summary:
             logger.info(f"Init (Base)  | {format_metrics(final_summary['jscc_init'])}")
         if 'phase1_recon' in final_summary:

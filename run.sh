@@ -4,7 +4,7 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(-10 -8 -6 -12 -14)
+SNRS=(-6 -4 -2 0 2 4)
 
 # ベースとなるテンプレート設定ファイル (configsフォルダ内にあると仮定)
 TEMPLATE_YAML="configs/diffcom_0.yaml"

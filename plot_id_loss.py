@@ -13,12 +13,12 @@ ROOT_DIR = "results_retrans_comparison"
 
 # 2. 対象の再送率 (パスに含まれる文字列 "Retrans_rate_X.X" に一致させる)
 #    None の場合は再送率でフィルタリングしません
-TARGET_RETRANS_RATE = 0.1
+TARGET_RETRANS_RATE = 0.2
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 #    例: [-4, -2, 0, 2, 4, 10]
 TARGET_SNRS = None 
-
+TARGET_SNRS = [-6, -4, -2, 0]
 # 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 TARGET_METHODS = [
     #"1_JSCC_Init", 

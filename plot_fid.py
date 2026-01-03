@@ -13,12 +13,12 @@ ROOT_DIR = "results_retrans_comparison"
 
 # 2. 対象の再送率 (パスに含まれる文字列 "Retrans_rate_X.X" に一致させる)
 #    None の場合は再送率でフィルタリングしません（全ての再送率が混ざる可能性があります）
-TARGET_RETRANS_RATE = 0.1
+TARGET_RETRANS_RATE = 0.2
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 #    例: [-4, -2, 0, 2, 4, 10]
 TARGET_SNRS = None 
-
+TARGET_SNRS = [-6, -4, -2, 0]
 # 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 #    前回のコードで生成されるJSONキーに合わせています
 TARGET_METHODS = [

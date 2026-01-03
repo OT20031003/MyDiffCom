@@ -107,7 +107,7 @@ def calculate_niqe_from_disk(base_path):
 
 if __name__ == "__main__":
     # 計算対象のディレクトリパスを指定
-    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-4dB/Retrans_rate_0.1_Comparison_both_zeta0.3_seed22"
+    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-4dB/Retrans_rate_0.2_Comparison_both_zeta0.3_seed22"
     
     if os.path.exists(target_results_path):
         calculate_niqe_from_disk(target_results_path)
