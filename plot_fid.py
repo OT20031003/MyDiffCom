@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # 【追加】 データセットの指定
 # ここを "imagenet" や "ffhq_demo" に書き換えてください
 DATASET = "ffhq_demo"
-DATASET = "imagenet"
+#DATASET = "imagenet"
 
 # 1. 探索を開始するルートディレクトリ
 BASE_DIR = "results_retrans_comparison"
@@ -24,7 +24,7 @@ TARGET_RETRANS_RATE = 0.1
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 #    例: [-4, -2, 0, 2, 4, 10]
 TARGET_SNRS = [-6, -4, -2, 0]
-TARGET_SNRS = None 
+#TARGET_SNRS = None 
 
 # 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 #    前回のコードで生成されるJSONキーに合わせています
