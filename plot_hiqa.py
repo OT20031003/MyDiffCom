@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # 1. データセットの指定
 # ここを "imagenet" や "ffhq_demo" に書き換えてください
 DATASET = "ffhq_demo"
-#DATASET = "imagenet"
+DATASET = "imagenet"
 
 # 2. 探索を開始するルートディレクトリ
 BASE_DIR = "results_retrans_comparison"
