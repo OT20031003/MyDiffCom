@@ -106,10 +106,48 @@ def calculate_niqe_from_disk(base_path):
     return final_results
 
 if __name__ == "__main__":
-    # 計算対象のディレクトリパスを指定
-    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-4dB/Retrans_rate_0.2_Comparison_both_zeta0.3_seed22"
+    # ==========================================
+    # 設定エリア (Configuration)
+    # ==========================================
+    
+    # 1. データセット ("imagenet" or "ffhq_demo")
+    DATASET = "ffhq_demo"
+    DATASET = "imagenet"
+    # 2. SNR ("00", "-4" などフォルダ名の数値部分)
+    # フォルダ名が 'awgn_-4dB' の場合は "-4" としてください
+    SNR_LABEL = "-4" 
+    
+    # 3. 再送率 (Retrans_rate)
+    RATE = 0.1
+
+    # 4. その他の固定パラメータ (必要に応じて変更)
+    ROOT_DIR = "results_retrans_comparison"
+    METHOD_PATH = "diffcom/djscc_2"
+    ZETA = 0.3
+    SEED = 22
+    
+    # ==========================================
+    # パス構築と実行
+    # ==========================================
+    
+    # フォルダ構成:
+    # results_retrans_comparison/{DATASET}/diffcom/djscc_2/awgn_{SNR}dB/Retrans_rate_{RATE}_Comparison_both_zeta{ZETA}_seed{SEED}
+    
+    snr_folder = f"awgn_{SNR_LABEL}dB"
+    exp_folder = f"Retrans_rate_{RATE}_Comparison_both_zeta{ZETA}_seed{SEED}"
+    
+    target_results_path = os.path.join(
+        ROOT_DIR, 
+        DATASET, 
+        METHOD_PATH, 
+        snr_folder, 
+        exp_folder
+    )
+    
+    print(f"Target Path: {target_results_path}")
     
     if os.path.exists(target_results_path):
         calculate_niqe_from_disk(target_results_path)
     else:
-        print(f"Path not found: {target_results_path}")
+        print("\n[Error] 指定されたパスが存在しません。")
+        print("設定エリアの変数 (DATASET, SNR_LABEL, RATE 等) を確認してください。")

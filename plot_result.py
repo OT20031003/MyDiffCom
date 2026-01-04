@@ -8,16 +8,23 @@ import matplotlib.pyplot as plt
 # 設定エリア
 # ==========================================
 
+# 【追加】 データセットの指定
+# ここを "imagenet" や "ffhq_demo" に書き換えてください
+DATASET = "imagenet" 
+DATASET = "ffhq_demo"
+
 # 1. 探索を開始するルートディレクトリ
-ROOT_DIR = "results_retrans_comparison"
+# results_retrans_comparison の下の DATASET フォルダをルートとします
+BASE_DIR = "results_retrans_comparison"
+ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-6, -4, -2, 0]
-# TARGET_SNRS = None
+TARGET_SNRS = [-6, -4, -2,0]
+#TARGET_SNRS = None
 
 # 【追加】 プロットしたい再送率 (Retrans_rate) のリスト
 # None または [] の場合は、見つかった全てのレートについて個別にプロットを作成します
-TARGET_RATES = [0.1, 0.2]
+TARGET_RATES = [0.1]
 # TARGET_RATES = None
 
 # 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
@@ -73,13 +80,15 @@ METRICS = ["psnr", "lpips", "dists", "msssim"]
 # ==========================================
 
 def load_summary_data_recursive():
+    # ROOT_DIR (results_retrans_comparison/DATASET) 以下を探索
     search_pattern = os.path.join(ROOT_DIR, "**", "SNR*_Comparison_*.json")
+    print(f"Target Dataset: {DATASET}")
     print(f"Searching for files: {search_pattern}")
     
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
-    # 構造を変更: { rate: { snr: { method: metrics } } }
+    # 構造: { rate: { snr: { method: metrics } } }
     data_store = {}
 
     for fpath in files:
@@ -91,10 +100,9 @@ def load_summary_data_recursive():
             continue
         snr = float(match_snr.group(1))
 
-        # 2. Retrans_rateの抽出 (追加)
+        # 2. Retrans_rateの抽出
         match_rate = re.search(r"Retrans_rate_(\d+\.?\d*)", filename)
         if not match_rate:
-            # ファイル名にレートが含まれない場合はスキップ (必要に応じて変更)
             continue
         rate = float(match_rate.group(1))
 
@@ -126,7 +134,7 @@ def load_summary_data_recursive():
 
 def plot_custom_metrics(data_store):
     if not data_store:
-        print("表示対象のデータが見つかりませんでした。パスやファイル名を確認してください。")
+        print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定を確認してください。")
         return
 
     # 見つかったレートごとにグラフを作成
@@ -150,8 +158,8 @@ def plot_custom_metrics(data_store):
         fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
         axes = axes.flatten()
         
-        # タイトルにレートを表示
-        fig.suptitle(f"Comparison Metrics (Retrans Rate: {rate})", fontsize=16)
+        # タイトルにレートとデータセットを表示
+        fig.suptitle(f"Comparison Metrics ({DATASET} - Rate: {rate})", fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             ax = axes[idx]
@@ -181,15 +189,13 @@ def plot_custom_metrics(data_store):
             axes[i].axis('off')
 
         plt.tight_layout()
-        # タイトルと被らないように調整
         plt.subplots_adjust(top=0.92) 
 
-        # ファイル名にレートを含めて保存
-        save_name = f'snr_metrics_comparison_rate_{rate}.png'
+        # ファイル名にデータセットとレートを含めて保存
+        save_name = f'snr_metrics_{DATASET}_rate_{rate}.png'
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         
-        # 連続でプロットする場合は close してメモリ解放
         plt.close(fig) 
 
 if __name__ == "__main__":

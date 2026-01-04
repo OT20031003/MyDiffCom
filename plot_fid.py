@@ -8,17 +8,24 @@ import matplotlib.pyplot as plt
 # 設定エリア
 # ==========================================
 
+# 【追加】 データセットの指定
+# ここを "imagenet" や "ffhq_demo" に書き換えてください
+DATASET = "ffhq_demo"
+DATASET = "imagenet"
+
 # 1. 探索を開始するルートディレクトリ
-ROOT_DIR = "results_retrans_comparison"
+BASE_DIR = "results_retrans_comparison"
+ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. 対象の再送率 (パスに含まれる文字列 "Retrans_rate_X.X" に一致させる)
 #    None の場合は再送率でフィルタリングしません（全ての再送率が混ざる可能性があります）
-TARGET_RETRANS_RATE = 0.2
+TARGET_RETRANS_RATE = 0.1
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 #    例: [-4, -2, 0, 2, 4, 10]
-TARGET_SNRS = None 
 TARGET_SNRS = [-6, -4, -2, 0]
+TARGET_SNRS = None 
+
 # 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 #    前回のコードで生成されるJSONキーに合わせています
 TARGET_METHODS = [
@@ -79,6 +86,7 @@ def load_fid_data_recursive():
     """
     # post_process_fid.json を再帰的に探索
     search_pattern = os.path.join(ROOT_DIR, "**", "post_process_fid.json")
+    print(f"Target Dataset: {DATASET}")
     print(f"Searching for files: {search_pattern}")
     
     files = glob.glob(search_pattern, recursive=True)
@@ -165,17 +173,17 @@ def plot_fid(data_store):
             label = METHOD_LABELS.get(method, method)
             plt.plot(x_vals, y_vals, label=label, **style)
 
-    plt.title(f"FID vs SNR (Retrans Rate: {TARGET_RETRANS_RATE})", fontsize=14, fontweight='bold')
+    plt.title(f"FID vs SNR ({DATASET} - Retrans Rate: {TARGET_RETRANS_RATE})", fontsize=14, fontweight='bold')
     plt.xlabel("SNR (dB)", fontsize=12)
     plt.ylabel("FID Score (Lower is Better)", fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.legend(loc='best', fontsize=10)
     plt.tight_layout()
     
-    save_name = 'fid_vs_snr_comparison.png'
+    save_name = f'fid_vs_snr_{DATASET}_rate_{TARGET_RETRANS_RATE}.png'
     plt.savefig(save_name, dpi=300)
     print(f"グラフを保存しました: {save_name}")
-    plt.show()
+    # plt.show() # 必要に応じてコメントアウトを外してください
 
 if __name__ == "__main__":
     data = load_fid_data_recursive()
