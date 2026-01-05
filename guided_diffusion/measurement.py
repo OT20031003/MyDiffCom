@@ -2,8 +2,6 @@
 Simulate the measurement y = f(x) + n.
 """
 
-# --- モジュールのインポート ---
-# 以下は元コードのまま。実行に影響が出ないよう、内容は変更せずに上に日本語コメントを追加しています。
 from abc import ABC, abstractmethod
 
 import torch.nn as nn
@@ -339,14 +337,16 @@ class DeepJSCC(NonlinearOperator):
                 "cof_gt": cof_gt,
                 "channel_usage": channel_usage}
 
-    def encode(self, data):
+    def encode(self, data, snr_override=None):
         """
         ADJSCC モデルで入力画像を符号化してシンボル列 s を返す。
         - 出力 s は flatten して形状 [B, -1] にして返す。
         - self.s_shape に元の符号化出力形状を保持し、デコード時に使用する。
+        - snr_override: 指定された場合、設定値(self.config.CSNR)の代わりに使用する
         """
         B, C, H, W = data.shape
-        s = self.model.encode(data, given_SNR=self.config.CSNR)
+        target_snr = snr_override if snr_override is not None else self.config.CSNR
+        s = self.model.encode(data, given_SNR=target_snr)
         self.s_shape = s.shape
         # 平坦化して返す
         s = s.reshape(B, -1)
@@ -452,22 +452,25 @@ class NTSCC(NonlinearOperator):
                 "cof_gt": cof_gt,
                 "channel_usage": channel_usage}
 
-    def encode(self, data):
+    def encode(self, data, snr_override=None):
         """
         NTSCC のエンコード:
         - self.compatible によって model.encode の呼び出し方が変わる
         - 戻り値は channel_input（flatten されたシンボル列）, mask, indexes
         - mask は boolean に変換して扱う
         - 初回呼び出し時のみ self.indexes を保存して次回以降に再利用する
+        - snr_override: 指定された場合、設定値(self.config.CSNR)の代わりに使用する
         """
         B, _, _, _ = data.shape
+        target_snr = snr_override if snr_override is not None else self.config.CSNR
+
         # モデルの encode を呼び出す（compatible モードは追加引数あり）
         if self.compatible:
             s_masked, mask, indexes = self.model.encode(data,
                                                         self.indexes,
                                                         eta=self.ntscc_config.eta,
                                                         qp_level=self.ntscc_config.qp_level,
-                                                        snr=self.config.CSNR)
+                                                        snr=target_snr)
         else:
             s_masked, mask, indexes = self.model.encode(data,
                                                         self.indexes)

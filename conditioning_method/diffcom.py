@@ -109,28 +109,77 @@ class ConsistencyLoss(nn.Module):
 
     def forward(self, measurement, x_0_hat, cof, operator, operation_mode):
         x_0_hat = (x_0_hat / 2 + 0.5)  # [-1, 1] -> [0, 1]
-        s = operator.encode(x_0_hat)
-        
-        if operation_mode == 'latent':
-            recon_measurement = {
-                'ofdm_sig': operator.forward(s, cof)
-            }
-        elif operation_mode == 'pixel':
-            recon_measurement = {
-                'x_mse': x_0_hat
-            }
-        elif operation_mode == 'joint':
-            ofdm_sig = operator.forward(s, cof)
-            s_hat = operator.transpose(ofdm_sig, cof)
-            x_confirming = operator.decode(s_hat)
-            recon_measurement = {
-                'ofdm_sig': ofdm_sig,
-                'x_mse': x_confirming
-            }
-        
         loss = {}
-        for key in recon_measurement.keys():
-            loss[key] = self.weight[key] * torch.linalg.norm(measurement[key] - recon_measurement[key])
+
+        # Hybrid-Quality Guidance (HQG) Logic for Phase 2
+        # measurement に retrans_mask がある場合、異なるSNR設定でガイダンスを分離する
+        if 'retrans_mask' in measurement:
+            mask = measurement['retrans_mask']
+            y_low = measurement['ofdm_sig']
+            y_high = measurement['retrans_sig']
+            
+            # 1. Background (Low Quality) Guidance
+            # Phase 1 と同様に現在のCSNRでエンコード
+            s_low = operator.encode(x_0_hat, snr_override=self.config.CSNR)
+            
+            # チャネルシミュレーションを通して比較
+            if operation_mode == 'latent':
+                y_hat_low = operator.forward(s_low, cof=cof)
+                loss_bg = torch.linalg.norm((1 - mask) * (y_low - y_hat_low))
+            elif operation_mode == 'pixel':
+                # Pixel mode の場合、DeepJSCC等ではないため通常の比較
+                loss_bg = torch.linalg.norm((1 - mask) * (measurement['x_mse'] - x_0_hat))
+            else:
+                 y_hat_low = operator.forward(s_low, cof=cof)
+                 loss_bg = torch.linalg.norm((1 - mask) * (y_low - y_hat_low))
+
+            # 2. Retransmission (High Quality) Guidance
+            # 高SNR (20dB) でエンコード
+            high_snr_value = 20.0
+            s_high = operator.encode(x_0_hat, snr_override=high_snr_value)
+            
+            # 高品質比較 (channel simulationを通すが、noiseは付与されない想定)
+            if operation_mode == 'latent':
+                y_hat_high = operator.forward(s_high, cof=cof)
+                loss_fg = torch.linalg.norm(mask * (y_high - y_hat_high))
+            elif operation_mode == 'pixel':
+                loss_fg = 0.0 # Pixel mode does not support dual encoding
+            else:
+                y_hat_high = operator.forward(s_high, cof=cof)
+                loss_fg = torch.linalg.norm(mask * (y_high - y_hat_high))
+
+            # 合算して ofdm_sig の損失とする
+            loss['ofdm_sig'] = self.weight['ofdm_sig'] * (loss_bg + loss_fg)
+
+            if operation_mode == 'joint':
+                 # joint の場合の x_mse ロス等は今回は省略または低SNR側で代表
+                 # 厳密にはここも分離すべきだが、主眼は Latent Guidance
+                 pass
+
+        else:
+            # Phase 1 (Standard DiffCom)
+            s = operator.encode(x_0_hat)
+            
+            if operation_mode == 'latent':
+                recon_measurement = {
+                    'ofdm_sig': operator.forward(s, cof)
+                }
+            elif operation_mode == 'pixel':
+                recon_measurement = {
+                    'x_mse': x_0_hat
+                }
+            elif operation_mode == 'joint':
+                ofdm_sig = operator.forward(s, cof)
+                s_hat = operator.transpose(ofdm_sig, cof)
+                x_confirming = operator.decode(s_hat)
+                recon_measurement = {
+                    'ofdm_sig': ofdm_sig,
+                    'x_mse': x_confirming
+                }
+            
+            for key in recon_measurement.keys():
+                loss[key] = self.weight[key] * torch.linalg.norm(measurement[key] - recon_measurement[key])
+                
         return loss
 
 

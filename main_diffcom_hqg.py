@@ -75,15 +75,14 @@ class ViTSaliencyExtractor:
         return importance_resized
 
 # =========================================================================
-# 提案法: 意味的再送シミュレーション関数 (Signal Replacement -> HQG Preparation)
+# 提案法: 意味的再送シミュレーション関数 (Signal Replacement)
 # =========================================================================
 def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
                                      mode='rate', value=0.1, logger=None, vit_importance_map=None):
     """
-    Hybrid-Quality Guidance (HQG) のための再送データ準備関数。
-    - 不確実性マップに基づいてマスクを作成。
-    - 高SNR(20dB)でエンコードした「高品質信号」を生成。
-    - 信号を混ぜ合わせるのではなく、マスクと高品質信号を measurement に追加して返す。
+    不確かさマップに基づく信号置換 (Signal Replacement)
+    vit_importance_map が指定された場合、P = U * A (Uncertainty * ViT Attention) に基づく再送を行う。
+    Noneの場合は従来のUncertaintyのみ(U)に基づく再送を行う。
     """
     device = input_image.device
     
@@ -97,8 +96,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
     saved_indices = channel_wrapper.shuffled_indices.to(device)
     saved_avg_pwr = channel_wrapper.avg_pwr
     
-    # 2. マスク生成用の理想的な受信信号 (y_clean) の生成 (現在のSNR設定に基づく)
-    # これはあくまで「どこが間違っているか」を判定するために使用（Oracleモード用）
+    # 2. 理想的な受信信号 (y_clean) の生成
     with torch.no_grad():
         s_raw = operator.encode(input_image) 
         B, N_s = s_raw.shape
@@ -116,7 +114,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             
         y_clean = s_shuffled / torch.sqrt(pwr_tensor)
 
-    # 実際の受信信号 (低画質)
+    # 実際の受信信号
     y_dirty = measurement['ofdm_sig']
 
     # 3. 再送マスクの生成 (Pixel -> Latent)
@@ -219,45 +217,27 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
 
     retransmission_ratio = mask_for_y.float().mean().item()
 
-    # 4. Hybrid-Quality Guidance 用の信号生成
-    # 既存の y_dirty (ofdm_sig) はそのまま維持し、混合しない。
-    # 代わりに、高SNR (20dB) でエンコードした信号を生成し、retrans_sig として追加する。
-    
-    high_snr_value = 20.0
-    with torch.no_grad():
-        # 高SNRでエンコード
-        s_high = operator.encode(input_image, snr_override=high_snr_value)
-        
-        # ガイダンスでの比較を容易にするため、チャネルドメインへ変換 (ただしノイズなしで)
-        # operator.forward(s) を呼ぶことで ofdm_sig と同じ形式 (OFDM or AWGN scale) に変換する
-        # cof_est は Phase 1 で得られたものを使用
-        cof_for_forward = measurement.get('cof_est', None)
-        
-        # 再送はノイズレスと仮定 (add_noise=False in forward logic if implemented, or just clean transform)
-        # DeepJSCC wrapperの forward はノイズを付加しない (channel.observe は付加するが forward はしない)
-        # ChannelWrapper の forward は内部で channel.forward(add_noise=False) を呼んでいるので安全
-        y_high = operator.forward(s_high, cof=cof_for_forward)
-    
-    if y_high.shape != y_dirty.shape:
-        y_high = y_high.view(y_dirty.shape)
-
-    # 5. Measurement の更新 (HQG 用のキーを追加)
+    # 4. 観測値の更新
     new_measurement = copy.deepcopy(measurement)
     
-    # 元の ofdm_sig は低画質のまま維持
-    # new_measurement['ofdm_sig'] = y_dirty 
+    if y_clean.shape != y_dirty.shape:
+        y_clean = y_clean.view(y_dirty.shape)
+        
+    y_new = (1 - mask_for_y) * y_dirty + mask_for_y * y_clean
+    new_measurement['ofdm_sig'] = y_new
     
-    # 新しい情報を追加
-    new_measurement['retrans_sig'] = y_high
-    new_measurement['retrans_mask'] = mask_for_y
-    
-    # cof_est はそのまま維持
-    
-    # Note: x_mse (初期復元画像) の更新は行わない。
-    # 拡散モデルの初期値としては Phase 1 の結果を使うか、またはここで s_hat_new からデコードし直す手もあるが、
-    # HQG ではガイダンスが主役なので、Phase 1 の復元結果(x_recon)から Diffusion を継続する形になる。
-    # ここでは計算上の x_mse を更新しても Diffusion 初期値には影響しない (Diffusion は前回の x_recon から再開するため)
-    
+    h_dirty = measurement.get('cof_est', None)
+    if h_dirty is not None:
+         if h_dirty.shape == y_dirty.shape:
+             h_new = (1 - mask_for_y) * h_dirty + mask_for_y * torch.ones_like(h_dirty)
+             new_measurement['cof_est'] = h_new
+
+    with torch.no_grad():
+        cof_for_transpose = new_measurement.get('cof_est', None)
+        s_hat_new = operator.transpose(y_new, cof_for_transpose)
+        x_mse_new = operator.decode(s_hat_new)
+        new_measurement['x_mse'] = x_mse_new
+
     return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial
 
 def parse_args_and_config():
@@ -286,9 +266,15 @@ def parse_args_and_config():
     config.sigma = np.sqrt(1.0 / (2 * 10 ** (config.CSNR / 10)))
 
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
+    
+    # ------------------ [FIXED HERE] ------------------
     config.testsets = os.path.join(config.cwd, 'testsets')
+    # --------------------------------------------------
 
+    # ▼▼▼ 修正箇所: ここで config.results を初期化します ▼▼▼
     config.results = os.path.join(config.cwd, 'results_retrans_comparison')
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
 
@@ -568,7 +554,6 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                             logger.warning("Skipping Semantic mode because ViT map is missing.")
 
                     for v_map_arg, strategy_name in strategies:
-                        # Hybrid-Quality Guidance 用の measurement を取得
                         meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
                             operator, input_image, measurement_phase1, 
                             u_map_tensor, 
@@ -576,11 +561,13 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                             vit_importance_map=v_map_arg
                         )
                         
-                        # Phase 2 では再送による「初期復元画像」の向上はない（Guidanceで治すため）
-                        # そのためJSCCスコアのログは省略するか、Phase1と同じものを出すことになるが、
-                        # ここでは DiffCom の結果に注目するためスキップする。
+                        metrics_jscc_p2 = metric_wrapper(meas_p2['x_mse'].detach(), input_image)
                         
                         base_key = f"{u_mode}_{sub_key}_{strategy_name}"
+                        get_meter(f"{base_key}_jscc").update(metrics_jscc_p2)
+                        
+                        log_msg_jscc = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s} JSCC] {format_metrics(metrics_jscc_p2)}"
+                        logger.info(log_msg_jscc)
 
                         torch.manual_seed(config.seed + idx)
                         # Phase 2 Diffusion
@@ -599,6 +586,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         
                         mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
                         mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
+                        mode_result["results"][sub_key][strategy_name]['jscc'] = {k: float(v) for k, v in metrics_jscc_p2.items()}
                         
                         log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)}"
                         logger.info(log_msg_p2)
@@ -632,6 +620,12 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                      operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value
                  )
                  
+                 metrics_jscc_rnd = metric_wrapper(meas_rnd['x_mse'].detach(), input_image)
+                 get_meter('random_jscc').update(metrics_jscc_rnd)
+                 
+                 log_msg_jscc_rnd = f"    [Random          JSCC] {format_metrics(metrics_jscc_rnd)}"
+                 logger.info(log_msg_jscc_rnd)
+
                  torch.manual_seed(config.seed + idx)
                  x_recon_rnd, _ = run_diffusion_process(
                      config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
