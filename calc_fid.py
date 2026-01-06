@@ -98,11 +98,11 @@ if __name__ == "__main__":
     # ==========================================
     
     # 1. データセット ("imagenet" or "ffhq_demo")
-    DATASET = "imagenet" 
+    DATASET = "ffhq_demo" 
     
     # 2. SNR ("00", "-4" などフォルダ名の数値部分)
     # フォルダ名が 'awgn_00dB' の場合は "00", 'awgn_-4dB' の場合は "-4" としてください
-    SNR_LABEL = "00" 
+    SNR_LABEL = "-6" 
     
     # 3. 再送率 (Retrans_rate)
     RATE = 0.1
