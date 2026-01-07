@@ -17,3 +17,6 @@ FFHQ0-1000
 ffhq-text-images
 configs/diffcom_*.yaml
 *.log
+hg_*.txt
+*.pyc
+*Zone*

@@ -17,7 +17,6 @@ import torchvision
 import yaml
 from tqdm.auto import tqdm
 from scipy.stats import pearsonr
-from transformers import AutoImageProcessor, Dinov2Model
 
 # --- [FID計算用のライブラリ] ---
 try:
@@ -38,41 +37,93 @@ from guided_diffusion.script_util import model_and_diffusion_defaults, create_mo
 from utils.util import Config, MetricWrapper, DictAverageMeter
 from utils import util, utils_logger, utils_model
 
-# --- ViT重要度抽出クラス ---
+# --- JSON保存用カスタムエンコーダー ---
+class NumpyEncoder(json.JSONEncoder):
+    """
+    NumPyのデータ型(float32, float64, ndarray等)を
+    標準のPython型に変換してJSON保存するためのエンコーダー
+    """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+# ---------------------------------------
+
+# --- ViT重要度抽出クラス (DINOv3 based) ---
 class ViTSaliencyExtractor:
-    def __init__(self, model_name="facebook/dinov2-with-registers-small", device="cuda"):
+    def __init__(self, device="cuda"):
         self.device = device
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.model = Dinov2Model.from_pretrained(model_name, output_attentions=True).to(device)
+        
+        # DINOv3 設定 (vit_imp_3.py より)
+        self.checkpoint_url = "https://dinov3.llamameta.net/dinov3_vits16/dinov3_vits16_pretrain_lvd1689m-08c60483.pth?Policy=eyJTdGF0ZW1lbnQiOlt7InVuaXF1ZV9oYXNoIjoibWdldWQwMWZiMzAzZmFxYnl4cW81czBsIiwiUmVzb3VyY2UiOiJodHRwczpcL1wvZGlub3YzLmxsYW1hbWV0YS5uZXRcLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3Njc4NzUwNDF9fX1dfQ__&Signature=gx2Eacr6ZFyXLP37VY0JrtpVQhoQPo3nmJ1yfOh6YjodKtvi8LJiYTP6LZx3iMXzSvp7xzQFAAIuPU5pd%7Ex6LQKKuCBoPIBiDwz97tsfu3d0vj2nIODfOPcCGnQ8s-DMsnT5gDqMdU-PVI-Pl68KFq3981iCu7jXrzGGw5PcpIwQCGIFVc%7EoIQs6g5UmHkpGwYORBTcXDLljGeGP1Eu60xYjHN688W3YsPGXl5f-fpFrmtaOytrerK0pISr2M5gD%7EGiiMxVjhxGNHBIP5DMxeSjaFHncz6Rg6NmZzkNm-fVWjHAsMuG1sC41e7PGf728aZe4HOkwJ37apuLeYXuDhQ__&Key-Pair-Id=K15QRJLYKIFSLZ&Download-Request-ID=1527870811844182"
+        self.repo = "facebookresearch/dinov3"
+        self.model_name = "dinov3_vits16"
+
+        print(f"Loading model {self.model_name} from torch.hub...")
+        try:
+            self.model = torch.hub.load(self.repo, self.model_name, weights=self.checkpoint_url, trust_repo=True)
+        except Exception as e:
+            print(f"Failed to load DINOv3 from Hub: {e}")
+            raise e
+
+        self.model.to(self.device)
         self.model.eval()
+
+        # ImageNet Normalization params
+        self.mean = torch.tensor([0.485, 0.456, 0.406], device=self.device).view(1, 3, 1, 1)
+        self.std = torch.tensor([0.229, 0.224, 0.225], device=self.device).view(1, 3, 1, 1)
 
     @torch.no_grad()
     def get_importance_map(self, images):
         """
+        DINOv3 Feature Similarity Based Saliency
         images: Tensor [B, 3, H, W] (0~1)
         returns: Tensor [B, 1, H, W] (normalized 0~1)
         """
         B, C, H, W = images.shape
-        inputs = self.processor(images=images, return_tensors="pt").to(self.device)
-        outputs = self.model(**inputs)
         
-        attentions = outputs.attentions 
-        last_layer_attn = attentions[-1] 
+        # 1. Resize to 224x224 (Model Input Size)
+        # DINOv3は16の倍数が望ましいため224固定とする
+        images_resized = F.interpolate(images, size=(224, 224), mode='bilinear', align_corners=False)
         
-        num_registers = getattr(self.model.config, "num_registers", 0)
-        cls_attn = last_layer_attn[:, :, 0, 1 + num_registers:]
-        importance = cls_attn.mean(dim=1) 
+        # 2. Normalize (ImageNet mean/std)
+        # imagesは既に0-1の範囲と想定
+        inputs = (images_resized - self.mean) / self.std
         
-        grid_size = int(importance.shape[-1]**0.5)
-        importance = importance.reshape(B, 1, grid_size, grid_size)
+        # 3. Forward Pass
+        # forward_features returns dict with keys "x_norm_clstoken", "x_norm_patchtokens"
+        features_dict = self.model.forward_features(inputs)
         
-        importance_resized = F.interpolate(importance, size=(H, W), mode='bilinear', align_corners=False)
+        cls_token = features_dict["x_norm_clstoken"]       # [B, 384]
+        patch_tokens = features_dict["x_norm_patchtokens"] # [B, N, 384] (N=196 for 224x224)
         
-        i_min = importance_resized.flatten(2).min(2, keepdim=True)[0].unsqueeze(-1)
-        i_max = importance_resized.flatten(2).max(2, keepdim=True)[0].unsqueeze(-1)
-        importance_resized = (importance_resized - i_min) / (i_max - i_min + 1e-8)
+        # 4. Compute Cosine Similarity between [CLS] and Patches
+        # cls: [B, 1, D], patch: [B, N, D] -> sim: [B, N]
+        similarity = F.cosine_similarity(cls_token.unsqueeze(1), patch_tokens, dim=-1)
         
-        return importance_resized
+        # 5. Reshape to Grid
+        num_patches = patch_tokens.shape[1]
+        grid_size = int(np.sqrt(num_patches)) # 14 for 224x224
+        
+        # [B, N] -> [B, 1, Grid, Grid]
+        similarity_map = similarity.reshape(B, 1, grid_size, grid_size)
+        
+        # 6. Resize back to original resolution (H, W)
+        importance_resized = F.interpolate(similarity_map, size=(H, W), mode='bilinear', align_corners=False)
+        
+        # 7. Min-Max Normalize per image in batch
+        # [B, 1, H, W] -> flatten -> min/max over spatial dims
+        flat = importance_resized.flatten(2) # [B, 1, H*W]
+        i_min = flat.min(2, keepdim=True)[0].unsqueeze(-1) # [B, 1, 1, 1]
+        i_max = flat.max(2, keepdim=True)[0].unsqueeze(-1) # [B, 1, 1, 1]
+        
+        importance_normalized = (importance_resized - i_min) / (i_max - i_min + 1e-8)
+        
+        return importance_normalized
 
 # =========================================================================
 # 提案法: 意味的再送シミュレーション関数 (Signal Replacement -> HQG Preparation)
@@ -414,7 +465,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
     if config.retrans_basis in ['semantic', 'both']:
         try:
             vit_extractor = ViTSaliencyExtractor(device=device)
-            logger.info("[ViT] Saliency Extractor Initialized Successfully.")
+            logger.info("[ViT] Saliency Extractor Initialized Successfully (DINOv3).")
         except Exception as e:
             logger.warning(f"[ViT] Initialization Failed: {e}. Falling back to standard uncertainty if possible.")
     else:
@@ -555,6 +606,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 else:
                     corr, _ = pearsonr(u_flat_val, e_flat)
                 
+                # ここでNumPy型が代入される可能性があるが、NumpyEncoderで処理する
                 mode_result["correlation"][sub_key] = corr
 
                 if config.retrans_mode != 'oracle':
@@ -695,7 +747,8 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
         if len(all_results_history) > 0:
             with open(json_path, 'w') as f:
-                json.dump(output_data, f, indent=4)
+                # 修正: NumpyEncoderを指定して保存
+                json.dump(output_data, f, indent=4, cls=NumpyEncoder)
             logger.info(f"Saved {len(all_results_history)} results to {json_path}")
         
         # 最終ログ表示
