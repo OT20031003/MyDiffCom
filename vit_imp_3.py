@@ -113,7 +113,7 @@ def visualize_dinov3_similarity(image_path):
 
 if __name__ == "__main__":
     # ここに画像パスを指定してください
-    path = "testsets/ffhq_demo/69901.png"
+    path = "testsets/ffhq_demo/69903.png"
     #path = "testsets/imagenet/ILSVRC2012_subset_00000007.png"
     visualize_dinov3_similarity(path)
     print("checkpoint_urlを設定し、visualize_dinov3_similarity(path) を呼び出してください。")

@@ -138,5 +138,6 @@ def visualize_attention_heatmap(image_path):
     # plt.show()
 
 if __name__ == "__main__":
-    path = "testsets/ffhq_demo/69901.png"
+    path = "testsets/ffhq_demo/69903.png"
+    path = "testsets/imagenet/ILSVRC2012_subset_00000001.png"
     visualize_attention_heatmap(path)
