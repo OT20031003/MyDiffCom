@@ -4,29 +4,38 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(-4 -2 0)
+SNRS=(-8 -6 -4 -7 -5 -3 -2 0)
 
-# ベースとなるテンプレート設定ファイル (configsフォルダ内にあると仮定)
+# ベースとなるテンプレート設定ファイル
 TEMPLATE_YAML="configs/diffcom_0.yaml"
 
 # Pythonスクリプト名
 PYTHON_SCRIPT="main_diffcom_retransmission.py"
 
-# --- 再送設定 ---
+# --- 再送設定 (Retransmission Settings) ---
 # mode options: 'rate', 'threshold', 'oracle'
 RETRANS_MODE="rate"
-# ★ここを変更: 複数の値をリスト化しました (0.1を実行後、0.2を実行)
-RETRANS_VALUES=(0.1)
+
+# 再送率 (リスト化してループ可能)
+RETRANS_VALUES=(0.1 0.2 0.99)
+
 # basis options: 'uncertainty', 'semantic', 'both'
 RETRANS_BASIS="both"
+
+# --- HPRS (Hybrid-Priority) パラメータ ---
+# 候補領域の拡張係数 (デフォルト: 2.0)
+EXPANSION_FACTOR=2.0
+# Semantic Priority (ViT) に割り当てる予算の割合 (0.0 ~ 1.0, デフォルト: 0.3)
+RETRANS_GAMMA=0.3
 
 
 echo "========================================================"
 echo "Start Experiment Batch"
 echo "Target SNRs: ${SNRS[*]}"
 echo "Target Retrans Values: ${RETRANS_VALUES[*]}"
-echo "Base Template: $TEMPLATE_YAML"
 echo "Retransmission Basis: $RETRANS_BASIS"
+echo "Expansion Factor: $EXPANSION_FACTOR"
+echo "Gamma (Semantic Ratio): $RETRANS_GAMMA"
 echo "========================================================"
 
 # configsディレクトリが存在しない場合は作成
@@ -35,7 +44,7 @@ if [ ! -d "configs" ]; then
     mkdir -p configs
 fi
 
-# ★外側のループ: Retransmission Value (0.1 -> 0.2)
+# 外側のループ: Retransmission Value
 for R_VAL in "${RETRANS_VALUES[@]}"; do
     echo ""
     echo "########################################################"
@@ -52,7 +61,7 @@ for R_VAL in "${RETRANS_VALUES[@]}"; do
         echo "Processing SNR = $SNR (Retrans Value = $R_VAL)"
         echo "--------------------------------------------------------"
 
-        # 設定ファイルが存在しない場合、テンプレートから自動生成する
+        # 設定ファイル生成ロジック (テンプレート利用)
         if [ ! -f "$CONFIG_FILE" ]; then
             if [ ! -f "$TEMPLATE_YAML" ]; then
                 echo "Error: Template file '$TEMPLATE_YAML' not found!"
@@ -60,31 +69,28 @@ for R_VAL in "${RETRANS_VALUES[@]}"; do
             fi
 
             echo "Config file '$CONFIG_FILE' not found. Generating from template..."
-            
             cp "$TEMPLATE_YAML" "$CONFIG_FILE"
             
-            # CSNRの値を書き換える (OS分岐: macOS vs Linux)
+            # CSNRの書き換え (macOS/Linux対応)
             if [[ "$OSTYPE" == "darwin"* ]]; then
-                # macOS (BSD sed)
                 sed -i '' "s/CSNR: .*/CSNR: $SNR/" "$CONFIG_FILE"
             else
-                # Linux (GNU sed)
                 sed -i "s/CSNR: .*/CSNR: $SNR/" "$CONFIG_FILE"
             fi
-            
             echo "Generated '$CONFIG_FILE' with CSNR: $SNR"
         else
             echo "Using existing config file: '$CONFIG_FILE'"
         fi
 
-        # Pythonスクリプトの実行
-        # --retrans_value にループ中の $R_VAL を渡します
+        # Pythonスクリプトの実行 (新しい引数を追加)
         echo "Running python script..."
         python "$PYTHON_SCRIPT" \
             --opt "$CONFIG_FILE" \
             --retrans_mode "$RETRANS_MODE" \
             --retrans_value "$R_VAL" \
-            --retrans_basis "$RETRANS_BASIS"
+            --retrans_basis "$RETRANS_BASIS" \
+            --expansion_factor "$EXPANSION_FACTOR" \
+            --retrans_gamma "$RETRANS_GAMMA"
 
         echo "Finished SNR = $SNR at Retrans Value = $R_VAL"
     done

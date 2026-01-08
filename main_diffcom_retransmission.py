@@ -142,11 +142,16 @@ class ViTSaliencyExtractor:
         
         return importance_normalized
 
-# =========================================================================
-# 提案法: 意味的再送シミュレーション関数
-# =========================================================================
 def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
-                                     mode='rate', value=0.1, logger=None, vit_importance_map=None):
+                                     mode='rate', value=0.1, logger=None, vit_importance_map=None,
+                                     expansion_factor=2.0, gamma=0.6):
+    """
+    Hybrid-Priority Retransmission Simulation (HPRS)
+    
+    Args:
+        gamma (float): Ratio of budget for Semantic Priority (0.0 ~ 1.0). 
+                       The rest (1.0 - gamma) is used for Random Structural Sampling.
+    """
     device = input_image.device
     channel_wrapper = operator.channel
     
@@ -176,7 +181,19 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
 
     y_dirty = measurement['ofdm_sig']
     mask_vis = None
+    mask_lat_spatial = None
     
+    # 潜在表現の空間サイズ計算
+    if hasattr(operator, 's_shape'):
+        latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
+        C_feat = operator.s_shape[1]
+    else:
+        latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
+        C_feat = s_raw.shape[1] // (latent_H * latent_W)
+
+    # ---------------------------------------------------------------------
+    # Mode 1: Oracle (正解との差分に基づく理想的な再送)
+    # ---------------------------------------------------------------------
     if mode == 'oracle':
         if y_dirty.shape != y_clean.shape:
              y_clean = y_clean.view(y_dirty.shape)
@@ -189,14 +206,10 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_for_y = (diff >= thresh).float()
         mask_vis = torch.zeros(B, 1, input_image.shape[2], input_image.shape[3]).to(device)
 
+    # ---------------------------------------------------------------------
+    # Mode 2: Random (ランダム再送 - ベースライン)
+    # ---------------------------------------------------------------------
     elif mode == 'random':
-        if hasattr(operator, 's_shape'):
-            latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
-            C_feat = operator.s_shape[1]
-        else:
-            latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
-            C_feat = s_raw.shape[1] // (latent_H * latent_W)
-        
         u_map_lat = torch.rand(B, 1, latent_H, latent_W, device=device)
         u_flat = u_map_lat.view(B, -1)
         k = int(u_flat.shape[1] * value)
@@ -221,36 +234,97 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
 
         mask_shuffled = torch.gather(mask_flat, 1, indices_expanded)
         mask_for_y = mask_shuffled.view(y_dirty.shape)
-        
+
+    # ---------------------------------------------------------------------
+    # Mode 3: Hybrid-Priority Retransmission (HPRS) - 提案法
+    # ---------------------------------------------------------------------
     else:
         if uncertainty_map is None:
             return measurement, 0.0, None, None
 
-        u_map = uncertainty_map.to(device) 
-
-        if vit_importance_map is not None:
-            priority_map = u_map * vit_importance_map.to(device)
-            u_map = priority_map
-        
-        if hasattr(operator, 's_shape'):
-            latent_H, latent_W = operator.s_shape[2], operator.s_shape[3]
-            C_feat = operator.s_shape[1]
-        else:
-            latent_H, latent_W = input_image.shape[2] // 16, input_image.shape[3] // 16
-            C_feat = s_raw.shape[1] // (latent_H * latent_W)
-
+        u_map = uncertainty_map.to(device)
         u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
         
         if mode == 'rate':
+            # === Step 1 (Rx): 候補マスク生成 (Candidate Generation) ===
             u_flat = u_map_lat.view(B, -1)
-            k = int(u_flat.shape[1] * value)
-            if k < 1: k = 1
-            top_val, _ = torch.topk(u_flat, k, dim=1)
-            thresh = top_val[:, -1].view(B, 1, 1, 1)
-            mask_lat_spatial = (u_map_lat >= thresh).float()
-        else: 
+            total_pixels = u_flat.shape[1]
+            
+            # 再送総予算 (Total Budget)
+            k_total = int(total_pixels * value)
+            if k_total < 1: k_total = 1
+            
+            # フィードバック候補数 (expansion_factor倍)
+            k_cand = int(total_pixels * value * expansion_factor)
+            k_cand = min(k_cand, total_pixels)
+            if k_cand < k_total: k_cand = k_total  # 予算より候補が少ない場合は合わせる
+
+            # 不確実性が高い順に候補インデックスを取得
+            # cand_indices: [B, k_cand]
+            _, cand_indices = torch.topk(u_flat, k_cand, dim=1)
+
+            # === Step 2 (Tx): 予算分割 (Budget Split) ===
+            k_sem = int(k_total * gamma)
+            k_struct = k_total - k_sem
+            
+            # ViTマップの準備 (Semantic Guide)
+            if vit_importance_map is not None:
+                vit_lat = F.adaptive_avg_pool2d(vit_importance_map.to(device), output_size=(latent_H, latent_W))
+                vit_flat = vit_lat.view(B, -1)
+            else:
+                # ViTがない場合は、不確実性マップそのものを重要度として代用
+                vit_flat = u_flat
+
+            # === Step 3 (Selection): 候補内での選別 ===
+            # 候補領域内の「意味的重要性 (ViT)」を取得
+            # gathered_vit: [B, k_cand]
+            gathered_vit = torch.gather(vit_flat, 1, cand_indices)
+
+            # --- Step 3-A: Semantic枠 (上位 k_sem) ---
+            # 候補の中でViT値が高い順にソート
+            # sort_idx_local: [B, k_cand] (0 ~ k_cand-1 の範囲)
+            _, sort_idx_local = torch.sort(gathered_vit, descending=True, dim=1)
+            
+            # Semantic枠のローカルインデックス
+            idx_sem_local = sort_idx_local[:, :k_sem]
+
+            # --- Step 3-B: Structural枠 (残りからランダム k_struct) ---
+            if k_struct > 0:
+                # Semantic枠で選ばれなかった残りのインデックス群
+                idx_remain_local = sort_idx_local[:, k_sem:]
+                
+                # 残り候補数
+                n_remain = idx_remain_local.shape[1]
+                
+                if n_remain > 0:
+                    # ランダム順列を生成して先頭 k_struct 個を取得
+                    rand_perm = torch.rand(B, n_remain, device=device).argsort(dim=1)
+                    idx_rand_local = torch.gather(idx_remain_local, 1, rand_perm[:, :k_struct])
+                    
+                    # 結合: Semantic枠 + Random枠
+                    final_local_indices = torch.cat([idx_sem_local, idx_rand_local], dim=1)
+                else:
+                    # まれなケース: 候補数 == 予算数 の場合など
+                    final_local_indices = idx_sem_local
+            else:
+                final_local_indices = idx_sem_local
+
+            # === Step 4: グローバルインデックスへのマッピング ===
+            # local (0~k_cand) -> global (0~TotalPixels)
+            final_global_indices = torch.gather(cand_indices, 1, final_local_indices)
+
+            # マスクの作成
+            mask_flat_spatial = torch.zeros_like(u_flat)
+            # scatterで1を立てる
+            mask_flat_spatial.scatter_(1, final_global_indices, 1.0)
+            
+            mask_lat_spatial = mask_flat_spatial.view(B, 1, latent_H, latent_W)
+
+        else:
+            # 従来のThresholdモード (フォールバック)
             mask_lat_spatial = (u_map_lat > value).float()
 
+        # マスクの整形と適用
         mask_vis = F.interpolate(mask_lat_spatial, size=input_image.shape[-2:], mode='nearest')
         mask_expanded = mask_lat_spatial.repeat(1, C_feat, 1, 1)
         mask_flat = mask_expanded.view(B, -1)
@@ -290,6 +364,11 @@ def parse_args_and_config():
     parser.add_argument("--opt", type=str, default='./configs/diffcom.yaml', help="Path to option YMAL file.")
     parser.add_argument("--retrans_mode", type=str, default='rate', choices=['rate', 'threshold', 'oracle'])
     parser.add_argument("--retrans_value", type=float, default=0.1)
+    parser.add_argument("--expansion_factor", type=float, default=2.0, help="Expansion factor for candidate mask generation.")
+    # --- [HPRS用に追加] ---
+    parser.add_argument("--retrans_gamma", type=float, default=0.3, 
+                        help="Ratio of budget allocated to semantic priority. Remaining is used for random structural sampling.")
+    # ----------------------
     parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
                         help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
 
@@ -301,6 +380,8 @@ def parse_args_and_config():
     
     config.retrans_mode = args.retrans_mode
     config.retrans_value = args.retrans_value
+    config.expansion_factor = args.expansion_factor
+    config.retrans_gamma = args.retrans_gamma  # Configに追加
     config.retrans_basis = args.retrans_basis
     
     cond_config = Config(config.getattr('diffcom_series'))
@@ -326,7 +407,8 @@ def parse_args_and_config():
     u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
     
     config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
-    config.result_name += f'_zeta{conditioning_method.zeta}_seed{config.seed}'
+    # ファイル名にgammaも含めて実験条件を明記
+    config.result_name += f'_exp{config.expansion_factor}_gam{config.retrans_gamma}_zeta{conditioning_method.zeta}_seed{config.seed}'
     
     config.model_path = os.path.join(config.model_zoo, config.model_name + '.pt')
     config.testsets_path = os.path.join(config.testsets, config.testset_name)
@@ -408,7 +490,7 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
     return x_recon.detach(), final_uncertainty_maps
 
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
-    logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}')
+    logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}, ExpFactor: {config.expansion_factor}')
     logger.info(f'【Config】: Retransmission Basis: {config.retrans_basis} (Using ViT: {config.retrans_basis in ["semantic", "both"]})')
     
     config_modes = config.diffcom_series['uncertainty_mode']
@@ -584,11 +666,13 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                             logger.warning("Skipping Semantic mode because ViT map is missing.")
 
                     for v_map_arg, strategy_name in strategies:
+                        # 候補提示型再送シミュレーション (expansion_factorを渡す)
                         meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
                             operator, input_image, measurement_phase1, 
                             u_map_tensor, 
                             mode=config.retrans_mode, value=config.retrans_value,
-                            vit_importance_map=v_map_arg
+                            vit_importance_map=v_map_arg,
+                            expansion_factor=config.expansion_factor
                         )
                         
                         base_key = f"{u_mode}_{sub_key}_{strategy_name}"
@@ -635,7 +719,8 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             # Random Baseline
             if config.retrans_mode != 'oracle':
                  meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
-                     operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value
+                     operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value,
+                     expansion_factor=config.expansion_factor
                  )
                  
                  torch.manual_seed(config.seed + idx)

@@ -8,29 +8,29 @@ import matplotlib.pyplot as plt
 # 設定エリア
 # ==========================================
 
-# 【追加】 データセットの指定
-# ここを "imagenet" や "ffhq_demo" に書き換えてください
-DATASET = "imagenet" 
-DATASET = "ffhq_demo"
+# 1. データセットとディレクトリ設定
+# 例: results_retrans_comparison\ffhq_demo\...
+DATASET = "ffhq_demo" 
+# DATASET = "imagenet"
 
-# 1. 探索を開始するルートディレクトリ
-# results_retrans_comparison の下の DATASET フォルダをルートとします
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-6, -4, -2,0]
-#TARGET_SNRS = None
+# 例: [-7, -4, -1, 2] など。メインスクリプトの出力に合わせて調整してください。
+TARGET_SNRS = [-8, -7, -6, -5, -4] 
+# TARGET_SNRS = [-7, -4, -1]
 
-# 【追加】 プロットしたい再送率 (Retrans_rate) のリスト
+# 3. プロットしたい再送率 (Retrans_rate) のリスト
 # None または [] の場合は、見つかった全てのレートについて個別にプロットを作成します
 TARGET_RATES = [0.1]
-# TARGET_RATES = None
 
-# 3. プロットしたい手法のリスト (JSONのキーに完全一致させる)
+# 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
+# main_diffcom_retransmission.py が出力するキーに対応
 TARGET_METHODS = [
     #"jscc_init", 
     #"phase1_recon", 
+    "random",
     
     # Temporal (時間的分散) 系
     "temporal_raw_Unc",
@@ -39,51 +39,51 @@ TARGET_METHODS = [
     # Perturbation (摂動分散) 系
     "perturbation_raw_Unc",
     "perturbation_raw_Sem",
-    
-    # ランダムベースライン
-    "random"
 ]
 
-# 4. 凡例の表示名マッピング
+# 5. 凡例の表示名マッピング
 METHOD_LABELS = {
     "jscc_init":            "JSCC (Initial)",
     "phase1_recon":         "Phase 1 Recon",
+    "random":               "Random Baseline",
     
     "temporal_raw_Unc":     "Temporal (Unc)",
     "temporal_raw_Sem":     "Temporal (Sem)",
     
     "perturbation_raw_Unc": "Perturbation (Unc)",
     "perturbation_raw_Sem": "Perturbation (Sem)",
-    
-    "random":               "Random Baseline",
 }
 
-# 5. スタイル設定
+# 6. スタイル設定 (色、線種、マーカー)
 STYLE_CONFIG = {
-    "jscc_init":      {"color": "black", "linestyle": ":",  "marker": "x"}, 
-    "phase1_recon":   {"color": "blue",  "linestyle": "-",  "marker": "o"}, 
-    
+    "jscc_init":            {"color": "black", "linestyle": ":",  "marker": "x"}, 
+    "phase1_recon":         {"color": "blue",  "linestyle": "-",  "marker": "o"}, 
+    "random":               {"color": "gray",  "linestyle": "-.", "marker": "d"}, 
+
     "temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"}, 
     "temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"}, 
     
     "perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"}, 
     "perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"}, 
-    
-    "random":         {"color": "gray",  "linestyle": "-.", "marker": "d"}, 
 }
 
-# 6. プロット対象の指標
-METRICS = ["psnr", "lpips", "dists", "msssim"]
+# 7. プロット対象の指標
+METRICS = ["psnr", "lpips", "dists", "msssim", "fid"]
 
 # ==========================================
 # 処理ロジック
 # ==========================================
 
 def load_summary_data_recursive():
-    # ROOT_DIR (results_retrans_comparison/DATASET) 以下を探索
-    search_pattern = os.path.join(ROOT_DIR, "**", "SNR*_Comparison_*.json")
+    """
+    ディレクトリを再帰的に探索し、JSONデータを読み込む
+    ファイル名形式: SNR-7_Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22.json
+    """
+    # ROOT_DIR 以下を探索
+    search_pattern = os.path.join(ROOT_DIR, "**", "SNR*_Retrans_*.json")
     print(f"Target Dataset: {DATASET}")
-    print(f"Searching for files: {search_pattern}")
+    print(f"Root Directory: {ROOT_DIR}")
+    print(f"Search Pattern: {search_pattern}")
     
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
@@ -91,18 +91,26 @@ def load_summary_data_recursive():
     # 構造: { rate: { snr: { method: metrics } } }
     data_store = {}
 
+    # 正規表現: 
+    # SNR: 負の数や小数に対応 (-7, -1.5, 10)
+    # Rate: 小数に対応 (0.1, 0.05)
+    regex_snr = re.compile(r"SNR(-?\d+(?:\.\d+)?)")
+    regex_rate = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)")
+
     for fpath in files:
         filename = os.path.basename(fpath)
         
         # 1. SNRの抽出
-        match_snr = re.search(r"SNR(-?\d+\.?\d*)", filename)
+        match_snr = regex_snr.search(filename)
         if not match_snr:
+            # print(f"Skipping (No SNR found): {filename}")
             continue
         snr = float(match_snr.group(1))
 
         # 2. Retrans_rateの抽出
-        match_rate = re.search(r"Retrans_rate_(\d+\.?\d*)", filename)
+        match_rate = regex_rate.search(filename)
         if not match_rate:
+            # print(f"Skipping (No Rate found): {filename}")
             continue
         rate = float(match_rate.group(1))
 
@@ -124,9 +132,11 @@ def load_summary_data_recursive():
             if snr not in data_store[rate]:
                 data_store[rate][snr] = {}
 
+            # 対象メソッドのデータを格納
             for method in TARGET_METHODS:
                 if method in summary:
                     data_store[rate][snr][method] = summary[method]
+                    
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
@@ -150,30 +160,37 @@ def plot_custom_metrics(data_store):
         if not snr_list:
             print(f"Rate {rate} に有効なSNRデータがありません。スキップします。")
             continue
+        
+        print(f"  SNRs found: {snr_list}")
 
         # レイアウト設定
         num_metrics = len(METRICS)
         cols = 2
         rows = (num_metrics + cols - 1) // cols
         fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
-        axes = axes.flatten()
+        axes = axes.flatten() if num_metrics > 1 else [axes]
         
         # タイトルにレートとデータセットを表示
         fig.suptitle(f"Comparison Metrics ({DATASET} - Rate: {rate})", fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             ax = axes[idx]
+            has_data = False
+            
             for method in TARGET_METHODS:
                 x_vals = []
                 y_vals = []
                 for snr in snr_list:
                     if method in current_data[snr] and metric in current_data[snr][method]:
                         val = current_data[snr][method][metric]
-                        if val is not None:
+                        
+                        # 数値以外（エラー文字列など）は除外
+                        if isinstance(val, (int, float)):
                             x_vals.append(snr)
                             y_vals.append(val)
                 
                 if x_vals:
+                    has_data = True
                     style = STYLE_CONFIG.get(method, {})
                     label = METHOD_LABELS.get(method, method)
                     ax.plot(x_vals, y_vals, label=label, **style)
@@ -182,7 +199,8 @@ def plot_custom_metrics(data_store):
             ax.set_xlabel("SNR (dB)")
             ax.set_ylabel(metric)
             ax.grid(True, linestyle='--', alpha=0.6)
-            ax.legend(loc='best', fontsize=9)
+            if has_data:
+                ax.legend(loc='best', fontsize=9)
 
         # 余った領域を非表示
         for i in range(idx + 1, len(axes)):
