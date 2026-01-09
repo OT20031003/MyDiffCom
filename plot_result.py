@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 # 例: results_retrans_comparison\ffhq_demo\...
 DATASET = "ffhq_demo" 
-# DATASET = "imagenet"
+DATASET = "imagenet"
 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
@@ -19,7 +19,7 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 # 例: [-7, -4, -1, 2] など。メインスクリプトの出力に合わせて調整してください。
 TARGET_SNRS = [-8, -7, -6, -5, -4] 
-# TARGET_SNRS = [-7, -4, -1]
+TARGET_SNRS = [-8, -7,-6,-4]
 
 # 3. プロットしたい再送率 (Retrans_rate) のリスト
 # None または [] の場合は、見つかった全てのレートについて個別にプロットを作成します
@@ -33,8 +33,8 @@ TARGET_METHODS = [
     "random",
     
     # Temporal (時間的分散) 系
-    "temporal_raw_Unc",
-    "temporal_raw_Sem",
+    # "temporal_raw_Unc",
+    # "temporal_raw_Sem",
     
     # Perturbation (摂動分散) 系
     "perturbation_raw_Unc",
@@ -68,8 +68,8 @@ STYLE_CONFIG = {
 }
 
 # 7. プロット対象の指標
-METRICS = ["psnr", "lpips", "dists", "msssim", "fid"]
-
+# METRICS = ["psnr", "lpips", "dists", "msssim", "fid"]
+METRICS = ["psnr", "lpips", "dists",  "fid"]
 # ==========================================
 # 処理ロジック
 # ==========================================

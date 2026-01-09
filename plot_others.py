@@ -9,15 +9,15 @@ import matplotlib.pyplot as plt
 # ==========================================
 
 # 1. データセットとディレクトリ設定
-DATASET = "ffhq_demo" 
+DATASET = "imagenet" 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
-# 2. プロット対象のファイル名
-TARGET_FILENAME = "post_process_id_loss.json"
+# 2. プロット対象のファイル名 (calc_others.py の出力)
+TARGET_FILENAME = "semantic_metrics_results.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-8, -7, -6, -5, -4] 
+TARGET_SNRS = [-8, -7, -6, -5, -4]
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
@@ -28,8 +28,8 @@ TARGET_KEYS = [
     #"2_Phase1_Recon",
     "3_P2_Random",
     
-    #"3_P2_temporal_raw_Unc",
-    #"3_P2_temporal_raw_Sem",
+    # "3_P2_temporal_raw_Unc",
+    # "3_P2_temporal_raw_Sem",
     
     "3_P2_perturbation_raw_Unc",
     "3_P2_perturbation_raw_Sem",
@@ -61,16 +61,33 @@ STYLE_CONFIG = {
     "3_P2_perturbation_raw_Sem":{"color": "red",   "linestyle": "--", "marker": "D"}, 
 }
 
-# 8. プロット対象の指標 (JSON内のキー)
-METRICS = ["id_loss"]
+# 8. プロット対象の指標設定
+# calc_others.py の出力キー ("accuracy", "resnet_confidence", "clip_score") に対応
+METRICS_CONFIG = {
+    "accuracy": {
+        "title": "Classification Consistency (Accuracy)",
+        "ylabel": "Accuracy (0.0 - 1.0)",
+        "ylim": (0.0, 1.05)
+    },
+    "resnet_confidence": {
+        "title": "ResNet Confidence (Prob on GT Class)",
+        "ylabel": "Probability",
+        "ylim": (0.0, 1.05)
+    },
+    "clip_score": {
+        "title": "CLIP Semantic Score",
+        "ylabel": "CLIP Logits",
+        "ylim": None # CLIPスコアは範囲が広いため自動調整
+    }
+}
 
 # ==========================================
 # 処理ロジック
 # ==========================================
 
-def load_id_loss_data_recursive():
+def load_metrics_data_recursive():
     """
-    ディレクトリを再帰的に探索し、TARGET_FILENAME (post_process_id_loss.json) を読み込む
+    ディレクトリを再帰的に探索し、TARGET_FILENAME (semantic_metrics_results.json) を読み込む
     パスから SNR (awgn_-6dB) と Retrans_rate (Retrans_rate_0.1) を抽出する
     """
     search_pattern = os.path.join(ROOT_DIR, "**", TARGET_FILENAME)
@@ -112,6 +129,7 @@ def load_id_loss_data_recursive():
             if snr not in data_store[rate]:
                 data_store[rate][snr] = {}
 
+            # JSON構造: { "MethodName": { "accuracy": val, ... }, ... }
             for key_method in TARGET_KEYS:
                 if key_method in content:
                     data_store[rate][snr][key_method] = content[key_method]
@@ -121,12 +139,13 @@ def load_id_loss_data_recursive():
             
     return data_store
 
-def plot_id_metrics(data_store):
+def plot_other_metrics(data_store):
     if not data_store:
         print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定を確認してください。")
         return
 
     rates = sorted(data_store.keys())
+    metrics_list = list(METRICS_CONFIG.keys())
     
     for rate in rates:
         print(f"--- Plotting for Retrans Rate: {rate} ---")
@@ -140,36 +159,30 @@ def plot_id_metrics(data_store):
         
         print(f"  SNRs found: {snr_list}")
 
-        # === 修正箇所: レイアウト設定 ===
-        num_metrics = len(METRICS)
+        # === レイアウト設定 ===
+        num_metrics = len(metrics_list)
         
-        if num_metrics == 1:
-            # 指標が1つの場合は 1x1 で大きく表示
-            cols = 1
-            rows = 1
-            figsize = (10, 8) 
-        else:
-            # 複数の場合は 2列 で表示
-            cols = 2
-            rows = (num_metrics + cols - 1) // cols
-            figsize = (14, 6 * rows)
+        # 3つの指標があるので 2x2グリッド推奨 (1つ余白)
+        cols = 2
+        rows = (num_metrics + cols - 1) // cols
+        figsize = (14, 6 * rows)
         
         # 図の生成
         fig, axes = plt.subplots(rows, cols, figsize=figsize)
         
-        # axes が配列(numpy.ndarray)であればフラット化し、単体であればリストに入れる
         if hasattr(axes, "flatten"):
             axes = axes.flatten()
         else:
             axes = [axes]
         
-        fig.suptitle(f"Identity Preservation Metrics ({DATASET} - Rate: {rate})", fontsize=16)
+        fig.suptitle(f"Semantic Metrics Analysis ({DATASET} - Rate: {rate})", fontsize=16)
 
-        for idx, metric in enumerate(METRICS):
+        for idx, metric_key in enumerate(metrics_list):
             if idx >= len(axes):
                 break
                 
             ax = axes[idx]
+            config = METRICS_CONFIG[metric_key]
             has_data = False
             
             for method in TARGET_KEYS:
@@ -177,8 +190,9 @@ def plot_id_metrics(data_store):
                 y_vals = []
                 
                 for snr in snr_list:
-                    if method in current_data[snr] and metric in current_data[snr][method]:
-                        val = current_data[snr][method][metric]
+                    # データ構造: data_store[rate][snr][method][metric_key]
+                    if method in current_data[snr] and metric_key in current_data[snr][method]:
+                        val = current_data[snr][method][metric_key]
                         if isinstance(val, (int, float)):
                             x_vals.append(snr)
                             y_vals.append(val)
@@ -190,29 +204,33 @@ def plot_id_metrics(data_store):
                     ax.plot(x_vals, y_vals, label=label, **style)
 
             # グラフ装飾
-            ax.set_title(metric.replace("_", " ").title(), fontsize=14, fontweight='bold')
+            ax.set_title(config["title"], fontsize=14, fontweight='bold')
             ax.set_xlabel("SNR (dB)")
-            ax.set_ylabel(metric)
+            ax.set_ylabel(config["ylabel"])
             ax.grid(True, linestyle='--', alpha=0.6)
+            
+            # Y軸範囲の設定 (Noneの場合は自動)
+            if config["ylim"]:
+                ax.set_ylim(config["ylim"])
             
             if has_data:
                 ax.legend(loc='best', fontsize=9)
             else:
                 ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
 
-        # 余った領域を非表示（複数プロット時に奇数個だった場合など）
+        # 余った領域を非表示
         for i in range(idx + 1, len(axes)):
             axes[i].axis('off')
 
         plt.tight_layout()
-        plt.subplots_adjust(top=0.92) # タイトル用スペース確保
+        plt.subplots_adjust(top=0.92)
 
-        save_name = f'id_metrics_{DATASET}_rate_{rate}.png'
+        save_name = f'semantic_metrics_{DATASET}_rate_{rate}.png'
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         
         plt.close(fig) 
 
 if __name__ == "__main__":
-    data = load_id_loss_data_recursive()
-    plot_id_metrics(data)
+    data = load_metrics_data_recursive()
+    plot_other_metrics(data)

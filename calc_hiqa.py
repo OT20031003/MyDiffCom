@@ -117,7 +117,7 @@ if __name__ == "__main__":
     
     # 2. SNR ("00", "-4" などフォルダ名の数値部分)
     # フォルダ名が 'awgn_-4dB' の場合は "-4" としてください
-    SNR_LABEL = "-4" 
+    SNR_LABEL = "-7" 
     
     # 3. 再送率 (Retrans_rate)
     RATE = 0.1

@@ -9,15 +9,15 @@ import matplotlib.pyplot as plt
 # ==========================================
 
 # 1. データセットとディレクトリ設定
-DATASET = "ffhq_demo" 
+DATASET = "imagenet" 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
-# 2. プロット対象のファイル名
-TARGET_FILENAME = "post_process_id_loss.json"
+# 2. プロット対象のファイル名 (Semantic Similarity用)
+TARGET_FILENAME = "post_process_dino_sim.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-8, -7, -6, -5, -4] 
+TARGET_SNRS = [-8,  -7,-6,-5, -4] 
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
@@ -28,8 +28,8 @@ TARGET_KEYS = [
     #"2_Phase1_Recon",
     "3_P2_Random",
     
-    #"3_P2_temporal_raw_Unc",
-    #"3_P2_temporal_raw_Sem",
+    # "3_P2_temporal_raw_Unc",
+    # "3_P2_temporal_raw_Sem",
     
     "3_P2_perturbation_raw_Unc",
     "3_P2_perturbation_raw_Sem",
@@ -62,15 +62,16 @@ STYLE_CONFIG = {
 }
 
 # 8. プロット対象の指標 (JSON内のキー)
-METRICS = ["id_loss"]
+# calc_similarity.py で保存したキー名と一致させる
+METRICS = ["dino_similarity"]
 
 # ==========================================
 # 処理ロジック
 # ==========================================
 
-def load_id_loss_data_recursive():
+def load_similarity_data_recursive():
     """
-    ディレクトリを再帰的に探索し、TARGET_FILENAME (post_process_id_loss.json) を読み込む
+    ディレクトリを再帰的に探索し、TARGET_FILENAME (post_process_dino_sim.json) を読み込む
     パスから SNR (awgn_-6dB) と Retrans_rate (Retrans_rate_0.1) を抽出する
     """
     search_pattern = os.path.join(ROOT_DIR, "**", TARGET_FILENAME)
@@ -121,7 +122,7 @@ def load_id_loss_data_recursive():
             
     return data_store
 
-def plot_id_metrics(data_store):
+def plot_similarity_metrics(data_store):
     if not data_store:
         print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定を確認してください。")
         return
@@ -140,16 +141,14 @@ def plot_id_metrics(data_store):
         
         print(f"  SNRs found: {snr_list}")
 
-        # === 修正箇所: レイアウト設定 ===
+        # === レイアウト設定 ===
         num_metrics = len(METRICS)
         
         if num_metrics == 1:
-            # 指標が1つの場合は 1x1 で大きく表示
             cols = 1
             rows = 1
             figsize = (10, 8) 
         else:
-            # 複数の場合は 2列 で表示
             cols = 2
             rows = (num_metrics + cols - 1) // cols
             figsize = (14, 6 * rows)
@@ -157,13 +156,12 @@ def plot_id_metrics(data_store):
         # 図の生成
         fig, axes = plt.subplots(rows, cols, figsize=figsize)
         
-        # axes が配列(numpy.ndarray)であればフラット化し、単体であればリストに入れる
         if hasattr(axes, "flatten"):
             axes = axes.flatten()
         else:
             axes = [axes]
         
-        fig.suptitle(f"Identity Preservation Metrics ({DATASET} - Rate: {rate})", fontsize=16)
+        fig.suptitle(f"Semantic Similarity Analysis ({DATASET} - Rate: {rate})", fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             if idx >= len(axes):
@@ -190,29 +188,33 @@ def plot_id_metrics(data_store):
                     ax.plot(x_vals, y_vals, label=label, **style)
 
             # グラフ装飾
-            ax.set_title(metric.replace("_", " ").title(), fontsize=14, fontweight='bold')
+            title_text = metric.replace("_", " ").title() + " (Higher is Better)"
+            ax.set_title(title_text, fontsize=14, fontweight='bold')
             ax.set_xlabel("SNR (dB)")
-            ax.set_ylabel(metric)
+            ax.set_ylabel("Cosine Similarity")
             ax.grid(True, linestyle='--', alpha=0.6)
+            
+            # Y軸の範囲は見やすさに応じて調整（DINO類似度は0.0~1.0だが、差分を見るなら自動範囲が良い場合も）
+            # ax.set_ylim(0, 1.05) 
             
             if has_data:
                 ax.legend(loc='best', fontsize=9)
             else:
                 ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
 
-        # 余った領域を非表示（複数プロット時に奇数個だった場合など）
+        # 余った領域を非表示
         for i in range(idx + 1, len(axes)):
             axes[i].axis('off')
 
         plt.tight_layout()
-        plt.subplots_adjust(top=0.92) # タイトル用スペース確保
+        plt.subplots_adjust(top=0.92)
 
-        save_name = f'id_metrics_{DATASET}_rate_{rate}.png'
+        save_name = f'similarity_metrics_{DATASET}_rate_{rate}.png'
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         
         plt.close(fig) 
 
 if __name__ == "__main__":
-    data = load_id_loss_data_recursive()
-    plot_id_metrics(data)
+    data = load_similarity_data_recursive()
+    plot_similarity_metrics(data)
