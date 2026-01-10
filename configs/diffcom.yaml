@@ -41,12 +41,10 @@ model_name: 256x256_diffusion_uncond
 testset_name: imagenet
 
 # for ffhq dataset
-# model_name: 256x256_diffusion_uncond  # diffcom (djscc) GPU memory ≈ 5404MB
-# testset_name: imagenet
-#testset_name: ffhq_test
 # model_name: ffhq_10m  # diffcom (djscc) GPU memory ≈ 5404MB
 # testset_name: ffhq_demo
-
+# model_name: lsun_uncond_100M_1200K_bs128
+# testset_name: lsun_bedroom  # テスト用画像フォルダ名
 # config hyperparameters for posterior sampling
 
 CSNR_adapt_t_start: True  # whether to accelerate sampling with adaptive initialization, only works for diffcom and hifi_diffcom

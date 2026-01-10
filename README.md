@@ -122,12 +122,12 @@ _Visuals_: visuals/ フォルダ内に、以下の画像が保存されます。
 
 ## 4. 実験結果
 ### FFHQデータセット50枚
-![normal metric](imgs/snr_metrics_ffhq_demo_rate_0.1.png)
+![normal metric](imgs/snr_metrics_ffhq_demo_rate_0.1_exp2.0_gam0.3.png)
 
 ![id loss](imgs/id_metrics_ffhq_demo_rate_0.1.png)
 
 ### ImageNet subsetデータセット50枚
-![normal metric imagenet](imgs/snr_metrics_imagenet_rate_0.1.png)
+![normal metric imagenet](imgs/snr_metrics_imagenet_rate_0.1_exp2.0_gam0.3.png)
 ## 引用
 @article{wang2025diffcom,
   title={DiffCom: Channel Received Signal Is a Natural Condition to Guide Diffusion Posterior Sampling},

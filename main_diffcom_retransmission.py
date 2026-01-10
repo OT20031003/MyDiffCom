@@ -832,18 +832,41 @@ def main():
     
     dataloader = get_test_loader(config.testsets_path, batch_size=config.batch_size, shuffle=False)
     
-    model_config = dict(
-        model_path=config.model_path,
-        num_channels=128,
-        num_res_blocks=1,
-        attention_resolutions="16",
-    ) if config.model_name == 'ffhq_10m' \
-        else dict(
-        model_path=config.model_path,
-        num_channels=256,
-        num_res_blocks=2,
-        attention_resolutions="8,16,32",
-    )
+    
+    # モデル名に応じた設定の分岐
+    if config.model_name == 'ffhq_10m':
+        model_config = dict(
+            model_path=config.model_path,
+            num_channels=128,
+            num_res_blocks=1,
+            attention_resolutions="16",
+        )
+    # ▼▼▼ LSUN Bedroom用設定を追加 (ファイル名は適宜合わせてください) ▼▼▼
+    elif config.model_name == 'lsun_uncond_100M_1200K_bs128': 
+        model_config = dict(
+            model_path=config.model_path,
+            image_size=256,
+            num_channels=128,           # LSUNモデルの仕様
+            num_res_blocks=2,           # LSUNモデルの仕様
+            num_heads=1,                # LSUNモデルの仕様
+            learn_sigma=True,           # LSUNモデルの仕様
+            use_scale_shift_norm=False, # LSUNモデルの仕様
+            attention_resolutions="16", # LSUNモデルの仕様
+            diffusion_steps=1000,       # DiffComの標準に合わせるかモデルに合わせる
+            noise_schedule="linear",    # LSUNモデルはlinear
+            rescale_learned_sigmas=False,
+            rescale_timesteps=False,
+        )
+    # ▲▲▲ 追加ここまで ▲▲▲
+    else:
+        # ImageNet等のデフォルト設定
+        model_config = dict(
+            model_path=config.model_path,
+            num_channels=256,
+            num_res_blocks=2,
+            attention_resolutions="8,16,32",
+        )
+    
     args_unet = utils_model.create_argparser(model_config).parse_args([])
     unet, diffusion = create_model_and_diffusion(
         **args_to_dict(args_unet, model_and_diffusion_defaults().keys()))

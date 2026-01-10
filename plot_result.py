@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 # 例: results_retrans_comparison\ffhq_demo\...
 DATASET = "ffhq_demo" 
-DATASET = "imagenet"
+# DATASET = "imagenet"
 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
@@ -19,11 +19,20 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 # 例: [-7, -4, -1, 2] など。メインスクリプトの出力に合わせて調整してください。
 TARGET_SNRS = [-8, -7, -6, -5, -4] 
-TARGET_SNRS = [-8, -7,-6,-4]
+TARGET_SNRS = []
 
 # 3. プロットしたい再送率 (Retrans_rate) のリスト
 # None または [] の場合は、見つかった全てのレートについて個別にプロットを作成します
 TARGET_RATES = [0.1]
+
+# --- [追加機能] 拡張パラメータでのフィルタリング設定 ---
+# 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
+# None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
+
+TARGET_EXPS = [2.0]     # 例: [2.0] または None
+TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
+
+# -----------------------------------------------------
 
 # 4. プロットしたい手法のリスト (JSONのキーに完全一致させる)
 # main_diffcom_retransmission.py が出力するキーに対応
@@ -85,17 +94,24 @@ def load_summary_data_recursive():
     print(f"Root Directory: {ROOT_DIR}")
     print(f"Search Pattern: {search_pattern}")
     
+    # フィルタ設定の表示
+    if TARGET_EXPS: print(f"Filtering by EXPS: {TARGET_EXPS}")
+    if TARGET_GAMS: print(f"Filtering by GAMS: {TARGET_GAMS}")
+    
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
     # 構造: { rate: { snr: { method: metrics } } }
     data_store = {}
 
-    # 正規表現: 
-    # SNR: 負の数や小数に対応 (-7, -1.5, 10)
-    # Rate: 小数に対応 (0.1, 0.05)
+    # 正規表現コンパイル
     regex_snr = re.compile(r"SNR(-?\d+(?:\.\d+)?)")
     regex_rate = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)")
+    
+    # 追加パラメータ用の正規表現
+    # _exp2.0 や _gam0.3 のような形式を想定
+    regex_exp = re.compile(r"_exp(\d+(?:\.\d+)?)")
+    regex_gam = re.compile(r"_gam(\d+(?:\.\d+)?)")
 
     for fpath in files:
         filename = os.path.basename(fpath)
@@ -114,7 +130,31 @@ def load_summary_data_recursive():
             continue
         rate = float(match_rate.group(1))
 
-        # フィルタリング
+        # 3. 追加パラメータ(exp, gam)の抽出とフィルタリング
+        # ファイル名にパラメータが含まれていない場合は、フィルタリング条件が指定されていなければパスさせる
+        
+        # --- Exp (Expansion Factor) ---
+        match_exp = regex_exp.search(filename)
+        current_exp = float(match_exp.group(1)) if match_exp else None
+        
+        # TARGET_EXPSが指定されている場合、一致しなければスキップ
+        if TARGET_EXPS:
+            # ファイルにexpが書いてない、または値がリストに含まれない場合はスキップ
+            if current_exp is None or current_exp not in TARGET_EXPS:
+                # print(f"Skipping {filename} (Exp mismatch: {current_exp})")
+                continue
+        
+        # --- Gam (Gamma) ---
+        match_gam = regex_gam.search(filename)
+        current_gam = float(match_gam.group(1)) if match_gam else None
+        
+        # TARGET_GAMSが指定されている場合、一致しなければスキップ
+        if TARGET_GAMS:
+            if current_gam is None or current_gam not in TARGET_GAMS:
+                # print(f"Skipping {filename} (Gam mismatch: {current_gam})")
+                continue
+
+        # 基本フィルタリング
         if TARGET_SNRS and snr not in TARGET_SNRS:
             continue
         if TARGET_RATES and rate not in TARGET_RATES:
@@ -144,7 +184,7 @@ def load_summary_data_recursive():
 
 def plot_custom_metrics(data_store):
     if not data_store:
-        print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定を確認してください。")
+        print("表示対象のデータが見つかりませんでした。パスやフィルタ設定(SNR, Rate, Exp, Gam)を確認してください。")
         return
 
     # 見つかったレートごとにグラフを作成
@@ -170,8 +210,19 @@ def plot_custom_metrics(data_store):
         fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
         axes = axes.flatten() if num_metrics > 1 else [axes]
         
-        # タイトルにレートとデータセットを表示
-        fig.suptitle(f"Comparison Metrics ({DATASET} - Rate: {rate})", fontsize=16)
+        # タイトル生成
+        title_str = f"Comparison ({DATASET} - Rate: {rate})"
+        # フィルタリング条件をタイトルに追記 (単一指定の場合などわかりやすく)
+        cond_strs = []
+        if TARGET_EXPS and len(TARGET_EXPS) == 1:
+            cond_strs.append(f"Exp:{TARGET_EXPS[0]}")
+        if TARGET_GAMS and len(TARGET_GAMS) == 1:
+            cond_strs.append(f"Gam:{TARGET_GAMS[0]}")
+        
+        if cond_strs:
+            title_str += " [" + ", ".join(cond_strs) + "]"
+
+        fig.suptitle(title_str, fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             ax = axes[idx]
@@ -209,8 +260,14 @@ def plot_custom_metrics(data_store):
         plt.tight_layout()
         plt.subplots_adjust(top=0.92) 
 
-        # ファイル名にデータセットとレートを含めて保存
-        save_name = f'snr_metrics_{DATASET}_rate_{rate}.png'
+        # ファイル名生成
+        save_name = f'snr_metrics_{DATASET}_rate_{rate}'
+        if TARGET_EXPS and len(TARGET_EXPS) == 1:
+            save_name += f'_exp{TARGET_EXPS[0]}'
+        if TARGET_GAMS and len(TARGET_GAMS) == 1:
+            save_name += f'_gam{TARGET_GAMS[0]}'
+        save_name += '.png'
+        
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         

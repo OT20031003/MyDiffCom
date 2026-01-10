@@ -24,7 +24,7 @@ RETRANS_BASIS="both"
 
 # --- HPRS (Hybrid-Priority) パラメータ ---
 # 候補領域の拡張係数 (デフォルト: 2.0)
-EXPANSION_FACTOR=2.0
+EXPANSION_FACTOR=5.0
 # Semantic Priority (ViT) に割り当てる予算の割合 (0.0 ~ 1.0, デフォルト: 0.3)
 RETRANS_GAMMA=0.7
 

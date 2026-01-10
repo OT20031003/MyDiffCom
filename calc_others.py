@@ -150,7 +150,7 @@ def calculate_semantic_metrics(base_path, gt_labels_json=None):
 
 if __name__ == "__main__":
     # ここに解析したい結果フォルダのパスを入れてください
-    target_path = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_-7dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
+    target_path = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_-6dB/Retrans_rate_0.1_Comparison_both_exp5.0_gam0.7_zeta0.3_seed22"
     
     if os.path.exists(target_path):
         calculate_semantic_metrics(target_path)

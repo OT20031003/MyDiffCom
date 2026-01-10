@@ -171,7 +171,7 @@ def extract_dino_feature(model, inputs):
 if __name__ == "__main__":
     # 計算対象のディレクトリパスを指定
     # 必要に応じてパスを書き換えてください
-    target_results_path = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_-6dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
+    target_results_path = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_-8dB/Retrans_rate_0.1_Comparison_both_exp5.0_gam0.7_zeta0.3_seed22"
     
     # 使用するモデル:
     # 一般的な比較には "facebook/dinov2-base" が推奨されます。
