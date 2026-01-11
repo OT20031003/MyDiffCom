@@ -4,7 +4,7 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(-8 -6 -4 -7 -5 -3 -2 0)
+SNRS=(-5 -4 -8 -6 -7)
 
 # ベースとなるテンプレート設定ファイル
 TEMPLATE_YAML="configs/diffcom_0.yaml"
@@ -17,16 +17,16 @@ PYTHON_SCRIPT="main_diffcom_retransmission.py"
 RETRANS_MODE="rate"
 
 # 再送率 (リスト化してループ可能)
-RETRANS_VALUES=(0.1 0.2 0.99)
+RETRANS_VALUES=(0.1)
 
 # basis options: 'uncertainty', 'semantic', 'both'
 RETRANS_BASIS="both"
 
 # --- HPRS (Hybrid-Priority) パラメータ ---
 # 候補領域の拡張係数 (デフォルト: 2.0)
-EXPANSION_FACTOR=5.0
+EXPANSION_FACTOR=2.0
 # Semantic Priority (ViT) に割り当てる予算の割合 (0.0 ~ 1.0, デフォルト: 0.3)
-RETRANS_GAMMA=0.7
+RETRANS_GAMMA=0.3
 
 
 echo "========================================================"

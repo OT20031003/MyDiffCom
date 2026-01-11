@@ -18,9 +18,18 @@ TARGET_FILENAME = "semantic_metrics_results.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 TARGET_SNRS = [-8, -7, -6, -5, -4]
-
+TARGET_SNRS = []
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
+
+# --- [追加機能] 拡張パラメータでのフィルタリング設定 ---
+# 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
+# None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
+
+TARGET_EXPS = [5.0]     # 例: [2.0] または None
+TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
+
+# -----------------------------------------------------
 
 # 5. プロットしたいJSON内のキー (手法) のリスト
 TARGET_KEYS = [
@@ -95,25 +104,62 @@ def load_metrics_data_recursive():
     print(f"Root Directory: {ROOT_DIR}")
     print(f"Search Pattern: {search_pattern}")
     
+    # フィルタ設定の表示
+    if TARGET_EXPS: print(f"Filtering by EXPS: {TARGET_EXPS}")
+    if TARGET_GAMS: print(f"Filtering by GAMS: {TARGET_GAMS}")
+
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
     data_store = {}
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
     regex_rate = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)")
+    
+    # 追加パラメータ用の正規表現
+    # ディレクトリ名に含まれる _exp2.0 や _gam0.3 のような形式を想定
+    regex_exp = re.compile(r"_exp(\d+(?:\.\d+)?)")
+    regex_gam = re.compile(r"_gam(\d+(?:\.\d+)?)")
 
     for fpath in files:
         dirname = os.path.dirname(fpath)
+        folder_name = os.path.basename(dirname) # ディレクトリ名自体 (例: Retrans_rate_0.1_...)
         
+        # 1. SNRの抽出 (親ディレクトリ名などに含まれる場合もあるため dirname 全体から探すか、構造依存)
+        # 以前のコードでは dirname 全体から search していたため、そのまま踏襲
         match_snr = regex_snr.search(dirname)
         if not match_snr:
             continue
         snr = float(match_snr.group(1))
 
+        # 2. Retrans_rateの抽出
         match_rate = regex_rate.search(dirname)
         if not match_rate:
             continue
         rate = float(match_rate.group(1))
+        
+        # 3. 追加パラメータ(exp, gam)の抽出とフィルタリング
+        
+        # --- Exp (Expansion Factor) ---
+        match_exp = regex_exp.search(folder_name)
+        # 見つからない場合は None
+        current_exp = float(match_exp.group(1)) if match_exp else None
+        
+        # TARGET_EXPSが指定されている場合、一致しなければスキップ
+        if TARGET_EXPS:
+            # パラメータが見つからない、またはリストに含まれない場合は除外
+            if current_exp is None or current_exp not in TARGET_EXPS:
+                # print(f"Skipping {dirname} (Exp mismatch: {current_exp})")
+                continue
+        
+        # --- Gam (Gamma) ---
+        match_gam = regex_gam.search(folder_name)
+        current_gam = float(match_gam.group(1)) if match_gam else None
+        
+        # TARGET_GAMSが指定されている場合、一致しなければスキップ
+        if TARGET_GAMS:
+            if current_gam is None or current_gam not in TARGET_GAMS:
+                # print(f"Skipping {dirname} (Gam mismatch: {current_gam})")
+                continue
 
         if TARGET_SNRS and snr not in TARGET_SNRS:
             continue
@@ -141,7 +187,7 @@ def load_metrics_data_recursive():
 
 def plot_other_metrics(data_store):
     if not data_store:
-        print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定を確認してください。")
+        print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定、フィルタ設定を確認してください。")
         return
 
     rates = sorted(data_store.keys())
@@ -174,8 +220,20 @@ def plot_other_metrics(data_store):
             axes = axes.flatten()
         else:
             axes = [axes]
+            
+        # タイトル生成
+        title_str = f"Semantic Metrics Analysis ({DATASET} - Rate: {rate})"
+        # フィルタリング条件をタイトルに追記
+        cond_strs = []
+        if TARGET_EXPS and len(TARGET_EXPS) == 1:
+            cond_strs.append(f"Exp:{TARGET_EXPS[0]}")
+        if TARGET_GAMS and len(TARGET_GAMS) == 1:
+            cond_strs.append(f"Gam:{TARGET_GAMS[0]}")
         
-        fig.suptitle(f"Semantic Metrics Analysis ({DATASET} - Rate: {rate})", fontsize=16)
+        if cond_strs:
+            title_str += " [" + ", ".join(cond_strs) + "]"
+        
+        fig.suptitle(title_str, fontsize=16)
 
         for idx, metric_key in enumerate(metrics_list):
             if idx >= len(axes):
@@ -225,7 +283,14 @@ def plot_other_metrics(data_store):
         plt.tight_layout()
         plt.subplots_adjust(top=0.92)
 
-        save_name = f'semantic_metrics_{DATASET}_rate_{rate}.png'
+        # ファイル名生成
+        save_name = f'semantic_metrics_{DATASET}_rate_{rate}'
+        if TARGET_EXPS and len(TARGET_EXPS) == 1:
+            save_name += f'_exp{TARGET_EXPS[0]}'
+        if TARGET_GAMS and len(TARGET_GAMS) == 1:
+            save_name += f'_gam{TARGET_GAMS[0]}'
+        save_name += '.png'
+
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         

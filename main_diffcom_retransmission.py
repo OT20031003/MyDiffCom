@@ -142,6 +142,61 @@ class ViTSaliencyExtractor:
         
         return importance_normalized
 
+def reconstruct_full_summary(history):
+    """
+    全履歴データ(list of dict)から、全データの平均値(summary)を再計算する。
+    Historyのネスト構造を、Summaryのフラットなキー構造(phase1_recon, perturbation_raw_Uncなど)に変換して集計する。
+    """
+    if not history:
+        return {}
+
+    # 集計用辞書: { "metric_key": { "psnr": [val, val...], "lpips": [val...] } }
+    accumulator = {}
+
+    def add_values(meter_key, metrics_dict):
+        if meter_key not in accumulator:
+            accumulator[meter_key] = {}
+        for m_name, m_val in metrics_dict.items():
+            # 数値型のみ集計対象にする
+            if isinstance(m_val, (int, float)):
+                if m_name not in accumulator[meter_key]:
+                    accumulator[meter_key][m_name] = []
+                accumulator[meter_key][m_name].append(m_val)
+
+    for record in history:
+        # 1. jscc_init
+        if 'jscc_init' in record:
+            add_values('jscc_init', record['jscc_init'])
+        
+        # 2. phase1 -> Summaryキーは 'phase1_recon'
+        if 'phase1' in record:
+            add_values('phase1_recon', record['phase1'])
+            
+        # 3. random
+        if 'random' in record:
+            add_values('random', record['random'])
+            
+        # 4. modes (再送モード) -> Summaryキーは 'perturbation_raw_Unc' 等の形式
+        # record['modes'] = { "perturbation": { "results": { "raw": { "Unc": {...}, "Sem": {...} } } } }
+        if 'modes' in record:
+            for u_mode, u_content in record['modes'].items():
+                if 'results' in u_content:
+                    for sub_key, strat_dict in u_content['results'].items():
+                        for strat_name, metrics in strat_dict.items():
+                            # キーの構築: 例 "perturbation_raw_Unc"
+                            meter_key = f"{u_mode}_{sub_key}_{strat_name}"
+                            add_values(meter_key, metrics)
+
+    # 平均値の計算
+    final_summary = {}
+    for meter_key, metrics_list in accumulator.items():
+        final_summary[meter_key] = {}
+        for m_name, values in metrics_list.items():
+            if values:
+                final_summary[meter_key][m_name] = sum(values) / len(values)
+                
+    return final_summary
+
 def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
                                      mode='rate', value=0.1, logger=None, vit_importance_map=None,
                                      expansion_factor=2.0, gamma=0.6):
@@ -371,6 +426,7 @@ def parse_args_and_config():
     # ----------------------
     parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
                         help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
+    parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
 
     args = parser.parse_args()
     
@@ -383,6 +439,7 @@ def parse_args_and_config():
     config.expansion_factor = args.expansion_factor
     config.retrans_gamma = args.retrans_gamma  # Configに追加
     config.retrans_basis = args.retrans_basis
+    config.resume_index = args.resume_index
     
     cond_config = Config(config.getattr('diffcom_series'))
     conditioning_method = Config(cond_config.getattr(config.conditioning_method))
@@ -392,8 +449,8 @@ def parse_args_and_config():
     config.sigma = np.sqrt(1.0 / (2 * 10 ** (config.CSNR / 10)))
 
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
+    
     config.testsets = os.path.join(config.cwd, 'testsets')
-
     config.results = os.path.join(config.cwd, 'results_retrans_comparison')
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
@@ -552,10 +609,22 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         kwargs['loss_wrapper'] = loss_wrapper
         return cond_method(*args, **kwargs)
 
-    all_results_history = []
     json_filename = f"SNR{config.CSNR}_{config.result_name}.json"
     json_path = os.path.join(config.save_path, json_filename)
     import gc
+
+    all_results_history = []
+    
+    # indexが指定されており、かつファイルが存在する場合は読み込む
+    if config.resume_index > 0 and os.path.exists(json_path):
+        logger.info(f"Found existing JSON at {json_path}. Loading history to resume...")
+        try:
+            with open(json_path, 'r') as f:
+                existing_data = json.load(f)
+                all_results_history = existing_data.get('history', [])
+            logger.info(f"Loaded {len(all_results_history)} previous records from history.")
+        except Exception as e:
+            logger.warning(f"Failed to load existing JSON: {e}. Starting with empty history.")
 
     # --- [シグナルハンドリングの定義] ---
     def handle_sigterm(signum, frame):
@@ -569,6 +638,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
     try:
         for idx, batch in enumerate(dataloader):
+            if idx < config.resume_index:
+                continue
+            
             input_image, names = batch
             input_image = input_image.to(device)
             config.batch_size = input_image.shape[0]
@@ -763,10 +835,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         import traceback
         traceback.print_exc()
     finally:
-        # サマリー作成
-        final_summary = {}
+        # サマリー作成 (全履歴から再計算)
+        current_session_summary = {}
         for k, meter in results_meters.items():
-            final_summary[k] = meter.avg
+            current_session_summary[k] = meter.avg
         
         # --- [修正: FID計算中の二重割り込み(KeyboardInterrupt)をガード] ---
         if IS_TORCHMETRICS_AVAILABLE and len(fid_meters) > 0:
@@ -775,26 +847,40 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             # FID計算全体を try ブロックで囲む
             try:
                 for k, fid_obj in fid_meters.items():
-                    if k not in final_summary: final_summary[k] = {}
+                    if k not in current_session_summary: current_session_summary[k] = {}
                     try:
                         # 計算試行
                         score = fid_obj.compute().item()
-                        final_summary[k]['fid'] = score
+                        current_session_summary[k]['fid'] = score
                         logger.info(f"  -> FID [{k}]: {score:.4f}")
                     except KeyboardInterrupt:
                          # ここで再度のCtrl+Cをキャッチしてループを抜ける
                         logger.warning(f"FID calculation for {k} interrupted by user!")
-                        final_summary[k]['fid'] = "Interrupted_User"
+                        current_session_summary[k]['fid'] = "Interrupted_User"
                         raise KeyboardInterrupt # 外側のexceptへ飛ばす
                     except Exception as e:
                         # 計算エラーなどは個別に記録
                         logger.warning(f"Failed to compute FID for {k} (Error): {e}")
-                        final_summary[k]['fid'] = f"Error: {str(e)}"
+                        current_session_summary[k]['fid'] = f"Error: {str(e)}"
             
             except KeyboardInterrupt:
                 logger.warning("\n[!] FID calculation interrupted. Skipping remaining FIDs to save data immediately.")
         # ------------------------------------
         
+        # 履歴がある場合は、全履歴からSummaryを再構築する
+        if len(all_results_history) > 0:
+            logger.info(f"Recalculating global summary from {len(all_results_history)} total records...")
+            final_summary = reconstruct_full_summary(all_results_history)
+            
+            # FIDなど履歴に含まれない情報をマージ
+            for k, v in current_session_summary.items():
+                if 'fid' in v and k in final_summary:
+                    final_summary[k]['fid'] = v['fid']
+                elif k not in final_summary: # 万が一履歴にないが今回計測されたもの
+                    final_summary[k] = v
+        else:
+            final_summary = current_session_summary
+
         output_data = {"summary": final_summary, "history": all_results_history}
 
         if len(all_results_history) > 0:
