@@ -18,7 +18,8 @@ TARGET_FILENAME = "semantic_metrics_results.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 TARGET_SNRS = [-8, -7, -6, -5, -4]
-TARGET_SNRS = []
+# TARGET_SNRS = []
+
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
 
@@ -26,8 +27,8 @@ TARGET_RATES = [0.1]
 # 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
 # None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
 
-TARGET_EXPS = [5.0]     # 例: [2.0] または None
-TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
+TARGET_EXPS = [2.0]     # 例: [2.0] または None
+TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
 
 # -----------------------------------------------------
 
@@ -70,7 +71,7 @@ STYLE_CONFIG = {
     "3_P2_perturbation_raw_Sem":{"color": "red",   "linestyle": "--", "marker": "D"}, 
 }
 
-# 8. プロット対象の指標設定
+# 8. プロット対象の指標設定 (詳細設定)
 # calc_others.py の出力キー ("accuracy", "resnet_confidence", "clip_score") に対応
 METRICS_CONFIG = {
     "accuracy": {
@@ -89,6 +90,14 @@ METRICS_CONFIG = {
         "ylim": None # CLIPスコアは範囲が広いため自動調整
     }
 }
+
+# 9. 実際にプロットする指標のリスト (METRICS_CONFIG のキーから選択)
+# 1つだけ選択した場合は、そのグラフが画像いっぱいに表示されます。
+TARGET_METRICS = [
+    "accuracy",
+    #"resnet_confidence",
+    #"clip_score"
+]
 
 # ==========================================
 # 処理ロジック
@@ -125,7 +134,6 @@ def load_metrics_data_recursive():
         folder_name = os.path.basename(dirname) # ディレクトリ名自体 (例: Retrans_rate_0.1_...)
         
         # 1. SNRの抽出 (親ディレクトリ名などに含まれる場合もあるため dirname 全体から探すか、構造依存)
-        # 以前のコードでは dirname 全体から search していたため、そのまま踏襲
         match_snr = regex_snr.search(dirname)
         if not match_snr:
             continue
@@ -148,7 +156,6 @@ def load_metrics_data_recursive():
         if TARGET_EXPS:
             # パラメータが見つからない、またはリストに含まれない場合は除外
             if current_exp is None or current_exp not in TARGET_EXPS:
-                # print(f"Skipping {dirname} (Exp mismatch: {current_exp})")
                 continue
         
         # --- Gam (Gamma) ---
@@ -158,7 +165,6 @@ def load_metrics_data_recursive():
         # TARGET_GAMSが指定されている場合、一致しなければスキップ
         if TARGET_GAMS:
             if current_gam is None or current_gam not in TARGET_GAMS:
-                # print(f"Skipping {dirname} (Gam mismatch: {current_gam})")
                 continue
 
         if TARGET_SNRS and snr not in TARGET_SNRS:
@@ -191,7 +197,7 @@ def plot_other_metrics(data_store):
         return
 
     rates = sorted(data_store.keys())
-    metrics_list = list(METRICS_CONFIG.keys())
+    metrics_list = TARGET_METRICS
     
     for rate in rates:
         print(f"--- Plotting for Retrans Rate: {rate} ---")
@@ -205,18 +211,27 @@ def plot_other_metrics(data_store):
         
         print(f"  SNRs found: {snr_list}")
 
-        # === レイアウト設定 ===
+        # === レイアウト設定 (変更箇所) ===
         num_metrics = len(metrics_list)
         
-        # 3つの指標があるので 2x2グリッド推奨 (1つ余白)
-        cols = 2
-        rows = (num_metrics + cols - 1) // cols
-        figsize = (14, 6 * rows)
+        if num_metrics == 1:
+            # 1つの場合はグリッドを使わず大きく表示
+            cols = 1
+            rows = 1
+            figsize = (12, 8) 
+        else:
+            # 複数の場合は2列グリッド
+            cols = 2
+            rows = (num_metrics + cols - 1) // cols
+            figsize = (14, 6 * rows)
         
         # 図の生成
         fig, axes = plt.subplots(rows, cols, figsize=figsize)
         
-        if hasattr(axes, "flatten"):
+        # Axesの配列化処理
+        if num_metrics == 1:
+             axes = [axes] # 単一オブジェクトをリストに入れる
+        elif hasattr(axes, "flatten"):
             axes = axes.flatten()
         else:
             axes = [axes]
@@ -240,6 +255,11 @@ def plot_other_metrics(data_store):
                 break
                 
             ax = axes[idx]
+            
+            if metric_key not in METRICS_CONFIG:
+                print(f"Warning: Metric '{metric_key}' config not found. Skipping.")
+                continue
+
             config = METRICS_CONFIG[metric_key]
             has_data = False
             
@@ -276,9 +296,10 @@ def plot_other_metrics(data_store):
             else:
                 ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
 
-        # 余った領域を非表示
-        for i in range(idx + 1, len(axes)):
-            axes[i].axis('off')
+        # 余った領域を非表示 (複数プロット時のみ)
+        if num_metrics > 1:
+            for i in range(idx + 1, len(axes)):
+                axes[i].axis('off')
 
         plt.tight_layout()
         plt.subplots_adjust(top=0.92)
