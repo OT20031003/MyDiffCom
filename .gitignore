@@ -10,9 +10,7 @@ results_retrans_hard
 results_retrans_pixel
 results_retrans
 results_retrans_semantic
-results_retrans_comparison
-results*
-results/*
+results_retrans*
 FFHQ0-1000
 ffhq-text-images
 configs/diffcom_*.yaml
