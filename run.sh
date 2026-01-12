@@ -4,7 +4,7 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(-3 -2 -1 0 1 2)
+SNRS=(-5 -4 -3 -6 -7 -2 -8)
 
 # ベースとなるテンプレート設定ファイル
 TEMPLATE_YAML="configs/diffcom_0.yaml"
@@ -24,9 +24,9 @@ RETRANS_BASIS="both"
 
 # --- HPRS (Hybrid-Priority) パラメータ ---
 # 候補領域の拡張係数 (デフォルト: 2.0)
-EXPANSION_FACTOR=2.0
+EXPANSION_FACTOR=5.0
 # Semantic Priority (ViT) に割り当てる予算の割合 (0.0 ~ 1.0, デフォルト: 0.3)
-RETRANS_GAMMA=0.3
+RETRANS_GAMMA=0.7
 
 
 echo "========================================================"

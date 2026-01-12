@@ -9,9 +9,8 @@ import numpy as np
 
 # 必要なライブラリ
 try:
-    import timm  # ConvNeXt V2 等で使用
+    import timm
     from transformers import CLIPProcessor, CLIPModel
-    # Swin Transformer V2 Base (Native 256x256) や クラス名取得用
     from torchvision.models import swin_v2_b, Swin_V2_B_Weights
 except ImportError:
     print("Please install required libraries: pip install timm transformers torchvision")
@@ -20,41 +19,27 @@ except ImportError:
 def load_models(device, model_name='convnext_v2'):
     """
     モデルをロードして返す関数
-    Args:
-        device: torch.device
-        model_name (str): 'swin_v2' or 'convnext_v2'
     """
     print(f"Loading Models on {device}...")
     print(f" - Selected Classifier: {model_name}")
 
-    # クラス名取得用のメタデータ (ImageNet-1K標準)
-    # どのモデルを選んでもクラスIDの並びはImageNet-1Kで共通のためこれを利用します
     meta_weights = Swin_V2_B_Weights.IMAGENET1K_V1
     
     classifier = None
     classifier_transform = None
 
     if model_name == 'swin_v2':
-        # 1. Swin Transformer V2 Base
-        # Native Input Size: 256x256
         print(" - Loading Swin Transformer V2 Base...")
         classifier = swin_v2_b(weights=meta_weights).eval().to(device)
-        
-        # 256x256 の画像をそのまま入力するために手動定義
         classifier_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
     elif model_name == 'convnext_v2':
-        # 2. ConvNeXt V2 Base (via timm)
-        # CNNなので入力サイズ可変。256x256をリサイズなしで入力可能。
         print(" - Loading ConvNeXt V2 Base (timm)...")
-        # fcmae_ft_in1k: MAE pretraining -> fine-tuned on ImageNet-1K
         classifier = timm.create_model('convnextv2_base.fcmae_ft_in1k', pretrained=True)
         classifier.eval().to(device)
-        
-        # ConvNeXt V2用のTransform (Resizeなし)
         classifier_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -79,7 +64,6 @@ def calculate_semantic_metrics(base_path, models, device):
     """
     classifier, classifier_transform, clip_model, clip_processor, cls_weights = models
     
-    # 手法リスト
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
@@ -125,8 +109,13 @@ def calculate_semantic_metrics(base_path, models, device):
                 gt_probs = F.softmax(gt_logits, dim=1)
                 pred_class_idx = torch.argmax(gt_probs, dim=1).item()
                 
-                # クラス名取得
-                class_name = cls_weights.meta["categories"][pred_class_idx]
+            # --- 【変更点】GT画像のCLIP特徴量を計算 (Image-to-Image用) ---
+            # テキストではなく、GT画像自体をエンコードします
+            gt_clip_inputs = clip_processor(images=gt_img_pil, return_tensors="pt").to(device)
+            with torch.no_grad():
+                gt_clip_features = clip_model.get_image_features(**gt_clip_inputs)
+                # 正規化 (L2 Norm)
+                gt_clip_features = gt_clip_features / gt_clip_features.norm(p=2, dim=-1, keepdim=True)
 
             current_sample_correctness = {}
 
@@ -148,22 +137,27 @@ def calculate_semantic_metrics(base_path, models, device):
                         pred_idx = torch.argmax(probs, dim=1).item()
                         
                         if pred_idx == pred_class_idx:
-                            is_correct = 1.0
                             current_sample_correctness[m] = True
+                            metrics[m]['consistency'].append(1.0)
                         else:
-                            is_correct = 0.0
                             current_sample_correctness[m] = False
                             failed_indices[m].append(b_dir)
-                            
-                        metrics[m]['consistency'].append(is_correct)
+                            metrics[m]['consistency'].append(0.0)
 
-                    # 2. CLIP Score
-                    text_input = [f"a photo of a {class_name}"]
-                    inputs = clip_processor(text=text_input, images=m_img_pil, return_tensors="pt", padding=True).to(device)
+                    # 2. CLIP Score (Image-to-Image Cosine Similarity)
+                    # 復元画像のCLIP特徴量を取得
+                    m_clip_inputs = clip_processor(images=m_img_pil, return_tensors="pt").to(device)
                     
                     with torch.no_grad():
-                        outputs = clip_model(**inputs)
-                        score = outputs.logits_per_image.item()
+                        m_clip_features = clip_model.get_image_features(**m_clip_inputs)
+                        
+                        # 正規化 (L2 Norm)
+                        m_clip_features = m_clip_features / m_clip_features.norm(p=2, dim=-1, keepdim=True)
+                        
+                        # Cosine Similarity を計算 (GT特徴量 と 復元画像特徴量 の内積)
+                        # CLIPの埋め込み空間におけるGTと復元画像の類似度(最大1.0)
+                        score = torch.matmul(gt_clip_features, m_clip_features.t()).item()
+                        
                         metrics[m]['clip_score'].append(score)
                 else:
                     current_sample_correctness[m] = False
@@ -179,14 +173,13 @@ def calculate_semantic_metrics(base_path, models, device):
                     diff_sem_ok_unc_ng.append(b_dir)
 
         except Exception as e:
-            # print(f"Error in batch {b_dir}: {e}") # エラーログが多い場合はコメントアウト
+            # print(f"Error in batch {b_dir}: {e}") 
             continue
 
     # --- 集計結果の保存 ---
     final_results = {}
     
-    # 簡易表示用ヘッダー
-    print(f"{'Method':<30} | {'Acc':<10} | {'Conf':<10} | {'CLIP':<10}")
+    print(f"{'Method':<30} | {'Acc':<10} | {'Conf':<10} | {'CLIP(I2I)':<10}")
     
     for m in methods:
         res = metrics[m]
@@ -200,7 +193,7 @@ def calculate_semantic_metrics(base_path, models, device):
         final_results[m] = {
             "accuracy": avg_acc,
             "classifier_confidence": avg_conf,
-            "clip_score": avg_clip,
+            "clip_score": avg_clip, # plot_others.py と互換性を保つためキー名は 'clip_score' のまま
             "failed_indices": failed_indices[m]
         }
         print(f"{m:<30} | {avg_acc:.4f}     | {avg_conf:.4f}     | {avg_clip:.4f}")
@@ -210,8 +203,8 @@ def calculate_semantic_metrics(base_path, models, device):
         "sem_ok_unc_ng": diff_sem_ok_unc_ng
     }
 
-    # ファイル保存 (モデル名をファイル名に付与)
     model_suffix = "convnext" if "convnext" in str(classifier.__class__).lower() else "swin"
+    # plot_others.py が読み込めるファイル名に戻す (i2i_results ではなく results)
     out_path = os.path.join(base_path, f"semantic_metrics_results_{model_suffix}.json")
     
     with open(out_path, 'w') as f:
@@ -221,31 +214,22 @@ def calculate_semantic_metrics(base_path, models, device):
 if __name__ == "__main__":
     
     # ================= SETTINGS =================
-    
-    # 使用するモデルを選択 ('swin_v2' または 'convnext_v2')
     MODEL_SELECTION = 'convnext_v2'
-    
-    # 1. 処理したいSNRのリスト
-    SNR_LIST = [-8, -7, -6, -5, -4, -3] 
-    
-    # 2. パスのテンプレート ({snr} の部分がリストの値に置換されます)
-    PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp5.0_gam0.7_zeta0.3_seed22"
-    
+    SNR_LIST = [-8, -7, -6, -5, -4, -3, -2] 
+    PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.7_zeta0.3_seed22"
     # ============================================
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Main Device: {device}")
     
-    # モデルのロード（ループの外で1回だけ実行）
     models = load_models(device, model_name=MODEL_SELECTION)
     
     print("="*60)
-    print(f"Starting batch processing for SNRs: {SNR_LIST}")
+    print(f"Starting batch processing (Image-to-Image CLIP) for SNRs: {SNR_LIST}")
     print(f"Model: {MODEL_SELECTION}")
     print("="*60)
 
     for snr in SNR_LIST:
-        # パスの生成
         target_path = PATH_TEMPLATE.format(snr=snr)
         
         if os.path.exists(target_path):

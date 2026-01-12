@@ -22,7 +22,7 @@ MODEL_SUFFIX = "convnext"
 TARGET_FILENAME = f"semantic_metrics_results_{MODEL_SUFFIX}.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-8, -7, -6, -5, -4]
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 # TARGET_SNRS = []
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
@@ -33,7 +33,7 @@ TARGET_RATES = [0.1]
 # None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
 
 TARGET_EXPS = [2.0]     # 例: [2.0] または None
-TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
+TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
 
 # -----------------------------------------------------
 
@@ -99,9 +99,9 @@ METRICS_CONFIG = {
 
 # 9. 実際にプロットする指標のリスト (METRICS_CONFIG のキーから選択)
 TARGET_METRICS = [
-    "accuracy",
+    #"accuracy",
     #"classifier_confidence",
-    #"clip_score"
+    "clip_score"
 ]
 
 # ==========================================

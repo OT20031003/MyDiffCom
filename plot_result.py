@@ -11,14 +11,14 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 # 例: results_retrans_comparison\ffhq_demo\...
 DATASET = "ffhq_demo" 
-#DATASET = "imagenet"
+DATASET = "imagenet"
 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 # 例: [-7, -4, -1, 2] など。メインスクリプトの出力に合わせて調整してください。
-TARGET_SNRS = [-8, -7, -6, -5, -4] 
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2] 
 #TARGET_SNRS = []
 
 # 3. プロットしたい再送率 (Retrans_rate) のリスト
@@ -29,8 +29,8 @@ TARGET_RATES = [0.1]
 # 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
 # None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
 
-TARGET_EXPS = [2.0]     # 例: [2.0] または None
-TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
+TARGET_EXPS = [5.0]     # 例: [2.0] または None
+TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
 
 # -----------------------------------------------------
 

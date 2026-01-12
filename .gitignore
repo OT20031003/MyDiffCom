@@ -18,3 +18,4 @@ configs/diffcom_*.yaml
 hg_*.txt
 *.pyc
 *Zone*
+*.pdf

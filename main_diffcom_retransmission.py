@@ -426,7 +426,7 @@ def parse_args_and_config():
     # ----------------------
     parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
                         help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
-    parser.add_argument("--resume_index", type=int, default=0, help="Index to resume processing from (0-based).")
+    parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
 
     args = parser.parse_args()
     
