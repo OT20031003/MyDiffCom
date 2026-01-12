@@ -9,39 +9,75 @@ import numpy as np
 
 # Transformersライブラリのインポート
 try:
-    from transformers import AutoModel, AutoImageProcessor
+    from transformers import AutoModel
 except ImportError:
     print("Error: 'transformers' is required.")
     print("Please install it using: pip install transformers")
     exit(1)
 
-def calculate_dino_similarity_from_disk(base_path, model_name="facebook/dinov2-base"):
+def load_dino_model(device, model_name="facebook/dinov2-base"):
     """
-    保存済みの画像から手法ごとの DINO Embedding Similarity を計算する
-    Similarity = CosineSimilarity(GT_embedding, Fake_embedding)
+    モデルをロードして返す関数
+    """
+    print(f"Loading DINO Model ({model_name}) on {device}...")
     
-    Args:
-        base_path (str): 'visuals' ディレクトリを含むルートパス
-        model_name (str): HuggingFaceのモデルID (例: 'facebook/dinov2-base', 'facebook/dinov3-...')
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    # --- [モデルの準備] ---
-    print(f"Loading DINO Model ({model_name})...")
     try:
         # DINOモデルのロード (DINOv2, v3対応)
         # trust_remote_code=TrueはDINOv3等の新しいモデルで必要な場合があります
         model = AutoModel.from_pretrained(model_name, trust_remote_code=True).eval().to(device)
     except Exception as e:
         print(f"Failed to load model {model_name}: {e}")
-        return
+        exit(1)
 
-    # ImageNet Normalization Parameters
+    # ImageNet Normalization Parameters (GPU tensorとして保持)
     mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
+    
+    return model, mean, std
 
-    # 計算対象の手法リスト (calc_id_loss.pyと同様)
+def preprocess_for_dino(img_tensor, mean, std, target_size=(224, 224)):
+    """
+    DINO入力用の前処理 (Resize -> Normalize)
+    img_tensor: [B, 3, H, W] (0~1)
+    """
+    # 1. Resize to 224x224 (DINO standard)
+    img_resized = F.interpolate(img_tensor, size=target_size, mode='bilinear', align_corners=False)
+    
+    # 2. Normalize with ImageNet mean/std
+    img_normalized = (img_resized - mean) / std
+    
+    return img_normalized
+
+def extract_dino_feature(model, inputs):
+    """
+    モデルからCLSトークンの特徴量を取得し、L2正規化して返す
+    """
+    outputs = model(inputs)
+    
+    # DINOv2 / ViT 系の出力処理
+    # last_hidden_state: [B, Seq_Len, Dim]
+    # class token (CLS) は通常 index 0
+    last_hidden_state = outputs.last_hidden_state
+    cls_token = last_hidden_state[:, 0, :]  # [B, Dim]
+    
+    # Cosine Similarity計算用に正規化しておく
+    features = F.normalize(cls_token, dim=1, p=2)
+    
+    return features
+
+def calculate_dino_similarity(base_path, models, device):
+    """
+    保存済みの画像から手法ごとの DINO Embedding Similarity を計算する
+    Similarity = CosineSimilarity(GT_embedding, Fake_embedding)
+    
+    Args:
+        base_path (str): 'visuals' ディレクトリを含むルートパス
+        models (tuple): ロード済みのモデルと正規化パラメータ (model, mean, std)
+        device (torch.device): デバイス
+    """
+    model, mean, std = models
+
+    # 計算対象の手法リスト
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
@@ -53,12 +89,11 @@ def calculate_dino_similarity_from_disk(base_path, model_name="facebook/dinov2-b
     ]
 
     # 結果格納用辞書
-    # { 'MethodName': [sim_sample1, sim_sample2, ...] }
     dino_scores = {m: [] for m in methods}
 
     visuals_dir = os.path.join(base_path, 'visuals')
     if not os.path.exists(visuals_dir):
-        print(f"Error: {visuals_dir} does not exist.")
+        print(f"Skipping: 'visuals' directory not found in {base_path}")
         return
 
     # バッチディレクトリ (数字のみ) を取得
@@ -70,10 +105,10 @@ def calculate_dino_similarity_from_disk(base_path, model_name="facebook/dinov2-b
     # 基本的なToTensor変換
     to_tensor = transforms.ToTensor()
 
-    print(f"Processing {len(batch_dirs)} samples from: {visuals_dir}")
+    print(f"Processing {len(batch_dirs)} samples in: {os.path.basename(base_path)}")
 
     # --- [メインループ] ---
-    for b_dir in tqdm(batch_dirs):
+    for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
         
         # Ground Truth (Real画像) の読み込み
@@ -107,15 +142,13 @@ def calculate_dino_similarity_from_disk(base_path, model_name="facebook/dinov2-b
                         dino_scores[m].append(similarity)
 
         except Exception as e:
-            print(f"Error processing batch {b_dir}: {e}")
+            # print(f"Error processing batch {b_dir}: {e}")
             continue
 
     # --- [集計と保存] ---
     final_results = {}
-    print("\n--- Final DINO Semantic Similarity (Higher is Better) ---")
     print(f"{'Method':<30} | {'DINO Sim':<10}")
-    print("-" * 45)
-
+    
     for m in methods:
         scores = dino_scores[m]
         
@@ -127,59 +160,49 @@ def calculate_dino_similarity_from_disk(base_path, model_name="facebook/dinov2-b
                 "num_samples": len(scores)
             }
             print(f"{m:<30} | {avg_score:.4f}")
-        else:
-            print(f"{m:<30} | N/A")
 
     # 結果をJSONとして保存
     output_json = os.path.join(base_path, "post_process_dino_sim.json")
     with open(output_json, 'w') as f:
         json.dump(final_results, f, indent=4)
-    print(f"\nResults saved to: {output_json}")
+    print(f"Saved: {output_json}\n")
 
-    return final_results
-
-def preprocess_for_dino(img_tensor, mean, std, target_size=(224, 224)):
-    """
-    DINO入力用の前処理 (Resize -> Normalize)
-    img_tensor: [B, 3, H, W] (0~1)
-    """
-    # 1. Resize to 224x224 (DINO standard)
-    img_resized = F.interpolate(img_tensor, size=target_size, mode='bilinear', align_corners=False)
-    
-    # 2. Normalize with ImageNet mean/std
-    img_normalized = (img_resized - mean) / std
-    
-    return img_normalized
-
-def extract_dino_feature(model, inputs):
-    """
-    モデルからCLSトークンの特徴量を取得し、L2正規化して返す
-    """
-    outputs = model(inputs)
-    
-    # DINOv2 / ViT 系の出力処理
-    # last_hidden_state: [B, Seq_Len, Dim]
-    # class token (CLS) は通常 index 0
-    last_hidden_state = outputs.last_hidden_state
-    cls_token = last_hidden_state[:, 0, :]  # [B, Dim]
-    
-    # Cosine Similarity計算用に正規化しておく
-    features = F.normalize(cls_token, dim=1, p=2)
-    
-    return features
 
 if __name__ == "__main__":
-    # 計算対象のディレクトリパスを指定
-    # 必要に応じてパスを書き換えてください
-    target_results_path = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_-3dB/Retrans_rate_0.1_Comparison_both_exp5.0_gam0.7_zeta0.3_seed22"
     
-    # 使用するモデル:
-    # 一般的な比較には "facebook/dinov2-base" が推奨されます。
-    # 前回のコードで使用していた "facebook/dinov3-vitb16-pretrain-lvd1689m" も指定可能です。
-    target_model = "facebook/dinov2-base"
-    target_model = "facebook/dinov3-vitb16-pretrain-lvd1689m"
+    # ================= SETTINGS =================
     
-    if os.path.exists(target_results_path):
-        calculate_dino_similarity_from_disk(target_results_path, model_name=target_model)
-    else:
-        print(f"Path not found: {target_results_path}")
+    # 1. 処理したいSNRのリスト
+    SNR_LIST = [-8, -7, -6, -5, -4] 
+    
+    # 2. パスのテンプレート ({snr} の部分がリストの値に置換されます)
+    PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
+
+    # 3. 使用するモデル名
+    # "facebook/dinov2-base" or "facebook/dinov3-vitb16-pretrain-lvd1689m" etc.
+    TARGET_MODEL_NAME = "facebook/dinov3-vitb16-pretrain-lvd1689m"
+    TARGET_MODEL_NAME = "facebook/dinov2-base"
+    # ============================================
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Main Device: {device}")
+    
+    # モデルのロード（ループの外で1回だけ実行）
+    models = load_dino_model(device, TARGET_MODEL_NAME)
+    
+    print("="*60)
+    print(f"Starting batch processing for SNRs: {SNR_LIST}")
+    print(f"Model: {TARGET_MODEL_NAME}")
+    print("="*60)
+
+    for snr in SNR_LIST:
+        # パスの生成
+        target_path = PATH_TEMPLATE.format(snr=snr)
+        
+        if os.path.exists(target_path):
+            print(f"Processing SNR: {snr}dB")
+            calculate_dino_similarity(target_path, models, device)
+        else:
+            print(f"[Warning] Path not found for SNR {snr}dB:\n{target_path}\n")
+    
+    print("All Finished.")

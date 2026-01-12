@@ -13,8 +13,13 @@ DATASET = "imagenet"
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
-# 2. プロット対象のファイル名 (calc_others.py の出力)
-TARGET_FILENAME = "semantic_metrics_results.json"
+# --- [変更点] モデルのサフィックス設定 ---
+# calc_others.py で指定したモデルに合わせて変更してください
+# 'convnext' または 'swin'
+MODEL_SUFFIX = "convnext" 
+
+# 2. プロット対象のファイル名 (自動生成)
+TARGET_FILENAME = f"semantic_metrics_results_{MODEL_SUFFIX}.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
 TARGET_SNRS = [-8, -7, -6, -5, -4]
@@ -72,15 +77,16 @@ STYLE_CONFIG = {
 }
 
 # 8. プロット対象の指標設定 (詳細設定)
-# calc_others.py の出力キー ("accuracy", "resnet_confidence", "clip_score") に対応
+# calc_others.py の出力キー ("accuracy", "classifier_confidence", "clip_score") に対応
 METRICS_CONFIG = {
     "accuracy": {
         "title": "Classification Consistency (Accuracy)",
         "ylabel": "Accuracy (0.0 - 1.0)",
         "ylim": (0.0, 1.05)
     },
-    "resnet_confidence": {
-        "title": "ResNet Confidence (Prob on GT Class)",
+    # キー名を resnet_confidence から classifier_confidence に変更
+    "classifier_confidence": {
+        "title": f"Classifier Confidence ({MODEL_SUFFIX})",
         "ylabel": "Probability",
         "ylim": (0.0, 1.05)
     },
@@ -92,10 +98,9 @@ METRICS_CONFIG = {
 }
 
 # 9. 実際にプロットする指標のリスト (METRICS_CONFIG のキーから選択)
-# 1つだけ選択した場合は、そのグラフが画像いっぱいに表示されます。
 TARGET_METRICS = [
     "accuracy",
-    #"resnet_confidence",
+    #"classifier_confidence",
     #"clip_score"
 ]
 
@@ -105,7 +110,7 @@ TARGET_METRICS = [
 
 def load_metrics_data_recursive():
     """
-    ディレクトリを再帰的に探索し、TARGET_FILENAME (semantic_metrics_results.json) を読み込む
+    ディレクトリを再帰的に探索し、TARGET_FILENAME を読み込む
     パスから SNR (awgn_-6dB) と Retrans_rate (Retrans_rate_0.1) を抽出する
     """
     search_pattern = os.path.join(ROOT_DIR, "**", TARGET_FILENAME)
@@ -125,15 +130,14 @@ def load_metrics_data_recursive():
     regex_rate = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)")
     
     # 追加パラメータ用の正規表現
-    # ディレクトリ名に含まれる _exp2.0 や _gam0.3 のような形式を想定
     regex_exp = re.compile(r"_exp(\d+(?:\.\d+)?)")
     regex_gam = re.compile(r"_gam(\d+(?:\.\d+)?)")
 
     for fpath in files:
         dirname = os.path.dirname(fpath)
-        folder_name = os.path.basename(dirname) # ディレクトリ名自体 (例: Retrans_rate_0.1_...)
+        folder_name = os.path.basename(dirname) 
         
-        # 1. SNRの抽出 (親ディレクトリ名などに含まれる場合もあるため dirname 全体から探すか、構造依存)
+        # 1. SNRの抽出
         match_snr = regex_snr.search(dirname)
         if not match_snr:
             continue
@@ -149,12 +153,9 @@ def load_metrics_data_recursive():
         
         # --- Exp (Expansion Factor) ---
         match_exp = regex_exp.search(folder_name)
-        # 見つからない場合は None
         current_exp = float(match_exp.group(1)) if match_exp else None
         
-        # TARGET_EXPSが指定されている場合、一致しなければスキップ
         if TARGET_EXPS:
-            # パラメータが見つからない、またはリストに含まれない場合は除外
             if current_exp is None or current_exp not in TARGET_EXPS:
                 continue
         
@@ -162,7 +163,6 @@ def load_metrics_data_recursive():
         match_gam = regex_gam.search(folder_name)
         current_gam = float(match_gam.group(1)) if match_gam else None
         
-        # TARGET_GAMSが指定されている場合、一致しなければスキップ
         if TARGET_GAMS:
             if current_gam is None or current_gam not in TARGET_GAMS:
                 continue
@@ -211,16 +211,14 @@ def plot_other_metrics(data_store):
         
         print(f"  SNRs found: {snr_list}")
 
-        # === レイアウト設定 (変更箇所) ===
+        # === レイアウト設定 ===
         num_metrics = len(metrics_list)
         
         if num_metrics == 1:
-            # 1つの場合はグリッドを使わず大きく表示
             cols = 1
             rows = 1
             figsize = (12, 8) 
         else:
-            # 複数の場合は2列グリッド
             cols = 2
             rows = (num_metrics + cols - 1) // cols
             figsize = (14, 6 * rows)
@@ -230,15 +228,15 @@ def plot_other_metrics(data_store):
         
         # Axesの配列化処理
         if num_metrics == 1:
-             axes = [axes] # 単一オブジェクトをリストに入れる
+             axes = [axes] 
         elif hasattr(axes, "flatten"):
             axes = axes.flatten()
         else:
             axes = [axes]
             
         # タイトル生成
-        title_str = f"Semantic Metrics Analysis ({DATASET} - Rate: {rate})"
-        # フィルタリング条件をタイトルに追記
+        title_str = f"Semantic Metrics ({DATASET} - {MODEL_SUFFIX.upper()} - Rate: {rate})"
+        
         cond_strs = []
         if TARGET_EXPS and len(TARGET_EXPS) == 1:
             cond_strs.append(f"Exp:{TARGET_EXPS[0]}")
@@ -287,7 +285,6 @@ def plot_other_metrics(data_store):
             ax.set_ylabel(config["ylabel"])
             ax.grid(True, linestyle='--', alpha=0.6)
             
-            # Y軸範囲の設定 (Noneの場合は自動)
             if config["ylim"]:
                 ax.set_ylim(config["ylim"])
             
@@ -296,7 +293,7 @@ def plot_other_metrics(data_store):
             else:
                 ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
 
-        # 余った領域を非表示 (複数プロット時のみ)
+        # 余った領域を非表示
         if num_metrics > 1:
             for i in range(idx + 1, len(axes)):
                 axes[i].axis('off')
@@ -305,7 +302,7 @@ def plot_other_metrics(data_store):
         plt.subplots_adjust(top=0.92)
 
         # ファイル名生成
-        save_name = f'semantic_metrics_{DATASET}_rate_{rate}'
+        save_name = f'semantic_metrics_{DATASET}_{MODEL_SUFFIX}_rate_{rate}'
         if TARGET_EXPS and len(TARGET_EXPS) == 1:
             save_name += f'_exp{TARGET_EXPS[0]}'
         if TARGET_GAMS and len(TARGET_GAMS) == 1:

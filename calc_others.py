@@ -9,31 +9,66 @@ import numpy as np
 
 # 必要なライブラリ
 try:
+    import timm  # ConvNeXt V2 等で使用
     from transformers import CLIPProcessor, CLIPModel
-    # 強力な分類モデル ConvNeXt Large を使用
-    from torchvision.models import convnext_large, ConvNeXt_Large_Weights
+    # Swin Transformer V2 Base (Native 256x256) や クラス名取得用
+    from torchvision.models import swin_v2_b, Swin_V2_B_Weights
 except ImportError:
-    print("Please install: pip install transformers torchvision")
+    print("Please install required libraries: pip install timm transformers torchvision")
     exit(1)
 
-def load_models(device):
+def load_models(device, model_name='convnext_v2'):
     """
-    モデルを一度だけロードして返す関数
+    モデルをロードして返す関数
+    Args:
+        device: torch.device
+        model_name (str): 'swin_v2' or 'convnext_v2'
     """
     print(f"Loading Models on {device}...")
+    print(f" - Selected Classifier: {model_name}")
+
+    # クラス名取得用のメタデータ (ImageNet-1K標準)
+    # どのモデルを選んでもクラスIDの並びはImageNet-1Kで共通のためこれを利用します
+    meta_weights = Swin_V2_B_Weights.IMAGENET1K_V1
     
-    # 1. Classifier: ConvNeXt Large (Acc ~87.5%)
-    print(" - Loading Classifier (ConvNeXt Large)...")
-    weights = ConvNeXt_Large_Weights.IMAGENET1K_V1
-    classifier = convnext_large(weights=weights).eval().to(device)
-    classifier_transform = weights.transforms()
+    classifier = None
+    classifier_transform = None
+
+    if model_name == 'swin_v2':
+        # 1. Swin Transformer V2 Base
+        # Native Input Size: 256x256
+        print(" - Loading Swin Transformer V2 Base...")
+        classifier = swin_v2_b(weights=meta_weights).eval().to(device)
+        
+        # 256x256 の画像をそのまま入力するために手動定義
+        classifier_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+    elif model_name == 'convnext_v2':
+        # 2. ConvNeXt V2 Base (via timm)
+        # CNNなので入力サイズ可変。256x256をリサイズなしで入力可能。
+        print(" - Loading ConvNeXt V2 Base (timm)...")
+        # fcmae_ft_in1k: MAE pretraining -> fine-tuned on ImageNet-1K
+        classifier = timm.create_model('convnextv2_base.fcmae_ft_in1k', pretrained=True)
+        classifier.eval().to(device)
+        
+        # ConvNeXt V2用のTransform (Resizeなし)
+        classifier_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        
+    else:
+        raise ValueError(f"Unknown model_name: {model_name}")
     
-    # 2. CLIP
+    # 3. CLIP (共通)
     print(" - Loading CLIP...")
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32", use_safetensors=True).eval().to(device)
     clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     
-    return classifier, classifier_transform, clip_model, clip_processor, weights
+    return classifier, classifier_transform, clip_model, clip_processor, meta_weights
 
 def calculate_semantic_metrics(base_path, models, device):
     """
@@ -175,8 +210,10 @@ def calculate_semantic_metrics(base_path, models, device):
         "sem_ok_unc_ng": diff_sem_ok_unc_ng
     }
 
-    # ファイル名は以前と同じものを使用
-    out_path = os.path.join(base_path, "semantic_metrics_results.json")
+    # ファイル保存 (モデル名をファイル名に付与)
+    model_suffix = "convnext" if "convnext" in str(classifier.__class__).lower() else "swin"
+    out_path = os.path.join(base_path, f"semantic_metrics_results_{model_suffix}.json")
+    
     with open(out_path, 'w') as f:
         json.dump(final_results, f, indent=4)
     print(f"Saved: {out_path}\n")
@@ -185,11 +222,13 @@ if __name__ == "__main__":
     
     # ================= SETTINGS =================
     
+    # 使用するモデルを選択 ('swin_v2' または 'convnext_v2')
+    MODEL_SELECTION = 'swin_v2'
+    
     # 1. 処理したいSNRのリスト
     SNR_LIST = [-8, -7, -6, -5, -4, -3] 
-    #SNR_LIST = [-8, -6, -4]
+    
     # 2. パスのテンプレート ({snr} の部分がリストの値に置換されます)
-    # パスがSNR以外共通の場合はこちらを使用してください
     PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
     
     # ============================================
@@ -198,10 +237,11 @@ if __name__ == "__main__":
     print(f"Main Device: {device}")
     
     # モデルのロード（ループの外で1回だけ実行）
-    models = load_models(device)
+    models = load_models(device, model_name=MODEL_SELECTION)
     
     print("="*60)
     print(f"Starting batch processing for SNRs: {SNR_LIST}")
+    print(f"Model: {MODEL_SELECTION}")
     print("="*60)
 
     for snr in SNR_LIST:
