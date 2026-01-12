@@ -163,7 +163,8 @@ def plot_id_metrics(data_store):
         else:
             axes = [axes]
         
-        fig.suptitle(f"Identity Preservation Metrics ({DATASET} - Rate: {rate})", fontsize=16)
+        # --- 変更点: 全体タイトルを非表示 ---
+        # fig.suptitle(f"Identity Preservation Metrics ({DATASET} - Rate: {rate})", fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             if idx >= len(axes):
@@ -205,7 +206,8 @@ def plot_id_metrics(data_store):
             axes[i].axis('off')
 
         plt.tight_layout()
-        plt.subplots_adjust(top=0.92) # タイトル用スペース確保
+        # --- 変更点: タイトル用の余白調整を削除 ---
+        # plt.subplots_adjust(top=0.92) # タイトル用スペース確保
 
         save_name = f'id_metrics_{DATASET}_rate_{rate}.png'
         plt.savefig(save_name, dpi=300)

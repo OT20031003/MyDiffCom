@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 # 例: results_retrans_comparison\ffhq_demo\...
 DATASET = "ffhq_demo" 
-DATASET = "imagenet"
+#DATASET = "imagenet"
 
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
@@ -210,7 +210,7 @@ def plot_custom_metrics(data_store):
         fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
         axes = axes.flatten() if num_metrics > 1 else [axes]
         
-        # タイトル生成
+        # タイトル生成 (表示はしないがロジックは残す)
         title_str = f"Comparison ({DATASET} - Rate: {rate})"
         # フィルタリング条件をタイトルに追記 (単一指定の場合などわかりやすく)
         cond_strs = []
@@ -222,7 +222,8 @@ def plot_custom_metrics(data_store):
         if cond_strs:
             title_str += " [" + ", ".join(cond_strs) + "]"
 
-        fig.suptitle(title_str, fontsize=16)
+        # --- 変更点: 全体タイトルを非表示 ---
+        # fig.suptitle(title_str, fontsize=16)
 
         for idx, metric in enumerate(METRICS):
             ax = axes[idx]
@@ -258,7 +259,8 @@ def plot_custom_metrics(data_store):
             axes[i].axis('off')
 
         plt.tight_layout()
-        plt.subplots_adjust(top=0.92) 
+        # --- 変更点: タイトル用の余白調整を削除 ---
+        # plt.subplots_adjust(top=0.92) 
 
         # ファイル名生成
         save_name = f'snr_metrics_{DATASET}_rate_{rate}'

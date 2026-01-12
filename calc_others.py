@@ -223,13 +223,13 @@ if __name__ == "__main__":
     # ================= SETTINGS =================
     
     # 使用するモデルを選択 ('swin_v2' または 'convnext_v2')
-    MODEL_SELECTION = 'swin_v2'
+    MODEL_SELECTION = 'convnext_v2'
     
     # 1. 処理したいSNRのリスト
     SNR_LIST = [-8, -7, -6, -5, -4, -3] 
     
     # 2. パスのテンプレート ({snr} の部分がリストの値に置換されます)
-    PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
+    PATH_TEMPLATE = r"results_retrans_comparison/imagenet/diffcom/djscc_2/awgn_{snr}dB/Retrans_rate_0.1_Comparison_both_exp5.0_gam0.7_zeta0.3_seed22"
     
     # ============================================
 

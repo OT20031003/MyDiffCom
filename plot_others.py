@@ -81,19 +81,19 @@ STYLE_CONFIG = {
 METRICS_CONFIG = {
     "accuracy": {
         "title": "Classification Consistency (Accuracy)",
-        "ylabel": "Accuracy (0.0 - 1.0)",
-        "ylim": (0.0, 1.05)
+        "ylabel": "Accuracy",   # ラベル表記を簡素化
+        "ylim": None            # 自動調整に変更 (元: (0.0, 1.05))
     },
     # キー名を resnet_confidence から classifier_confidence に変更
     "classifier_confidence": {
         "title": f"Classifier Confidence ({MODEL_SUFFIX})",
         "ylabel": "Probability",
-        "ylim": (0.0, 1.05)
+        "ylim": None            # 自動調整に変更 (元: (0.0, 1.05))
     },
     "clip_score": {
         "title": "CLIP Semantic Score",
         "ylabel": "CLIP Logits",
-        "ylim": None # CLIPスコアは範囲が広いため自動調整
+        "ylim": None            # 元々自動調整
     }
 }
 
@@ -234,7 +234,7 @@ def plot_other_metrics(data_store):
         else:
             axes = [axes]
             
-        # タイトル生成
+        # タイトル生成 (表示はしないがロジックは残す)
         title_str = f"Semantic Metrics ({DATASET} - {MODEL_SUFFIX.upper()} - Rate: {rate})"
         
         cond_strs = []
@@ -246,7 +246,8 @@ def plot_other_metrics(data_store):
         if cond_strs:
             title_str += " [" + ", ".join(cond_strs) + "]"
         
-        fig.suptitle(title_str, fontsize=16)
+        # --- 変更点: 全体タイトルを非表示 ---
+        # fig.suptitle(title_str, fontsize=16)
 
         for idx, metric_key in enumerate(metrics_list):
             if idx >= len(axes):
@@ -285,6 +286,7 @@ def plot_other_metrics(data_store):
             ax.set_ylabel(config["ylabel"])
             ax.grid(True, linestyle='--', alpha=0.6)
             
+            # ylimがNoneの場合は自動調整 (set_ylimを呼ばない)
             if config["ylim"]:
                 ax.set_ylim(config["ylim"])
             
@@ -299,7 +301,8 @@ def plot_other_metrics(data_store):
                 axes[i].axis('off')
 
         plt.tight_layout()
-        plt.subplots_adjust(top=0.92)
+        # --- 変更点: タイトル用の余白調整を削除 ---
+        # plt.subplots_adjust(top=0.92)
 
         # ファイル名生成
         save_name = f'semantic_metrics_{DATASET}_{MODEL_SUFFIX}_rate_{rate}'
