@@ -16,7 +16,7 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 # --- [変更点] モデルのサフィックス設定 ---
 # calc_others.py で指定したモデルに合わせて変更してください
 # 'convnext' または 'swin'
-MODEL_SUFFIX = "convnext" 
+MODEL_SUFFIX = "swin" 
 
 # 2. プロット対象のファイル名 (自動生成)
 TARGET_FILENAME = f"semantic_metrics_results_{MODEL_SUFFIX}.json"
@@ -32,7 +32,7 @@ TARGET_RATES = [0.1]
 # 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
 # None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
 
-TARGET_EXPS = [2.0]     # 例: [2.0] または None
+TARGET_EXPS = [5.0]     # 例: [2.0] または None
 TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
 
 # -----------------------------------------------------
@@ -99,7 +99,7 @@ METRICS_CONFIG = {
 
 # 9. 実際にプロットする指標のリスト (METRICS_CONFIG のキーから選択)
 TARGET_METRICS = [
-    #"accuracy",
+    "accuracy",
     #"classifier_confidence",
     "clip_score"
 ]

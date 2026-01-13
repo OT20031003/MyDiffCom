@@ -6,26 +6,27 @@ from PIL import Image
 from tqdm import tqdm
 import json
 
-def calculate_fids_from_disk(base_path):
+def calculate_fids_from_disk(base_path, device):
     """
     保存済みの画像から手法ごとのFIDを計算する
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    if not os.path.exists(base_path):
+        print(f"[Skip] Path not found: {base_path}")
+        return
 
     # 計算対象の手法（ファイル名の接頭辞）を定義
-    # main_diffcom_retransmission.py の出力ファイル名に対応
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
         '3_P2_perturbation_raw_Unc',
         '3_P2_perturbation_raw_Sem',
-        '3_P2_temporal_raw_Unc',
-        '3_P2_temporal_raw_Sem',
+        # '3_P2_temporal_raw_Unc',
+        # '3_P2_temporal_raw_Sem',
         '3_P2_Random'
     ]
 
     # FIDメトリクスの初期化 (手法ごと)
+    # 毎回リセットして初期化
     fid_metrics = {
         m: FrechetInceptionDistance(feature=2048, normalize=True).to(device) 
         for m in methods
@@ -33,7 +34,7 @@ def calculate_fids_from_disk(base_path):
 
     visuals_dir = os.path.join(base_path, 'visuals')
     if not os.path.exists(visuals_dir):
-        print(f"Error: {visuals_dir} does not exist.")
+        print(f"[Skip] No visuals directory in {base_path}")
         return
 
     # バッチディレクトリ (0, 1, 2...) を取得
@@ -50,9 +51,9 @@ def calculate_fids_from_disk(base_path):
         transforms.ToTensor(), # [0, 255] -> [0.0, 1.0]
     ])
 
-    print(f"Processing {len(batch_dirs)} samples from: {visuals_dir}")
+    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)}")
 
-    for b_dir in tqdm(batch_dirs):
+    for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
         
         # Ground Truth (Real画像) の読み込み
@@ -75,28 +76,28 @@ def calculate_fids_from_disk(base_path):
                         fid_metrics[m].update(gt_img, real=True)
                         fid_metrics[m].update(m_img, real=False)
                     except Exception as e:
-                        print(f"Skip {m} in batch {b_dir} due to error: {e}")
+                        # 読み込みエラー等は無視して次へ
+                        pass
         except Exception as e:
-            print(f"Error loading GT in batch {b_dir}: {e}")
+            pass
 
     # 最終的なスコアの集計
     final_fids = {}
-    print("\n--- Final FID Results ---")
+    print(f"--- FID Results ({os.path.basename(base_path)}) ---")
     for m in methods:
         try:
             # .compute() で最終的なFIDを算出
-            # サンプル数が少なすぎる場合などにエラーになる可能性があるためtry-except
             score = fid_metrics[m].compute().item()
             final_fids[m] = score
             print(f"{m:25s}: {score:.4f}")
         except Exception as e:
-            print(f"{m:25s}: Could not compute (maybe too few samples or 0 samples found). Error: {e}")
+            print(f"{m:25s}: N/A (Error or too few samples)")
 
     # 結果をJSONとして保存
     output_json = os.path.join(base_path, "post_process_fid.json")
     with open(output_json, 'w') as f:
         json.dump(final_fids, f, indent=4)
-    print(f"\nResults saved to: {output_json}")
+    print(f"Saved: {output_json}\n")
 
     return final_fids
 
@@ -108,17 +109,16 @@ if __name__ == "__main__":
     # 1. データセット ("imagenet" or "ffhq_demo")
     DATASET = "ffhq_demo" 
     
-    # 2. SNR 
-    # 提示されたパス例 (awgn_-2dB) に合わせて設定してください
-    SNR_LABEL = "-7" 
+    # 2. SNR リスト
+    # ここに計算したいSNRをすべて列挙します
+    SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
     
     # 3. 再送率 (Retrans_rate)
     RATE = 0.1
 
-    # 4. HPRSパラメータ (ここを追加・修正しました)
-    # main.py の出力フォルダ名に含まれるパラメータ
-    EXP_FACTOR = 2.0  # exp2.0
-    GAMMA = 0.3       # gam0.3
+    # 4. HPRSパラメータ
+    EXP_FACTOR = 2.0
+    GAMMA = 0.3
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
@@ -126,34 +126,24 @@ if __name__ == "__main__":
     ZETA = 0.3
     SEED = 22
     
+    # デバイス設定 (ループの外で一度だけ取得)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     # ==========================================
-    # パス構築と実行
+    # 実行ループ
     # ==========================================
     
-    # フォルダ構成の例:
-    # results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-2dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22
-    
-    snr_folder = f"awgn_{SNR_LABEL}dB"
-    
-    # main.py の config.result_name 生成ロジックに合わせたフォルダ名
-    # f'Retrans_{retrans_mode}_{retrans_value}_{u_mode_str}_{retrans_basis}_exp{expansion_factor}_gam{retrans_gamma}_zeta{zeta}_seed{seed}'
-    # ここでは retrans_mode='rate', basis='both', u_mode='Comparison' (複数手法実行時) を想定
-    exp_folder = f"Retrans_rate_{RATE}_Comparison_both_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
-    
-    target_results_path = os.path.join(
-        ROOT_DIR, 
-        DATASET, 
-        METHOD_PATH, 
-        snr_folder, 
-        exp_folder
-    )
-    
-    print(f"Target Path: {target_results_path}")
-    
-    if os.path.exists(target_results_path):
-        # FID計算実行
-        calculate_fids_from_disk(target_results_path)
-    else:
-        print("\n[Error] 指定されたパスが存在しません。")
-        print(f"Path not found: {target_results_path}")
-        print("設定エリアの変数 (DATASET, SNR_LABEL, RATE, EXP_FACTOR, GAMMA 等) を確認してください。")
+    for snr_label in SNR_LABELS:
+        snr_folder = f"awgn_{snr_label}dB"
+        exp_folder = f"Retrans_rate_{RATE}_Comparison_both_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
+        
+        target_results_path = os.path.join(
+            ROOT_DIR, 
+            DATASET, 
+            METHOD_PATH, 
+            snr_folder, 
+            exp_folder
+        )
+        
+        calculate_fids_from_disk(target_results_path, device)
