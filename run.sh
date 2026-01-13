@@ -4,7 +4,7 @@
 set -e
 
 # 実験対象のSNRリスト
-SNRS=(-5 -4 -3 -6 -7 -2 -8)
+SNRS=(-3 -2 -5 -4 -6 -7 -8)
 
 # ベースとなるテンプレート設定ファイル
 TEMPLATE_YAML="configs/diffcom_0.yaml"
@@ -24,9 +24,9 @@ RETRANS_BASIS="both"
 
 # --- HPRS (Hybrid-Priority) パラメータ ---
 # 候補領域の拡張係数 (デフォルト: 2.0)
-EXPANSION_FACTOR=5.0
+EXPANSION_FACTOR=2.0
 # Semantic Priority (ViT) に割り当てる予算の割合 (0.0 ~ 1.0, デフォルト: 0.3)
-RETRANS_GAMMA=0.7
+RETRANS_GAMMA=0.3
 
 
 echo "========================================================"
@@ -56,9 +56,19 @@ for R_VAL in "${RETRANS_VALUES[@]}"; do
         # 設定ファイル名の定義
         CONFIG_FILE="configs/diffcom_${SNR}.yaml"
 
+        # --- Resume Index の自動設定ロジック ---
+        # SNR が -2, -3 の場合は 0 から開始
+        # それ以外 (-4, -5, -6, -7, -8) は 50 から開始
+        if [[ "$SNR" == "-2" || "$SNR" == "-3" ]]; then
+            RESUME_IDX=0
+        else
+            RESUME_IDX=50
+        fi
+
         echo ""
         echo "--------------------------------------------------------"
         echo "Processing SNR = $SNR (Retrans Value = $R_VAL)"
+        echo "Resume Index = $RESUME_IDX"
         echo "--------------------------------------------------------"
 
         # 設定ファイル生成ロジック (テンプレート利用)
@@ -90,7 +100,8 @@ for R_VAL in "${RETRANS_VALUES[@]}"; do
             --retrans_value "$R_VAL" \
             --retrans_basis "$RETRANS_BASIS" \
             --expansion_factor "$EXPANSION_FACTOR" \
-            --retrans_gamma "$RETRANS_GAMMA"
+            --retrans_gamma "$RETRANS_GAMMA" \
+            --resume_index "$RESUME_IDX"
 
         echo "Finished SNR = $SNR at Retrans Value = $R_VAL"
     done
