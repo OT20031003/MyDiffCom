@@ -108,7 +108,7 @@ if __name__ == "__main__":
     
     # 1. データセット ("imagenet" or "ffhq_demo")
     DATASET = "ffhq_demo" 
-    
+    DATASET = "imagenet"
     # 2. SNR リスト
     # ここに計算したいSNRをすべて列挙します
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
@@ -117,8 +117,8 @@ if __name__ == "__main__":
     RATE = 0.1
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 2.0
-    GAMMA = 0.3
+    EXP_FACTOR = 5.0
+    GAMMA = 0.7
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
