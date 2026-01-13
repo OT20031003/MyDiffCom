@@ -17,7 +17,7 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 TARGET_FILENAME = "post_process_id_loss.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-8, -7, -6, -5, -4] 
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2] 
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]

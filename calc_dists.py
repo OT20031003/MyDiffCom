@@ -70,10 +70,11 @@ def calculate_dists_for_snr(target_path, device):
 
 if __name__ == "__main__":
     DATASET = "ffhq_demo"
+    DATASET = "imagenet"
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
     RATE = 0.1
-    EXP_FACTOR = 2.0
-    GAMMA = 0.3
+    EXP_FACTOR = 5.0
+    GAMMA = 0.7
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"
     ZETA = 0.3

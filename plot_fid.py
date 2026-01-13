@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # ==========================================
 
 # 1. データセットとディレクトリ設定
-DATASET = "imagenet"
+DATASET = "ffhq_demo"
 BASE_DIR = "results_retrans_comparison"
 METHOD_PATH = "diffcom/djscc_2" # FID計算結果があるサブディレクトリ
 ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
@@ -28,8 +28,8 @@ TARGET_RATES = [0.1]
 # 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
 # None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
 
-TARGET_EXPS = [5.0]     # 例: [2.0] または None
-TARGET_GAMS = [0.7]     # 例: [0.3, 0.7] または None
+TARGET_EXPS = [2.0]     # 例: [2.0] または None
+TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
 
 # -----------------------------------------------------
 

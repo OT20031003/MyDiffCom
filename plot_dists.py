@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # ==========================================
 
 # 1. データセットとディレクトリ設定
-DATASET = "ffhq_demo"
+DATASET = "imagenet"
 BASE_DIR = "results_retrans_comparison"
 METHOD_PATH = "diffcom/djscc_2"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
@@ -18,15 +18,15 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
 TARGET_FILENAME = "post_process_dists.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-8,-7,-6,-5, -4]
+TARGET_SNRS = [-8,-7,-6,-5, -4, -3, -2]
 #TARGET_SNRS = []
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
 
 # --- 拡張パラメータでのフィルタリング設定 ---
-TARGET_EXPS = [2.0]     # 例: [5.0] または None
-TARGET_GAMS = [0.3]     # 例: [0.7] または None
+TARGET_EXPS = [5.0]     # 例: [5.0] または None
+TARGET_GAMS = [0.7]     # 例: [0.7] または None
 
 # 5. プロットしたいJSON内のキー (手法) のリスト
 TARGET_KEYS = [

@@ -5,7 +5,7 @@ import re
 import matplotlib.pyplot as plt
 
 # 設定エリア
-DATASET = "ffhq_demo"
+DATASET = "imagenet"
 BASE_DIR = "results_retrans_comparison"
 METHOD_PATH = "diffcom/djscc_2"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
@@ -13,10 +13,10 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
 TARGET_FILENAME = "post_process_psnr.json" # 対象ファイル
 
 TARGET_SNRS = []
-TARGET_SNRS = [-8, -6, -7, -5, -4]
+TARGET_SNRS = [-8, -6, -7, -5, -4, -3, -2]
 TARGET_RATES = [0.1]
-TARGET_EXPS = [2.0]
-TARGET_GAMS = [0.3]
+TARGET_EXPS = [5.0]
+TARGET_GAMS = [0.7]
 
 TARGET_KEYS = [
     "3_P2_perturbation_raw_Unc",

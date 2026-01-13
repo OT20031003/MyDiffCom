@@ -15,53 +15,67 @@ except ImportError:
     print("Please install it using: pip install facenet-pytorch")
     exit(1)
 
-def calculate_id_loss_from_disk(base_path):
+def preprocess_for_facenet(img_tensor):
     """
-    Calculate ID Loss (1 - CosineSimilarity) for saved images.
-    Also logs the top 3 images with the largest difference between Unc and Sem methods.
+    Preprocess input tensor [0, 1] for Facenet (InceptionResnetV1)
+    1. Resize to 160x160
+    2. Whitening (Standardize): (x * 255 - 127.5) / 128.0
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    # Resize
+    img_resized = F.interpolate(img_tensor, size=(160, 160), mode='bilinear', align_corners=False)
+    
+    # Normalize (Fixed image standardization)
+    img_normalized = (img_resized * 255.0 - 127.5) / 128.0
+    
+    return img_normalized
 
-    # --- [Load Model] ---
-    print("Loading Face Recognition Model (InceptionResnetV1)...")
-    id_model = InceptionResnetV1(pretrained='vggface2').eval().to(device)
+def calculate_id_loss_for_snr(target_path, id_model, device):
+    """
+    指定されたパス内の画像からID Loss (1 - CosineSimilarity) を計算し保存する。
+    UncとSemの手法間の差分トップ3もログに出力する。
+    """
+    if not os.path.exists(target_path):
+        print(f"[Skip] Path not found: {target_path}")
+        return
 
-    # Methods to evaluate
+    # 手法定義
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
         '3_P2_perturbation_raw_Unc',
         '3_P2_perturbation_raw_Sem',
-        '3_P2_temporal_raw_Unc',
-        '3_P2_temporal_raw_Sem',
+        # '3_P2_temporal_raw_Unc',
+        # '3_P2_temporal_raw_Sem',
         '3_P2_Random'
     ]
 
-    # Result containers
+    # 結果コンテナ
     id_scores = {m: [] for m in methods}     # Cosine Similarity
     id_losses = {m: [] for m in methods}     # 1 - Similarity
 
-    # Containers for tracking differences [ (batch_id, diff, loss_unc, loss_sem), ... ]
+    # 差分トラッキング用 [ (batch_id, diff, loss_unc, loss_sem), ... ]
     diff_records_perturbation = []
     diff_records_temporal = []
 
-    visuals_dir = os.path.join(base_path, 'visuals')
+    visuals_dir = os.path.join(target_path, 'visuals')
     if not os.path.exists(visuals_dir):
-        print(f"Error: {visuals_dir} does not exist.")
+        print(f"[Skip] No visuals directory in {target_path}")
         return
 
-    # Get batch directories
+    # バッチディレクトリ取得
     batch_dirs = sorted([
         d for d in os.listdir(visuals_dir) 
         if os.path.isdir(os.path.join(visuals_dir, d)) and d.isdigit()
     ])
 
+    if len(batch_dirs) == 0:
+        return
+
     to_tensor = transforms.ToTensor()
 
-    print(f"Processing {len(batch_dirs)} samples from: {visuals_dir}")
+    print(f"Processing {len(batch_dirs)} samples in {os.path.basename(target_path)}...")
 
-    for b_dir in tqdm(batch_dirs):
+    for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
         
         # Load Ground Truth
@@ -84,24 +98,26 @@ def calculate_id_loss_from_disk(base_path):
             for m in methods:
                 m_path = os.path.join(path, f'{m}.png')
                 if os.path.exists(m_path):
-                    m_img = Image.open(m_path).convert('RGB')
-                    m_tensor = to_tensor(m_img).unsqueeze(0).to(device)
+                    try:
+                        m_img = Image.open(m_path).convert('RGB')
+                        m_tensor = to_tensor(m_img).unsqueeze(0).to(device)
 
-                    with torch.no_grad():
-                        m_input = preprocess_for_facenet(m_tensor)
-                        m_emb = id_model(m_input)
+                        with torch.no_grad():
+                            m_input = preprocess_for_facenet(m_tensor)
+                            m_emb = id_model(m_input)
 
-                        # Calculate Similarity & Loss
-                        similarity = F.cosine_similarity(gt_emb, m_emb).item()
-                        loss = 1.0 - similarity
+                            # Calculate Similarity & Loss
+                            similarity = F.cosine_similarity(gt_emb, m_emb).item()
+                            loss = 1.0 - similarity
 
-                        id_scores[m].append(similarity)
-                        id_losses[m].append(loss)
-                        
-                        # Store for difference calculation
-                        current_batch_losses[m] = loss
+                            id_scores[m].append(similarity)
+                            id_losses[m].append(loss)
+                            
+                            # Store for difference calculation
+                            current_batch_losses[m] = loss
+                    except Exception:
+                        current_batch_losses[m] = None
                 else:
-                    # If image missing, cannot compute difference
                     current_batch_losses[m] = None
 
             # --- Calculate Differences for Top 3 Tracking ---
@@ -115,7 +131,7 @@ def calculate_id_loss_from_disk(base_path):
                 diff = abs(u_val - s_val)
                 diff_records_perturbation.append( (b_dir, diff, u_val, s_val) )
 
-            # 2. Temporal: Unc vs Sem
+            # 2. Temporal: Unc vs Sem (もしmethodsに含まれていれば)
             unc_key_t = '3_P2_temporal_raw_Unc'
             sem_key_t = '3_P2_temporal_raw_Sem'
             if current_batch_losses.get(unc_key_t) is not None and current_batch_losses.get(sem_key_t) is not None:
@@ -125,12 +141,12 @@ def calculate_id_loss_from_disk(base_path):
                 diff_records_temporal.append( (b_dir, diff, u_val, s_val) )
 
         except Exception as e:
-            print(f"Error processing batch {b_dir}: {e}")
-            continue
+            # print(f"Error processing batch {b_dir}: {e}")
+            pass
 
     # --- [Summarize & Save] ---
     final_results = {}
-    print("\n--- Final ID Loss Results (Lower is Better) ---")
+    print(f"--- ID Loss Results ({os.path.basename(target_path)}) ---")
     print(f"{'Method':<30} | {'ID Loss':<10} | {'Similarity':<10}")
     print("-" * 60)
 
@@ -152,16 +168,13 @@ def calculate_id_loss_from_disk(base_path):
             print(f"{m:<30} | N/A        | N/A")
 
     # --- [Print Top 3 Differences] ---
-    print("\n" + "="*60)
-    print(" TOP 3 SAMPLES WITH LARGEST DIFFERENCE (Unc vs Sem)")
-    print("="*60)
-
     def print_top3(records, category_name):
+        if not records:
+            return
         # Sort by difference (descending)
-        # record structure: (batch_id, diff, loss_unc, loss_sem)
         sorted_recs = sorted(records, key=lambda x: x[1], reverse=True)[:3]
         
-        print(f"\n[{category_name}] Largest Abs Differences:")
+        print(f"\n[{category_name}] Largest Abs Differences (Unc vs Sem):")
         print(f"{'Batch ID':<10} | {'Diff':<10} | {'Unc Loss':<10} | {'Sem Loss':<10}")
         print("-" * 50)
         for r in sorted_recs:
@@ -169,35 +182,51 @@ def calculate_id_loss_from_disk(base_path):
             print(f"{b_id:<10} | {diff:.4f}     | {u_l:.4f}     | {s_l:.4f}")
 
     print_top3(diff_records_perturbation, "Perturbation (Raw)")
-    print_top3(diff_records_temporal, "Temporal (Raw)")
+    # print_top3(diff_records_temporal, "Temporal (Raw)")
 
     # Save results to JSON
-    output_json = os.path.join(base_path, "post_process_id_loss.json")
+    output_json = os.path.join(target_path, "post_process_id_loss.json")
     with open(output_json, 'w') as f:
         json.dump(final_results, f, indent=4)
-    print(f"\nResults saved to: {output_json}")
-
-    return final_results
-
-def preprocess_for_facenet(img_tensor):
-    """
-    Preprocess input tensor [0, 1] for Facenet (InceptionResnetV1)
-    1. Resize to 160x160
-    2. Whitening (Standardize): (x * 255 - 127.5) / 128.0
-    """
-    # Resize
-    img_resized = F.interpolate(img_tensor, size=(160, 160), mode='bilinear', align_corners=False)
-    
-    # Normalize (Fixed image standardization)
-    img_normalized = (img_resized * 255.0 - 127.5) / 128.0
-    
-    return img_normalized
+    print(f"Saved: {output_json}\n")
 
 if __name__ == "__main__":
-    # Adjust the target path as needed
-    target_results_path = r"results_retrans_comparison/ffhq_demo/diffcom/djscc_2/awgn_-5dB/Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22"
+    # ==========================================
+    # 設定エリア
+    # ==========================================
+    DATASET = "ffhq_demo"
     
-    if os.path.exists(target_results_path):
-        calculate_id_loss_from_disk(target_results_path)
-    else:
-        print(f"Path not found: {target_results_path}")
+    # ★ 複数のSNRをリストで指定
+    SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
+    
+    RATE = 0.1
+    EXP_FACTOR = 2.0
+    GAMMA = 0.3
+    
+    ROOT_DIR = "results_retrans_comparison"
+    METHOD_PATH = "diffcom/djscc_2"
+    ZETA = 0.3
+    SEED = 22
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    # --- [Load Model Once] ---
+    print("Loading Face Recognition Model (InceptionResnetV1)...")
+    try:
+        id_model = InceptionResnetV1(pretrained='vggface2').eval().to(device)
+    except Exception as e:
+        print(f"Failed to load model: {e}")
+        exit(1)
+
+    # ==========================================
+    # 実行ループ
+    # ==========================================
+    for snr_label in SNR_LABELS:
+        snr_folder = f"awgn_{snr_label}dB"
+        exp_folder = f"Retrans_rate_{RATE}_Comparison_both_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
+        
+        target_path = os.path.join(ROOT_DIR, DATASET, METHOD_PATH, snr_folder, exp_folder)
+        
+        # モデルを引数として渡して計算
+        calculate_id_loss_for_snr(target_path, id_model, device)
