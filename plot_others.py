@@ -99,7 +99,7 @@ METRICS_CONFIG = {
 
 # 9. 実際にプロットする指標のリスト (METRICS_CONFIG のキーから選択)
 TARGET_METRICS = [
-    "accuracy",
+    #"accuracy",
     #"classifier_confidence",
     "clip_score"
 ]
