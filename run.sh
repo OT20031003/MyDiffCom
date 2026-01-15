@@ -8,7 +8,7 @@ TEMPLATE_YAML="configs/diffcom_0.yaml"
 PYTHON_SCRIPT="main_diffcom_retransmission.py"
 RETRANS_MODE="rate"
 RETRANS_VALUE=0.1
-RETRANS_BASIS="semantic"  # semanticで固定
+RETRANS_BASIS="edge"  # semanticで固定
 
 # configsディレクトリが存在しない場合は作成
 if [ ! -d "configs" ]; then
@@ -99,9 +99,9 @@ echo "########################################################"
 echo "### START Experiment 2: $LABEL_2 ###"
 echo "########################################################"
 
-for SNR in "${SNRS_EXP2[@]}"; do
-    run_experiment_step $SNR $ETA_2 $GAMMA_2 "$LABEL_2"
-done
+# for SNR in "${SNRS_EXP2[@]}"; do
+#     run_experiment_step $SNR $ETA_2 $GAMMA_2 "$LABEL_2"
+# done
 
 echo ""
 echo "========================================================"
