@@ -24,13 +24,36 @@ TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 TARGET_RATES = [0.1]
 
 # ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
-# labelに r"$...$" を使うことでLaTeX形式の数式フォントを表示できます
+# 【修正箇所】各設定に color と marker を追加しました
 COMPARISON_CONFIGS = [
-    # 元のplot_psnr.pyの設定 (exp=5.0, gam=0.7) を反映
-    {"exp": 1.0, "gamma": 0.0, "label": r"$\eta=1.0, \gamma=0.0$", "linestyle": "--"},
+    # 設定1: 赤, 四角, 破線
+    {
+        "exp": 1.0, 
+        "gamma": 0.0, 
+        "label": r"$\eta=1.0, \gamma=0.0$", 
+        "linestyle": "--",
+        "color": "red",     # ★追加
+        "marker": "s"       # ★追加
+    },
     
-    # 必要に応じて追加してください
-    {"exp": 2.0, "gamma": 0.3, "label": r"$\eta=2.0, \gamma=0.3$", "linestyle": "-"},
+    # 設定2: 緑, ダイヤ, 実線
+    {
+        "exp": 2.0, 
+        "gamma": 0.3, 
+        "label": r"$\eta=2.0, \gamma=0.3$", 
+        "linestyle": "-",
+        "color": "green",   # ★追加
+        "marker": "D"       # ★追加
+    },
+    # 設定C: 比較2 (紫・三角・一点鎖線)
+    {
+        "exp": 10.0, 
+        "gamma": 1.0, 
+        "label": r"$\eta=10.0, \gamma=1.0$", 
+        "linestyle": "-.", 
+        "color": "purple", 
+        "marker": "^"
+    }
 ]
 
 # 6. JSON内のキー分類
@@ -64,6 +87,7 @@ STYLE_CONFIG = {
     "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
     "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
     
+    # ここでの設定は COMPARISON_CONFIGS に指定がない場合のフォールバックとして使われます
     "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
     "3_P2_perturbation_raw_Sem": {"color": "green", "marker": "D"},
 }
@@ -127,6 +151,7 @@ def load_data_recursive():
             # CONFIGSと一致するものだけ保存
             matched_config_idx = -1
             for idx, conf in enumerate(COMPARISON_CONFIGS):
+                # 浮動小数点の誤差対策
                 if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
                     matched_config_idx = idx
                     break
@@ -210,12 +235,15 @@ def plot_psnr(main_data, baseline_data):
                 if x_vals:
                     has_data = True
                     
-                    # スタイル決定
+                    # 【修正箇所】スタイル決定ロジック
+                    # 1. まず手法のデフォルトスタイルを取得
                     base_style = STYLE_CONFIG.get(method, {})
-                    color = base_style.get("color", "black")
-                    marker = base_style.get("marker", "o")
                     
-                    linestyle = config.get("linestyle", "-")
+                    # 2. Configに指定があればそれを優先、なければデフォルトを使う
+                    #    これにより、COMPARISON_CONFIGS で指定した色・マーカーが反映されます
+                    color = config.get("color", base_style.get("color", "black"))
+                    marker = config.get("marker", base_style.get("marker", "o"))
+                    linestyle = config.get("linestyle", base_style.get("linestyle", "-"))
                     
                     method_name = METHOD_LABELS.get(method, method)
                     config_label = config.get("label", "")

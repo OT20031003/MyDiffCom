@@ -6,24 +6,23 @@ from tqdm import tqdm
 import json
 import pyiqa
 
-def calculate_hiqa_from_disk(base_path):
+def calculate_hiqa_from_disk(base_path, device):
     """
     保存済みの画像から手法ごとの HyperIQA (HIQA) を計算する。
-    HyperIQAはNo-Reference指標であり、人間の主観評価(MOS)を予測するよう学習されています。
-    スコアは「高いほど良い (Higher is Better)」です。
+    calc_fid.py と同様の構造で実装。
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    if not os.path.exists(base_path):
+        print(f"[Skip] Path not found: {base_path}")
+        return
 
     # --- [モデルの準備] ---
     # PyIQAを使用してHyperIQAモデルをロード
-    print("Loading HyperIQA Model...")
+    # 毎回ロードすると重いため、ループ外でロードして渡す設計も可能ですが、
+    # calc_fidの構造に合わせるため関数内でハンドリングします(ただしcreate_metricはキャッシュされることが多いです)
     try:
-        # metric_name='hyperiqa' を指定
         hiqa_metric = pyiqa.create_metric('hyperiqa', device=device)
     except Exception as e:
         print(f"Error loading pyiqa: {e}")
-        print("Please install via: pip install pyiqa")
         return
 
     # 計算対象の手法
@@ -32,8 +31,8 @@ def calculate_hiqa_from_disk(base_path):
         '2_Phase1_Recon',
         '3_P2_perturbation_raw_Unc',
         '3_P2_perturbation_raw_Sem',
-        '3_P2_temporal_raw_Unc',
-        '3_P2_temporal_raw_Sem',
+        # '3_P2_temporal_raw_Unc',
+        # '3_P2_temporal_raw_Sem',
         '3_P2_Random'
     ]
 
@@ -42,7 +41,7 @@ def calculate_hiqa_from_disk(base_path):
 
     visuals_dir = os.path.join(base_path, 'visuals')
     if not os.path.exists(visuals_dir):
-        print(f"Error: {visuals_dir} does not exist.")
+        print(f"[Skip] No visuals directory in {base_path}")
         return
 
     # バッチディレクトリ (0, 1, 2...) を取得
@@ -51,15 +50,19 @@ def calculate_hiqa_from_disk(base_path):
         if os.path.isdir(os.path.join(visuals_dir, d)) and d.isdigit()
     ])
 
+    if len(batch_dirs) == 0:
+        print(f"No batch directories found in {visuals_dir}")
+        return
+
     # PyIQAは [0, 1] のTensor入力を期待します
     to_tensor = transforms.ToTensor()
 
-    print(f"Processing {len(batch_dirs)} samples from: {visuals_dir}")
+    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)}")
 
-    for b_dir in tqdm(batch_dirs):
+    for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
         
-        # HyperIQAもNo-ReferenceなのでGTは必須ではありません
+        # HyperIQAはNo-ReferenceなのでGTは不要
         
         # 各手法の画像を処理
         for m in methods:
@@ -76,33 +79,28 @@ def calculate_hiqa_from_disk(base_path):
                         hiqa_scores[m].append(score)
 
                 except Exception as e:
-                    print(f"Error processing {m} in batch {b_dir}: {e}")
+                    # エラー時はスキップ
+                    pass
 
     # --- [集計と保存] ---
     final_results = {}
-    print("\n--- Final HyperIQA Results (Higher is Better) ---")
-    print(f"{'Method':<30} | {'Average HIQA':<10}")
-    print("-" * 45)
-
+    print(f"--- HyperIQA Results ({os.path.basename(base_path)}) ---")
+    
     for m in methods:
         scores = hiqa_scores[m]
-        
         if len(scores) > 0:
             avg_score = sum(scores) / len(scores)
-            
-            final_results[m] = {
-                "hiqa": avg_score,
-                "num_samples": len(scores)
-            }
-            print(f"{m:<30} | {avg_score:.4f}")
+            final_results[m] = avg_score
+            print(f"{m:25s}: {avg_score:.4f}")
         else:
-            print(f"{m:<30} | N/A")
+            final_results[m] = None
+            print(f"{m:25s}: N/A")
 
     # 結果をJSONとして保存
     output_json = os.path.join(base_path, "post_process_hiqa.json")
     with open(output_json, 'w') as f:
         json.dump(final_results, f, indent=4)
-    print(f"\nResults saved to: {output_json}")
+    print(f"Saved: {output_json}\n")
 
     return final_results
 
@@ -112,41 +110,49 @@ if __name__ == "__main__":
     # ==========================================
     
     # 1. データセット ("imagenet" or "ffhq_demo")
-    DATASET = "ffhq_demo"
-    DATASET = "imagenet"
+    DATASET = "ffhq_demo" 
+    # DATASET = "imagenet"
     
-    # 2. SNR ("00", "-4" などフォルダ名の数値部分)
-    # フォルダ名が 'awgn_-4dB' の場合は "-4" としてください
-    SNR_LABEL = "-7" 
+    # 比較モード (ディレクトリ名の一部)
+    MODE = "both"
+    
+    # 2. SNR リスト
+    # ここに計算したいSNRをすべて列挙します
+    SNR_LABELS = ["-8", "-7", "-6", "-5", "-4", "-3", "-2"]
     
     # 3. 再送率 (Retrans_rate)
     RATE = 0.1
 
-    # 4. その他の固定パラメータ
+    # 4. HPRSパラメータ (ディレクトリ特定用)
+    EXP_FACTOR = 2.0
+    GAMMA = 0.3
+
+    # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"
     ZETA = 0.3
     SEED = 22
     
+    # デバイス設定
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     # ==========================================
-    # パス構築と実行
+    # 実行ループ
     # ==========================================
     
-    snr_folder = f"awgn_{SNR_LABEL}dB"
-    exp_folder = f"Retrans_rate_{RATE}_Comparison_both_zeta{ZETA}_seed{SEED}"
-    
-    target_results_path = os.path.join(
-        ROOT_DIR, 
-        DATASET, 
-        METHOD_PATH, 
-        snr_folder, 
-        exp_folder
-    )
-    
-    print(f"Target Path: {target_results_path}")
-    
-    if os.path.exists(target_results_path):
-        calculate_hiqa_from_disk(target_results_path)
-    else:
-        print("\n[Error] 指定されたパスが存在しません。")
-        print("設定エリアの変数を確認してください。")
+    for snr_label in SNR_LABELS:
+        snr_folder = f"awgn_{snr_label}dB"
+        
+        # calc_fid.py と同じフォルダ命名規則を使用
+        exp_folder = f"Retrans_rate_{RATE}_Comparison_{MODE}_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
+        
+        target_results_path = os.path.join(
+            ROOT_DIR, 
+            DATASET, 
+            METHOD_PATH, 
+            snr_folder, 
+            exp_folder
+        )
+        
+        calculate_hiqa_from_disk(target_results_path, device)

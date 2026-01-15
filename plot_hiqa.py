@@ -8,171 +8,286 @@ import matplotlib.pyplot as plt
 # 設定エリア
 # ==========================================
 
-# 1. データセットの指定
-# ここを "imagenet" や "ffhq_demo" に書き換えてください
+# 1. データセットとディレクトリ設定
 DATASET = "ffhq_demo"
-DATASET = "imagenet"
-
-# 2. 探索を開始するルートディレクトリ
+# DATASET = "imagenet"
 BASE_DIR = "results_retrans_comparison"
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
-# 3. 対象の再送率 (パスに含まれる文字列 "Retrans_rate_X.X" に一致させる)
-TARGET_RETRANS_RATE = 0.1
+# 2. プロット対象のファイル名
+TARGET_FILENAME = "post_process_hiqa.json"
 
-# 4. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-6, -4, -2, 0]
-#TARGET_SNRS = None 
+# 3. プロットしたいSNRのリスト
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 
-# 5. プロットしたい手法のリスト (JSONのキーに完全一致させる)
-TARGET_METHODS = [
-    #"1_JSCC_Init", 
-    #"2_Phase1_Recon", 
+# 4. プロットしたい再送率 (Retrans_rate) のリスト
+TARGET_RATES = [0.1]
+
+# ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
+# 【修正箇所】各設定に color と marker を追加しました
+COMPARISON_CONFIGS = [
+    # 設定1: 緑, ダイヤ, 実線
+    {
+        "exp": 2.0, 
+        "gamma": 0.3, 
+        "label": r"$\eta=2.0, \gamma=0.3$", 
+        "linestyle": "-",
+        "color": "green",   # ★追加
+        "marker": "D"       # ★追加
+    },
     
-    # Temporal (時間的分散) 系
-    "3_P2_temporal_raw_Unc",
-    "3_P2_temporal_raw_Sem",
-    
-    # Perturbation (摂動分散) 系
-    "3_P2_perturbation_raw_Unc",
-    "3_P2_perturbation_raw_Sem",
-    
-    # ランダムベースライン
+    # 設定2: 赤, 四角, 破線
+    {
+        "exp": 1.0, 
+        "gamma": 0.0, 
+        "label": r"$\eta=1.0, \gamma=0.0$", 
+        "linestyle": "--",
+        "color": "red",     # ★追加
+        "marker": "s"       # ★追加
+    },
+    # 設定C: 比較2 (紫・三角・一点鎖線)
+    {
+        "exp": 10.0, 
+        "gamma": 1.0, 
+        "label": r"$\eta=10.0, \gamma=1.0$", 
+        "linestyle": "-.", 
+        "color": "purple", 
+        "marker": "^"
+    }
+]
+
+# 6. JSON内のキー分類
+
+# (A) ベースライン (パラメータ比較の対象外で、常に表示する手法)
+BASELINE_KEYS = [
+    #"1_JSCC_Init",
+    "2_Phase1_Recon",
     "3_P2_Random"
 ]
 
-# 6. 凡例の表示名マッピング
+# (B) 比較対象 (パラメータ設定ごとに線を引く手法)
+COMPARISON_KEYS = [
+    #"3_P2_perturbation_raw_Unc",
+    "3_P2_perturbation_raw_Sem",
+]
+
+# 7. 凡例の表示名マッピング
 METHOD_LABELS = {
     "1_JSCC_Init":               "JSCC (Initial)",
     "2_Phase1_Recon":            "Phase 1 Recon",
-    
-    "3_P2_temporal_raw_Unc":     "Temporal (Unc)",
-    "3_P2_temporal_raw_Sem":     "Temporal (Sem)",
-    
-    "3_P2_perturbation_raw_Unc": "Perturbation (Unc)",
-    "3_P2_perturbation_raw_Sem": "Perturbation (Sem)",
-    
     "3_P2_Random":               "Random Baseline",
+    
+    "3_P2_perturbation_raw_Unc": "Perturb (Unc)",
+    "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
 }
 
-# 7. スタイル設定
+# 8. スタイル設定 (ベースライン用 & フォールバック)
 STYLE_CONFIG = {
-    "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"}, 
-    "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"}, 
+    "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
+    "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
+    "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
     
-    "3_P2_temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"}, 
-    "3_P2_temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"}, 
-    
-    "3_P2_perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"}, 
-    "3_P2_perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"}, 
-    
-    "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"}, 
+    # ここでの設定は COMPARISON_CONFIGS に指定がない場合のフォールバックとして使われます
+    "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
+    "3_P2_perturbation_raw_Sem": {"color": "green", "marker": "D"},
 }
+
+# 9. 対象とするメトリクスキー (calc_hiqa.pyの出力形式による)
+# calc_hiqa.py が { "method": score } の形式ならキー指定は不要ですが、
+# { "method": { "hiqa": score } } の形式の場合は "hiqa" を指定
+TARGET_METRIC_KEY = "hiqa"
 
 # ==========================================
 # 処理ロジック
 # ==========================================
 
-def load_hiqa_data_recursive():
+def load_data_recursive():
     """
-    指定ディレクトリ以下の post_process_hiqa.json を探索し、データを集計する
+    ディレクトリを再帰的に探索し、データを分類して読み込む
     """
-    # post_process_hiqa.json を再帰的に探索
-    search_pattern = os.path.join(ROOT_DIR, "**", "post_process_hiqa.json")
+    search_pattern = os.path.join(ROOT_DIR, "**", TARGET_FILENAME)
     print(f"Target Dataset: {DATASET}")
-    print(f"Searching for files: {search_pattern}")
+    print(f"Search Pattern: {search_pattern}")
     
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
-    data_store = {}
+    # データ構造
+    main_data = {}      # 比較対象用: main_data[config_idx][rate][snr][method]
+    baseline_data = {}  # ベースライン用
     
-    # 正規表現
-    snr_regex = re.compile(r"awgn_(-?\d+\.?\d*)dB")
-    retrans_regex = re.compile(r"Retrans_rate_(\d+\.?\d*)")
+    regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
+    regex_params = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)_Comparison_.*_exp(\d+(?:\.\d+)?)_gam(\d+(?:\.\d+)?)_")
 
     for fpath in files:
-        dir_path = os.path.dirname(fpath)
+        dirname = os.path.dirname(fpath)
         
-        # SNR抽出
-        match_snr = snr_regex.search(dir_path)
+        # 1. SNRの抽出
+        match_snr = regex_snr.search(fpath)
         if not match_snr: continue
         snr = float(match_snr.group(1))
 
-        # 再送率フィルタリング
-        if TARGET_RETRANS_RATE is not None:
-            match_retrans = retrans_regex.search(dir_path)
-            if not match_retrans: continue
-            if abs(float(match_retrans.group(1)) - TARGET_RETRANS_RATE) > 1e-5:
-                continue
+        # 2. Rate, Exp, Gamma の抽出
+        match_params = regex_params.search(fpath)
+        if not match_params: continue
+        
+        rate = float(match_params.group(1))
+        exp_val = float(match_params.group(2))
+        gam_val = float(match_params.group(3))
 
-        # SNRフィルタリング
-        if TARGET_SNRS is not None and snr not in TARGET_SNRS:
-            continue
+        # フィルタリング
+        if TARGET_SNRS and snr not in TARGET_SNRS: continue
+        if TARGET_RATES and rate not in TARGET_RATES: continue
 
         try:
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = json.load(f)
             
-            if snr not in data_store:
-                data_store[snr] = {}
-
-            for method in TARGET_METHODS:
-                if method in content:
-                    val_obj = content[method]
+            # --- (A) ベースラインデータの確保 ---
+            for b_key in BASELINE_KEYS:
+                if b_key in content:
+                    if rate not in baseline_data: baseline_data[rate] = {}
+                    if snr not in baseline_data[rate]: baseline_data[rate][snr] = {}
                     
-                    # calc_hiqa.py の出力形式 { "hiqa": score, ... } に対応
-                    if isinstance(val_obj, dict) and "hiqa" in val_obj:
-                        score = val_obj["hiqa"]
-                    elif isinstance(val_obj, (float, int)):
-                        score = val_obj
-                    else:
-                        continue # 形式が不明な場合はスキップ
+                    baseline_data[rate][snr][b_key] = content[b_key]
 
-                    data_store[snr][method] = score
+            # --- (B) 比較対象データの確保 ---
+            matched_config_idx = -1
+            for idx, conf in enumerate(COMPARISON_CONFIGS):
+                # 浮動小数点の誤差対策
+                if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
+                    matched_config_idx = idx
+                    break
+            
+            if matched_config_idx != -1:
+                if matched_config_idx not in main_data:
+                    main_data[matched_config_idx] = {}
+                if rate not in main_data[matched_config_idx]:
+                    main_data[matched_config_idx][rate] = {}
+                if snr not in main_data[matched_config_idx][rate]:
+                    main_data[matched_config_idx][rate][snr] = {}
+
+                for c_key in COMPARISON_KEYS:
+                    if c_key in content:
+                        main_data[matched_config_idx][rate][snr][c_key] = content[c_key]
                     
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
-    return data_store
+    return main_data, baseline_data
 
-def plot_hiqa(data_store):
-    if not data_store:
+def get_metric_value(data_obj):
+    """
+    JSONの値が辞書形式 { "hiqa": 0.5 } なのか、直接 float なのかを吸収する
+    """
+    if isinstance(data_obj, dict) and TARGET_METRIC_KEY in data_obj:
+        return data_obj[TARGET_METRIC_KEY]
+    if isinstance(data_obj, (float, int)):
+        return data_obj
+    return None
+
+def plot_hiqa(main_data, baseline_data):
+    if not main_data and not baseline_data:
         print("表示対象のデータが見つかりませんでした。")
         return
 
-    snr_list = sorted(data_store.keys())
-    print(f"Plotting for SNRs: {snr_list}")
+    # Rateの集合を取得
+    available_rates = set()
+    for conf_idx in main_data:
+        available_rates.update(main_data[conf_idx].keys())
+    available_rates.update(baseline_data.keys())
     
-    plt.figure(figsize=(10, 7))
+    sorted_rates = sorted(list(available_rates))
     
-    for method in TARGET_METHODS:
-        x_vals = []
-        y_vals = []
+    for rate in sorted_rates:
+        print(f"--- Plotting HIQA for Retrans Rate: {rate} ---")
         
-        for snr in snr_list:
-            if method in data_store[snr]:
-                val = data_store[snr][method]
-                if val is not None:
-                    x_vals.append(snr)
-                    y_vals.append(val)
+        plt.figure(figsize=(10, 8))
+        ax = plt.gca()
+        has_data = False
         
-        if x_vals:
-            style = STYLE_CONFIG.get(method, {})
-            label = METHOD_LABELS.get(method, method)
-            plt.plot(x_vals, y_vals, label=label, **style)
+        # 1. ベースライン (JSCC, Phase1, Random) のプロット
+        if rate in baseline_data:
+            snr_list = sorted(baseline_data[rate].keys())
+            
+            for method in BASELINE_KEYS:
+                x_vals = []
+                y_vals = []
+                for snr in snr_list:
+                    if method in baseline_data[rate][snr]:
+                        raw_val = baseline_data[rate][snr][method]
+                        val = get_metric_value(raw_val)
+                        if val is not None:
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    has_data = True
+                    style = STYLE_CONFIG.get(method, {})
+                    label = METHOD_LABELS.get(method, method)
+                    ax.plot(x_vals, y_vals, label=label, **style)
 
-    plt.title(f"HyperIQA vs SNR ({DATASET} - Retrans Rate: {TARGET_RETRANS_RATE})", fontsize=14, fontweight='bold')
-    plt.xlabel("SNR (dB)", fontsize=12)
-    plt.ylabel("HyperIQA Score (Higher is Better)", fontsize=12)
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.legend(loc='best', fontsize=10)
-    plt.tight_layout()
-    
-    save_name = f'hiqa_vs_snr_{DATASET}_rate_{TARGET_RETRANS_RATE}.png'
-    plt.savefig(save_name, dpi=300)
-    print(f"グラフを保存しました: {save_name}")
+        # 2. 比較対象 (Perturbation Unc/Sem) のプロット
+        for conf_idx, config in enumerate(COMPARISON_CONFIGS):
+            if conf_idx not in main_data or rate not in main_data[conf_idx]:
+                continue
+            
+            current_data_group = main_data[conf_idx][rate]
+            snr_list = sorted(current_data_group.keys())
+            
+            for method in COMPARISON_KEYS:
+                x_vals = []
+                y_vals = []
+                
+                for snr in snr_list:
+                    if method in current_data_group[snr]:
+                        raw_val = current_data_group[snr][method]
+                        val = get_metric_value(raw_val)
+                        if val is not None:
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    has_data = True
+                    
+                    # 【修正箇所】スタイル決定ロジック
+                    base_style = STYLE_CONFIG.get(method, {})
+                    
+                    # Config優先
+                    color = config.get("color", base_style.get("color", "black"))
+                    marker = config.get("marker", base_style.get("marker", "o"))
+                    linestyle = config.get("linestyle", base_style.get("linestyle", "-"))
+                    
+                    method_name = METHOD_LABELS.get(method, method)
+                    config_label = config.get("label", "")
+                    
+                    full_label = f"{method_name} [{config_label}]"
+                    
+                    ax.plot(x_vals, y_vals, 
+                            label=full_label, 
+                            color=color, 
+                            linestyle=linestyle, 
+                            marker=marker)
+
+        # グラフ装飾
+        ax.set_title("HyperIQA vs SNR", fontsize=14, fontweight='bold')
+        ax.set_xlabel("SNR (dB)", fontsize=12)
+        ax.set_ylabel("HyperIQA Score (Higher is Better)", fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        
+        if has_data:
+            ax.legend(loc='best', fontsize=10, framealpha=0.9)
+        else:
+            ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
+
+        plt.tight_layout()
+
+        # ファイル名生成
+        save_name = f'hiqa_comparison_{DATASET}_rate_{rate}.png'
+        plt.savefig(save_name, dpi=300)
+        print(f"Saved: {save_name}")
+        plt.close()
 
 if __name__ == "__main__":
-    data = load_hiqa_data_recursive()
-    plot_hiqa(data)
+    m_data, b_data = load_data_recursive()
+    plot_hiqa(m_data, b_data)

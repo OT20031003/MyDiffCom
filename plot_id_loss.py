@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 DATASET = "ffhq_demo"
 BASE_DIR = "results_retrans_comparison"
-# 検索範囲を広げるため、ROOTはデータセット階層にします
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. プロット対象のファイル名
@@ -24,13 +23,37 @@ TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 TARGET_RATES = [0.1]
 
 # ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
-# labelに r"$...$" を使うことでLaTeX形式の数式フォントを表示できます
+# 【修正箇所】各設定に color と marker を追加しました
 COMPARISON_CONFIGS = [
-    # 元の設定 (exp=2.0, gam=0.3)
-    {"exp": 2.0, "gamma": 0.3, "label": r"$\eta=2.0, \gamma=0.3$", "linestyle": "-"},
+    # 設定A: 元の設定 (緑・ダイヤ・実線)
+    {
+        "exp": 2.0, 
+        "gamma": 0.3, 
+        "label": r"$\eta=2.0, \gamma=0.3$", 
+        "linestyle": "-", 
+        "color": "green", 
+        "marker": "D"
+    },
     
-    # 元の設定 (exp=1.0, gam=0.0)
-    {"exp": 1.0, "gamma": 0.0, "label": r"$\eta=1.0, \gamma=0.0$", "linestyle": "--"},
+    # 設定B: 比較1 (赤・四角・破線)
+    {
+        "exp": 1.0, 
+        "gamma": 0.0, 
+        "label": r"$\eta=1.0, \gamma=0.0$", 
+        "linestyle": "--", 
+        "color": "red", 
+        "marker": "s"
+    },
+
+    # 設定C: 比較2 (紫・三角・一点鎖線)
+    {
+        "exp": 10.0, 
+        "gamma": 1.0, 
+        "label": r"$\eta=10.0, \gamma=1.0$", 
+        "linestyle": "-.", 
+        "color": "purple", 
+        "marker": "^"
+    }
 ]
 
 # 6. JSON内のキー分類
@@ -58,18 +81,18 @@ METHOD_LABELS = {
     "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
 }
 
-# 8. スタイル設定
+# 8. スタイル設定 (ベースライン用のデフォルト)
 STYLE_CONFIG = {
     "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
     "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
     
+    # ここでの設定は COMPARISON_CONFIGS に指定がない場合のフォールバックとして使われます
     "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
     "3_P2_perturbation_raw_Sem": {"color": "green", "marker": "D"},
 }
 
-# 9. 対象とするメトリクスキー (JSON構造依存)
-# id_loss の場合、値が { "id_loss": 0.123 } のように入っていることを想定
+# 9. 対象とするメトリクスキー
 TARGET_METRIC_KEY = "id_loss"
 
 # ==========================================
@@ -89,7 +112,7 @@ def load_data_recursive():
 
     # データ構造
     main_data = {}      # 比較対象用: main_data[config_idx][rate][snr][method]
-    baseline_data = {}  # ベースライン用(JSCC, Phase1, Random): baseline_data[rate][snr][method]
+    baseline_data = {}  # ベースライン用
     
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
     regex_params = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)_Comparison_.*_exp(\d+(?:\.\d+)?)_gam(\d+(?:\.\d+)?)_")
@@ -129,6 +152,7 @@ def load_data_recursive():
             # --- (B) 比較対象データの確保 ---
             matched_config_idx = -1
             for idx, conf in enumerate(COMPARISON_CONFIGS):
+                # 浮動小数点の誤差を考慮して比較
                 if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
                     matched_config_idx = idx
                     break
@@ -151,9 +175,6 @@ def load_data_recursive():
     return main_data, baseline_data
 
 def get_metric_value(data_obj):
-    """
-    JSONオブジェクトから対象のメトリクス値を抽出するヘルパー
-    """
     if isinstance(data_obj, dict) and TARGET_METRIC_KEY in data_obj:
         return data_obj[TARGET_METRIC_KEY]
     if isinstance(data_obj, (float, int)):
@@ -202,6 +223,7 @@ def plot_id_loss(main_data, baseline_data):
                     ax.plot(x_vals, y_vals, label=label, **style)
 
         # 2. 比較対象 (Perturbation Unc/Sem) のプロット
+        # ここで設定(config)ごとのループを回します
         for conf_idx, config in enumerate(COMPARISON_CONFIGS):
             if conf_idx not in main_data or rate not in main_data[conf_idx]:
                 continue
@@ -224,17 +246,20 @@ def plot_id_loss(main_data, baseline_data):
                 if x_vals:
                     has_data = True
                     
-                    # スタイル決定
+                    # 【修正箇所】スタイル決定ロジック
+                    # 1. まず手法のデフォルトスタイルを取得
                     base_style = STYLE_CONFIG.get(method, {})
-                    color = base_style.get("color", "black")
-                    marker = base_style.get("marker", "o")
                     
-                    linestyle = config.get("linestyle", "-")
+                    # 2. Configに指定があればそれを優先、なければデフォルトを使う
+                    #    これにより、COMPARISON_CONFIGS で指定した色が反映されます
+                    color = config.get("color", base_style.get("color", "black"))
+                    marker = config.get("marker", base_style.get("marker", "o"))
+                    linestyle = config.get("linestyle", base_style.get("linestyle", "-"))
                     
                     method_name = METHOD_LABELS.get(method, method)
                     config_label = config.get("label", "")
                     
-                    # 凡例ラベルの構築: MethodName [config]
+                    # 凡例ラベル: MethodName [config]
                     full_label = f"{method_name} [{config_label}]"
                     
                     ax.plot(x_vals, y_vals, 

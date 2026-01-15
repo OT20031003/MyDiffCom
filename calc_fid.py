@@ -118,8 +118,8 @@ if __name__ == "__main__":
     RATE = 0.1
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 1.0
-    GAMMA = 0.0
+    EXP_FACTOR = 10.0
+    GAMMA = 1.0
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
