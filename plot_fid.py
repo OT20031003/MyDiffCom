@@ -12,8 +12,7 @@ import matplotlib.pyplot as plt
 DATASET = "ffhq_demo"
 BASE_DIR = "results_retrans_comparison"
 # FID計算結果があるサブディレクトリ構造を考慮
-# 通常は results/.../diffcom/djscc_2/awgn_... のような構造だが、
-# 再帰検索するためルートはデータセットまでとするのが無難
+# 再帰検索するためルートはデータセットまでとする
 METHOD_PATH = "diffcom/djscc_2" 
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
@@ -28,51 +27,46 @@ TARGET_RATES = [0.1]
 
 # ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
 # ここに比較したい組み合わせを定義します。
-# label: 凡例に表示するパラメータ名, linestyle: この設定の線のスタイル
+# label: 凡例に表示するパラメータ名 (Mathtext対応)
 COMPARISON_CONFIGS = [
-    {"exp": 2.0, "gamma": 0.3, "label": "Exp=2.0, Gam=0.3", "linestyle": "-"},  # 実線
+    {"exp": 2.0, "gamma": 0.3, "label": r"$\eta=2.0, \gamma=0.3$", "linestyle": "-"},
     # 必要に応じて追加
-    {"exp": 1.0, "gamma": 0.0, "label": "Exp=1.0, Gam=0.0", "linestyle": "--"},
+    {"exp": 1.0, "gamma": 0.0, "label": r"$\eta=1.0, \gamma=0.0$", "linestyle": "--"},
 ]
 
-# 6. プロットしたいJSON内のキー (手法) のリスト
-# ここでは比較対象（パラメータごとに線が変わるもの）と
-# 特別扱いするRandom（共通ベースライン）を定義します
-TARGET_KEYS = [
-    "3_P2_Random",               # Randomは特別扱い（共通ベースライン）
-    
+# 6. JSON内のキー分類
+
+# (A) ベースライン (パラメータ比較の対象外で、常に表示する手法)
+BASELINE_KEYS = [
+    "1_JSCC_Init",
+    "2_Phase1_Recon",
+    "3_P2_Random"
+]
+
+# (B) 比較対象 (パラメータ設定ごとに線を引く手法)
+COMPARISON_KEYS = [
     #"3_P2_perturbation_raw_Unc",
     "3_P2_perturbation_raw_Sem",
-    
-    # "3_P2_temporal_raw_Unc",
-    # "3_P2_temporal_raw_Sem",
 ]
 
 # 7. 凡例の表示名マッピング
 METHOD_LABELS = {
-    "1_JSCC_Init":               "JSCC",
-    "2_Phase1_Recon":            "Phase 1",
+    "1_JSCC_Init":               "JSCC (Initial)",
+    "2_Phase1_Recon":            "Phase 1 Recon (DiffCom)",
     "3_P2_Random":               "Random Baseline",
-    
-    "3_P2_temporal_raw_Unc":     "Temporal (Unc)",
-    "3_P2_temporal_raw_Sem":     "Temporal (Sem)",
     
     "3_P2_perturbation_raw_Unc": "Perturb (Unc)",
     "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
 }
 
 # 8. スタイル設定 (色、線種、マーカー)
-# 線種(linestyle)は COMPARISON_CONFIGS で上書きされますが、Randomはここで指定したスタイルが使われます
 STYLE_CONFIG = {
-    "1_JSCC_Init":               {"color": "black", "marker": "x", "linestyle": ":"},
-    "2_Phase1_Recon":            {"color": "blue",  "marker": "o", "linestyle": "-"},
-    "3_P2_Random":               {"color": "black", "marker": "d", "linestyle": "-."}, # Random用
+    "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
+    "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
+    "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
 
-    "3_P2_temporal_raw_Unc":     {"color": "green", "marker": "^"},
-    "3_P2_temporal_raw_Sem":     {"color": "green", "marker": "v"},
-    
     "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
-    "3_P2_perturbation_raw_Sem": {"color": "green",   "marker": "D"},
+    "3_P2_perturbation_raw_Sem": {"color": "green", "marker": "D"},
 }
 
 # ==========================================
@@ -93,9 +87,9 @@ def load_fid_data_recursive():
 
     # データ構造: 
     #   main_data[config_idx][rate][snr][method]  <- 比較対象用
-    #   random_data[rate][snr]                    <- Random用 (パラメータ問わず確保)
+    #   baseline_data[rate][snr][method]          <- ベースライン用 (パラメータ問わず確保)
     main_data = {}
-    random_data = {}
+    baseline_data = {}
     
     # 正規表現
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
@@ -127,13 +121,16 @@ def load_fid_data_recursive():
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = json.load(f)
             
-            # --- Random (共通) の確保 ---
-            if "3_P2_Random" in content:
-                if rate not in random_data: random_data[rate] = {}
-                # まだ登録されていない、あるいは上書きで最新を採用
-                random_data[rate][snr] = content["3_P2_Random"]
+            # --- (A) ベースラインデータの確保 ---
+            # どのパラメータフォルダにあっても、見つかれば保存（上書き）
+            for b_key in BASELINE_KEYS:
+                if b_key in content:
+                    if rate not in baseline_data: baseline_data[rate] = {}
+                    if snr not in baseline_data[rate]: baseline_data[rate][snr] = {}
+                    
+                    baseline_data[rate][snr][b_key] = content[b_key]
 
-            # --- 比較対象データの確保 ---
+            # --- (B) 比較対象データの確保 ---
             matched_config_idx = -1
             for idx, conf in enumerate(COMPARISON_CONFIGS):
                 if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
@@ -148,20 +145,17 @@ def load_fid_data_recursive():
                 if snr not in main_data[matched_config_idx][rate]:
                     main_data[matched_config_idx][rate][snr] = {}
 
-                for key_method in TARGET_KEYS:
-                    # Randomは別途確保したのでここではスキップ
-                    if key_method == "3_P2_Random": continue
-                    
-                    if key_method in content:
-                        main_data[matched_config_idx][rate][snr][key_method] = content[key_method]
+                for c_key in COMPARISON_KEYS:
+                    if c_key in content:
+                        main_data[matched_config_idx][rate][snr][c_key] = content[c_key]
                     
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
-    return main_data, random_data
+    return main_data, baseline_data
 
-def plot_fid(main_data, random_data):
-    if not main_data and not random_data:
+def plot_fid(main_data, baseline_data):
+    if not main_data and not baseline_data:
         print("表示対象のデータが見つかりませんでした。パスやパラメータ設定を確認してください。")
         return
 
@@ -169,7 +163,7 @@ def plot_fid(main_data, random_data):
     available_rates = set()
     for conf_idx in main_data:
         available_rates.update(main_data[conf_idx].keys())
-    available_rates.update(random_data.keys())
+    available_rates.update(baseline_data.keys())
     
     sorted_rates = sorted(list(available_rates))
     
@@ -182,22 +176,26 @@ def plot_fid(main_data, random_data):
         
         has_data = False
         
-        # 1. Random (Baseline) のプロット
-        if rate in random_data and random_data[rate]:
-            r_snrs = sorted(random_data[rate].keys())
-            x_rnd = []
-            y_rnd = []
-            for snr in r_snrs:
-                val = random_data[rate][snr] # FIDは単一の値のはず
-                if isinstance(val, (int, float)):
-                    x_rnd.append(snr)
-                    y_rnd.append(val)
+        # 1. ベースライン (JSCC, Phase1, Random) のプロット
+        # パラメータ設定に関わらず単一の線としてプロット
+        if rate in baseline_data:
+            snr_list = sorted(baseline_data[rate].keys())
             
-            if x_rnd:
-                has_data = True
-                style = STYLE_CONFIG.get("3_P2_Random", {"color": "gray", "linestyle": "-."})
-                label = METHOD_LABELS.get("3_P2_Random", "Random")
-                ax.plot(x_rnd, y_rnd, label=label, **style)
+            for method in BASELINE_KEYS:
+                x_vals = []
+                y_vals = []
+                for snr in snr_list:
+                    if method in baseline_data[rate][snr]:
+                        val = baseline_data[rate][snr][method]
+                        if isinstance(val, (int, float)):
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    has_data = True
+                    style = STYLE_CONFIG.get(method, {})
+                    label = METHOD_LABELS.get(method, method)
+                    ax.plot(x_vals, y_vals, label=label, **style)
 
         # 2. 比較対象 (Unc, Sem など) のプロット
         for conf_idx, config in enumerate(COMPARISON_CONFIGS):
@@ -207,10 +205,8 @@ def plot_fid(main_data, random_data):
             current_data_group = main_data[conf_idx][rate]
             snr_list = sorted(current_data_group.keys())
             
-            # 手法ごとにループ (Random以外)
-            for method in TARGET_KEYS:
-                if method == "3_P2_Random": continue
-
+            # 手法ごとにループ
+            for method in COMPARISON_KEYS:
                 x_vals = []
                 y_vals = []
                 
@@ -264,5 +260,5 @@ def plot_fid(main_data, random_data):
         plt.close()
 
 if __name__ == "__main__":
-    m_data, r_data = load_fid_data_recursive()
-    plot_fid(m_data, r_data)
+    m_data, b_data = load_fid_data_recursive()
+    plot_fid(m_data, b_data)

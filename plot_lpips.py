@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # ==========================================
 
 # 1. データセットとディレクトリ設定
-DATASET = "ffhq_demo" # 必要に応じて "ffhq_demo" などに変更してください
+DATASET = "ffhq_demo"
 BASE_DIR = "results_retrans_comparison"
 # 検索範囲を広げるため、ROOTはデータセット階層にします
 ROOT_DIR = os.path.join(BASE_DIR, DATASET)
@@ -24,17 +24,26 @@ TARGET_SNRS = [-8, -6, -7, -5, -4, -3, -2]
 TARGET_RATES = [0.1]
 
 # ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
-# ここに比較したい組み合わせを定義します。
+# labelに r"$...$" を使うことでLaTeX形式の数式フォントを表示できます
 COMPARISON_CONFIGS = [
-    {"exp": 2.0, "gamma": 0.3, "label": "Exp=2.0, Gam=0.3", "linestyle": "-"},
-    # 例: 比較対象を追加する場合
-    {"exp": 1.0, "gamma": 0.0, "label": "Default", "linestyle": "--"},
+    # plot_distsに合わせて exp を eta と表記
+    {"exp": 2.0, "gamma": 0.3, "label": r"$\eta=2.0, \gamma=0.3$", "linestyle": "-"},
+    
+    # 必要に応じて追加してください
+    {"exp": 1.0, "gamma": 0.0, "label": "Uncertainty", "linestyle": "--"},
 ]
 
-# 6. プロットしたいJSON内のキー (手法) のリスト
-TARGET_KEYS = [
-    "3_P2_Random",               # Randomは特別扱い（共通ベースライン）
-    
+# 6. JSON内のキー分類
+
+# (A) ベースライン (パラメータ比較の対象外で、常に表示する手法)
+BASELINE_KEYS = [
+    "1_JSCC_Init",
+    "2_Phase1_Recon",
+    "3_P2_Random"
+]
+
+# (B) 比較対象 (パラメータ設定ごとに線を引く手法)
+COMPARISON_KEYS = [
     #"3_P2_perturbation_raw_Unc",
     "3_P2_perturbation_raw_Sem",
 ]
@@ -50,7 +59,6 @@ METHOD_LABELS = {
 }
 
 # 8. スタイル設定
-# 線種(linestyle)はCOMPARISON_CONFIGSで上書きされますが、Randomはここの設定が優先されます
 STYLE_CONFIG = {
     "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
@@ -76,11 +84,10 @@ def load_data_recursive():
     print(f"Found {len(files)} files.")
 
     # データ構造
-    main_data = {}   # 比較対象用: main_data[config_idx][rate][snr][method]
-    random_data = {} # Random用: random_data[rate][snr]
+    main_data = {}      # 比較対象用: main_data[config_idx][rate][snr][method]
+    baseline_data = {}  # ベースライン用(JSCC, Phase1, Random): baseline_data[rate][snr][method]
     
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
-    # パラメータ抽出用正規表現
     regex_params = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)_Comparison_.*_exp(\d+(?:\.\d+)?)_gam(\d+(?:\.\d+)?)_")
 
     for fpath in files:
@@ -107,12 +114,17 @@ def load_data_recursive():
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = json.load(f)
             
-            # --- Random (共通) の確保 ---
-            if "3_P2_Random" in content:
-                if rate not in random_data: random_data[rate] = {}
-                random_data[rate][snr] = content["3_P2_Random"]
+            # --- (A) ベースラインデータの確保 ---
+            # どのパラメータフォルダにあっても、見つかれば保存（上書き）
+            for b_key in BASELINE_KEYS:
+                if b_key in content:
+                    if rate not in baseline_data: baseline_data[rate] = {}
+                    if snr not in baseline_data[rate]: baseline_data[rate][snr] = {}
+                    
+                    baseline_data[rate][snr][b_key] = content[b_key]
 
-            # --- 比較対象データの確保 ---
+            # --- (B) 比較対象データの確保 ---
+            # CONFIGSと一致するものだけ保存
             matched_config_idx = -1
             for idx, conf in enumerate(COMPARISON_CONFIGS):
                 if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
@@ -127,19 +139,17 @@ def load_data_recursive():
                 if snr not in main_data[matched_config_idx][rate]:
                     main_data[matched_config_idx][rate][snr] = {}
 
-                for key_method in TARGET_KEYS:
-                    if key_method == "3_P2_Random": continue # Randomは別途確保済み
-                    
-                    if key_method in content:
-                        main_data[matched_config_idx][rate][snr][key_method] = content[key_method]
+                for c_key in COMPARISON_KEYS:
+                    if c_key in content:
+                        main_data[matched_config_idx][rate][snr][c_key] = content[c_key]
                     
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
-    return main_data, random_data
+    return main_data, baseline_data
 
-def plot_lpips(main_data, random_data):
-    if not main_data and not random_data:
+def plot_lpips(main_data, baseline_data):
+    if not main_data and not baseline_data:
         print("表示対象のデータが見つかりませんでした。")
         return
 
@@ -147,7 +157,7 @@ def plot_lpips(main_data, random_data):
     available_rates = set()
     for conf_idx in main_data:
         available_rates.update(main_data[conf_idx].keys())
-    available_rates.update(random_data.keys())
+    available_rates.update(baseline_data.keys())
     
     sorted_rates = sorted(list(available_rates))
     
@@ -158,24 +168,27 @@ def plot_lpips(main_data, random_data):
         ax = plt.gca()
         has_data = False
         
-        # 1. Random (Baseline) のプロット
-        if rate in random_data and random_data[rate]:
-            r_snrs = sorted(random_data[rate].keys())
-            x_rnd = []
-            y_rnd = []
-            for snr in r_snrs:
-                val = random_data[rate][snr]
-                if val is not None:
-                    x_rnd.append(snr)
-                    y_rnd.append(val)
+        # 1. ベースライン (JSCC, Phase1, Random) のプロット
+        if rate in baseline_data:
+            snr_list = sorted(baseline_data[rate].keys())
             
-            if x_rnd:
-                has_data = True
-                style = STYLE_CONFIG.get("3_P2_Random", {"color": "gray", "linestyle": "-."})
-                label = METHOD_LABELS.get("3_P2_Random", "Random")
-                ax.plot(x_rnd, y_rnd, label=label, **style)
+            for method in BASELINE_KEYS:
+                x_vals = []
+                y_vals = []
+                for snr in snr_list:
+                    if method in baseline_data[rate][snr]:
+                        val = baseline_data[rate][snr][method]
+                        if val is not None:
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    has_data = True
+                    style = STYLE_CONFIG.get(method, {})
+                    label = METHOD_LABELS.get(method, method)
+                    ax.plot(x_vals, y_vals, label=label, **style)
 
-        # 2. 比較対象 (Unc, Sem など) のプロット
+        # 2. 比較対象 (Perturbation Unc/Sem) のプロット
         for conf_idx, config in enumerate(COMPARISON_CONFIGS):
             if conf_idx not in main_data or rate not in main_data[conf_idx]:
                 continue
@@ -183,9 +196,7 @@ def plot_lpips(main_data, random_data):
             current_data_group = main_data[conf_idx][rate]
             snr_list = sorted(current_data_group.keys())
             
-            for method in TARGET_KEYS:
-                if method == "3_P2_Random": continue
-
+            for method in COMPARISON_KEYS:
                 x_vals = []
                 y_vals = []
                 
@@ -208,6 +219,8 @@ def plot_lpips(main_data, random_data):
                     
                     method_name = METHOD_LABELS.get(method, method)
                     config_label = config.get("label", "")
+                    
+                    # 凡例ラベルの構築: MethodName [config]
                     full_label = f"{method_name} [{config_label}]"
                     
                     ax.plot(x_vals, y_vals, 
@@ -236,5 +249,5 @@ def plot_lpips(main_data, random_data):
         plt.close()
 
 if __name__ == "__main__":
-    m_data, r_data = load_data_recursive()
-    plot_lpips(m_data, r_data)
+    m_data, b_data = load_data_recursive()
+    plot_lpips(m_data, b_data)
