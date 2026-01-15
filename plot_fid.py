@@ -11,72 +11,68 @@ import matplotlib.pyplot as plt
 # 1. データセットとディレクトリ設定
 DATASET = "ffhq_demo"
 BASE_DIR = "results_retrans_comparison"
-METHOD_PATH = "diffcom/djscc_2" # FID計算結果があるサブディレクトリ
-ROOT_DIR = os.path.join(BASE_DIR, DATASET, METHOD_PATH)
+# FID計算結果があるサブディレクトリ構造を考慮
+# 通常は results/.../diffcom/djscc_2/awgn_... のような構造だが、
+# 再帰検索するためルートはデータセットまでとするのが無難
+METHOD_PATH = "diffcom/djscc_2" 
+ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 
 # 2. プロット対象のファイル名
 TARGET_FILENAME = "post_process_fid.json"
 
 # 3. プロットしたいSNRのリスト (None または [] なら見つかったもの全て表示)
-TARGET_SNRS = [-6, -4, -2, 0]
-TARGET_SNRS = [-8, -6, -7, -5, -4,-3, -2]
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
 
-# --- 拡張パラメータでのフィルタリング設定 ---
-# 指定した exp (expansion_factor) や gam (gamma) のファイルのみを抽出します。
-# None または [] (空リスト) の場合は、フィルタリングせず全て対象とします。
-
-TARGET_EXPS = [2.0]     # 例: [2.0] または None
-TARGET_GAMS = [0.3]     # 例: [0.3, 0.7] または None
-
-# -----------------------------------------------------
-
-# 5. プロットしたいJSON内のキー (手法) のリスト
-# calc_fid.py の出力JSONに含まれるキーを指定してください
-TARGET_KEYS = [
-    # "1_JSCC_Init",
-    # "2_Phase1_Recon",
-    
-    # Perturbation (摂動分散) 系
-    "3_P2_perturbation_raw_Unc",
-    "3_P2_perturbation_raw_Sem",
-    
-    # Temporal (時間的分散) 系
-    # "3_P2_temporal_raw_Unc",
-    # "3_P2_temporal_raw_Sem",
-    
-    # ランダムベースライン
-    "3_P2_Random"
+# ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
+# ここに比較したい組み合わせを定義します。
+# label: 凡例に表示するパラメータ名, linestyle: この設定の線のスタイル
+COMPARISON_CONFIGS = [
+    {"exp": 2.0, "gamma": 0.3, "label": "Exp=2.0, Gam=0.3", "linestyle": "-"},  # 実線
+    # 必要に応じて追加
+    {"exp": 1.0, "gamma": 0.0, "label": "Exp=1.0, Gam=0.0", "linestyle": "--"},
 ]
 
-# 6. 凡例の表示名マッピング
+# 6. プロットしたいJSON内のキー (手法) のリスト
+# ここでは比較対象（パラメータごとに線が変わるもの）と
+# 特別扱いするRandom（共通ベースライン）を定義します
+TARGET_KEYS = [
+    "3_P2_Random",               # Randomは特別扱い（共通ベースライン）
+    
+    #"3_P2_perturbation_raw_Unc",
+    "3_P2_perturbation_raw_Sem",
+    
+    # "3_P2_temporal_raw_Unc",
+    # "3_P2_temporal_raw_Sem",
+]
+
+# 7. 凡例の表示名マッピング
 METHOD_LABELS = {
-    "1_JSCC_Init":               "JSCC (Initial)",
-    "2_Phase1_Recon":            "Phase 1 Recon",
+    "1_JSCC_Init":               "JSCC",
+    "2_Phase1_Recon":            "Phase 1",
+    "3_P2_Random":               "Random Baseline",
     
     "3_P2_temporal_raw_Unc":     "Temporal (Unc)",
     "3_P2_temporal_raw_Sem":     "Temporal (Sem)",
     
-    "3_P2_perturbation_raw_Unc": "Perturbation (Unc)",
-    "3_P2_perturbation_raw_Sem": "Perturbation (Sem)",
-    
-    "3_P2_Random":               "Random Baseline",
+    "3_P2_perturbation_raw_Unc": "Perturb (Unc)",
+    "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
 }
 
-# 7. スタイル設定 (色、線種、マーカー)
+# 8. スタイル設定 (色、線種、マーカー)
+# 線種(linestyle)は COMPARISON_CONFIGS で上書きされますが、Randomはここで指定したスタイルが使われます
 STYLE_CONFIG = {
-    "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
-    "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
+    "1_JSCC_Init":               {"color": "black", "marker": "x", "linestyle": ":"},
+    "2_Phase1_Recon":            {"color": "blue",  "marker": "o", "linestyle": "-"},
+    "3_P2_Random":               {"color": "black", "marker": "d", "linestyle": "-."}, # Random用
+
+    "3_P2_temporal_raw_Unc":     {"color": "green", "marker": "^"},
+    "3_P2_temporal_raw_Sem":     {"color": "green", "marker": "v"},
     
-    "3_P2_temporal_raw_Unc":     {"color": "green", "linestyle": "-",  "marker": "^"},
-    "3_P2_temporal_raw_Sem":     {"color": "green", "linestyle": "--", "marker": "v"},
-    
-    "3_P2_perturbation_raw_Unc": {"color": "red",   "linestyle": "-",  "marker": "s"},
-    "3_P2_perturbation_raw_Sem": {"color": "red",   "linestyle": "--", "marker": "D"},
-    
-    "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
+    "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
+    "3_P2_perturbation_raw_Sem": {"color": "green",   "marker": "D"},
 }
 
 # ==========================================
@@ -85,163 +81,188 @@ STYLE_CONFIG = {
 
 def load_fid_data_recursive():
     """
-    ディレクトリを再帰的に探索し、TARGET_FILENAME を読み込む
-    パスから SNR, Rate, Exp, Gam を抽出してフィルタリングする
+    ディレクトリを再帰的に探索し、TARGET_FILENAME を読み込む。
+    パスから SNR, Rate, Exp, Gam を抽出してデータを分類する。
     """
     search_pattern = os.path.join(ROOT_DIR, "**", TARGET_FILENAME)
     print(f"Target Dataset: {DATASET}")
     print(f"Root Directory: {ROOT_DIR}")
-    print(f"Search Pattern: {search_pattern}")
     
-    # フィルタ設定の表示
-    if TARGET_EXPS: print(f"Filtering by EXPS: {TARGET_EXPS}")
-    if TARGET_GAMS: print(f"Filtering by GAMS: {TARGET_GAMS}")
-
     files = glob.glob(search_pattern, recursive=True)
     print(f"Found {len(files)} files.")
 
-    data_store = {}
+    # データ構造: 
+    #   main_data[config_idx][rate][snr][method]  <- 比較対象用
+    #   random_data[rate][snr]                    <- Random用 (パラメータ問わず確保)
+    main_data = {}
+    random_data = {}
     
     # 正規表現
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
-    regex_rate = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)")
-    regex_exp = re.compile(r"_exp(\d+(?:\.\d+)?)")
-    regex_gam = re.compile(r"_gam(\d+(?:\.\d+)?)")
+    # フォルダ名からパラメータを抜く正規表現
+    # 例: .../Retrans_rate_0.1_Comparison_both_exp2.0_gam0.3_zeta0.3_seed22/...
+    regex_params = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)_Comparison_.*_exp(\d+(?:\.\d+)?)_gam(\d+(?:\.\d+)?)_")
 
     for fpath in files:
         dirname = os.path.dirname(fpath)
-        folder_name = os.path.basename(dirname)
         
         # 1. SNRの抽出
-        match_snr = regex_snr.search(dirname)
-        if not match_snr:
-            continue
+        match_snr = regex_snr.search(fpath)
+        if not match_snr: continue
         snr = float(match_snr.group(1))
 
-        # 2. Retrans_rateの抽出
-        match_rate = regex_rate.search(dirname)
-        if not match_rate:
-            # フォルダ構造によっては上位ディレクトリにある場合も考慮が必要だが、
-            # 現状は同じフォルダ名文字列に含まれる想定
-            continue
-        rate = float(match_rate.group(1))
+        # 2. Rate, Exp, Gamma の抽出
+        match_params = regex_params.search(fpath)
+        if not match_params: continue
         
-        # 3. 追加パラメータ(exp, gam)の抽出とフィルタリング
-        
-        # --- Exp (Expansion Factor) ---
-        match_exp = regex_exp.search(folder_name)
-        current_exp = float(match_exp.group(1)) if match_exp else None
-        
-        if TARGET_EXPS:
-            if current_exp is None or current_exp not in TARGET_EXPS:
-                continue
-        
-        # --- Gam (Gamma) ---
-        match_gam = regex_gam.search(folder_name)
-        current_gam = float(match_gam.group(1)) if match_gam else None
-        
-        if TARGET_GAMS:
-            if current_gam is None or current_gam not in TARGET_GAMS:
-                continue
+        rate = float(match_params.group(1))
+        exp_val = float(match_params.group(2))
+        gam_val = float(match_params.group(3))
 
-        # SNR, Rate フィルタリング
-        if TARGET_SNRS and snr not in TARGET_SNRS:
-            continue
-        if TARGET_RATES and rate not in TARGET_RATES:
-            continue
+        # フィルタリング
+        if TARGET_SNRS and snr not in TARGET_SNRS: continue
+        if TARGET_RATES and rate not in TARGET_RATES: continue
 
         try:
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = json.load(f)
             
-            # データ構造: data_store[rate][snr][method] = score
-            if rate not in data_store:
-                data_store[rate] = {}
-            if snr not in data_store[rate]:
-                data_store[rate][snr] = {}
+            # --- Random (共通) の確保 ---
+            if "3_P2_Random" in content:
+                if rate not in random_data: random_data[rate] = {}
+                # まだ登録されていない、あるいは上書きで最新を採用
+                random_data[rate][snr] = content["3_P2_Random"]
 
-            for key_method in TARGET_KEYS:
-                if key_method in content:
-                    data_store[rate][snr][key_method] = content[key_method]
+            # --- 比較対象データの確保 ---
+            matched_config_idx = -1
+            for idx, conf in enumerate(COMPARISON_CONFIGS):
+                if abs(conf["exp"] - exp_val) < 1e-5 and abs(conf["gamma"] - gam_val) < 1e-5:
+                    matched_config_idx = idx
+                    break
             
-            # デバッグ用
-            # print(f"Loaded: SNR={snr}, Rate={rate}, Exp={current_exp}, Gam={current_gam}")
+            if matched_config_idx != -1:
+                if matched_config_idx not in main_data:
+                    main_data[matched_config_idx] = {}
+                if rate not in main_data[matched_config_idx]:
+                    main_data[matched_config_idx][rate] = {}
+                if snr not in main_data[matched_config_idx][rate]:
+                    main_data[matched_config_idx][rate][snr] = {}
+
+                for key_method in TARGET_KEYS:
+                    # Randomは別途確保したのでここではスキップ
+                    if key_method == "3_P2_Random": continue
+                    
+                    if key_method in content:
+                        main_data[matched_config_idx][rate][snr][key_method] = content[key_method]
                     
         except Exception as e:
             print(f"Error reading {fpath}: {e}")
             
-    return data_store
+    return main_data, random_data
 
-def plot_fid(data_store):
-    if not data_store:
-        print("表示対象のデータが見つかりませんでした。パスやファイル名、DATASET設定、フィルタ設定を確認してください。")
+def plot_fid(main_data, random_data):
+    if not main_data and not random_data:
+        print("表示対象のデータが見つかりませんでした。パスやパラメータ設定を確認してください。")
         return
 
-    rates = sorted(data_store.keys())
+    # Rateの集合を取得
+    available_rates = set()
+    for conf_idx in main_data:
+        available_rates.update(main_data[conf_idx].keys())
+    available_rates.update(random_data.keys())
     
-    for rate in rates:
-        print(f"--- Plotting for Retrans Rate: {rate} ---")
+    sorted_rates = sorted(list(available_rates))
+    
+    for rate in sorted_rates:
+        print(f"--- Plotting FID for Retrans Rate: {rate} ---")
         
-        current_data = data_store[rate]
-        snr_list = sorted(current_data.keys())
-        
-        if not snr_list:
-            print(f"Rate {rate} に有効なSNRデータがありません。スキップします。")
-            continue
-        
-        print(f"  SNRs found: {snr_list}")
-
         # 図の生成
-        plt.figure(figsize=(10, 7))
+        plt.figure(figsize=(10, 8))
         ax = plt.gca()
         
         has_data = False
         
-        for method in TARGET_KEYS:
-            x_vals = []
-            y_vals = []
+        # 1. Random (Baseline) のプロット
+        if rate in random_data and random_data[rate]:
+            r_snrs = sorted(random_data[rate].keys())
+            x_rnd = []
+            y_rnd = []
+            for snr in r_snrs:
+                val = random_data[rate][snr] # FIDは単一の値のはず
+                if isinstance(val, (int, float)):
+                    x_rnd.append(snr)
+                    y_rnd.append(val)
             
-            for snr in snr_list:
-                if method in current_data[snr]:
-                    val = current_data[snr][method]
-                    if isinstance(val, (int, float)):
-                        x_vals.append(snr)
-                        y_vals.append(val)
-            
-            if x_vals:
+            if x_rnd:
                 has_data = True
-                style = STYLE_CONFIG.get(method, {})
-                label = METHOD_LABELS.get(method, method)
-                ax.plot(x_vals, y_vals, label=label, **style)
+                style = STYLE_CONFIG.get("3_P2_Random", {"color": "gray", "linestyle": "-."})
+                label = METHOD_LABELS.get("3_P2_Random", "Random")
+                ax.plot(x_rnd, y_rnd, label=label, **style)
+
+        # 2. 比較対象 (Unc, Sem など) のプロット
+        for conf_idx, config in enumerate(COMPARISON_CONFIGS):
+            if conf_idx not in main_data or rate not in main_data[conf_idx]:
+                continue
+            
+            current_data_group = main_data[conf_idx][rate]
+            snr_list = sorted(current_data_group.keys())
+            
+            # 手法ごとにループ (Random以外)
+            for method in TARGET_KEYS:
+                if method == "3_P2_Random": continue
+
+                x_vals = []
+                y_vals = []
+                
+                for snr in snr_list:
+                    if method in current_data_group[snr]:
+                        val = current_data_group[snr][method]
+                        if isinstance(val, (int, float)):
+                            x_vals.append(snr)
+                            y_vals.append(val)
+                
+                if x_vals:
+                    has_data = True
+                    
+                    # スタイル決定
+                    base_style = STYLE_CONFIG.get(method, {})
+                    color = base_style.get("color", "black")
+                    marker = base_style.get("marker", "o")
+                    
+                    # 線種はConfig依存
+                    linestyle = config.get("linestyle", "-")
+                    
+                    # 凡例: Method [Params]
+                    method_name = METHOD_LABELS.get(method, method)
+                    config_label = config.get("label", "")
+                    full_label = f"{method_name} [{config_label}]"
+                    
+                    ax.plot(x_vals, y_vals, 
+                            label=full_label, 
+                            color=color, 
+                            linestyle=linestyle, 
+                            marker=marker)
 
         # グラフ装飾
-        # タイトルはシンプルに、もしくは無しにする設定
         ax.set_title("Frechet Inception Distance (FID)", fontsize=14, fontweight='bold')
-        
         ax.set_xlabel("SNR (dB)", fontsize=12)
         ax.set_ylabel("FID Score (Lower is Better)", fontsize=12)
         ax.grid(True, linestyle='--', alpha=0.6)
         
         if has_data:
-            ax.legend(loc='best', fontsize=10)
+            ax.legend(loc='best', fontsize=10, framealpha=0.9)
         else:
             ax.text(0.5, 0.5, "No Data Found", ha='center', va='center', transform=ax.transAxes)
 
         plt.tight_layout()
 
         # ファイル名生成
-        save_name = f'fid_vs_snr_{DATASET}_rate_{rate}'
-        if TARGET_EXPS and len(TARGET_EXPS) == 1:
-            save_name += f'_exp{TARGET_EXPS[0]}'
-        if TARGET_GAMS and len(TARGET_GAMS) == 1:
-            save_name += f'_gam{TARGET_GAMS[0]}'
-        save_name += '.png'
-
+        save_name = f'fid_comparison_{DATASET}_rate_{rate}.png'
         plt.savefig(save_name, dpi=300)
         print(f"グラフを保存しました: {save_name}")
         
         plt.close()
 
 if __name__ == "__main__":
-    data = load_fid_data_recursive()
-    plot_fid(data)
+    m_data, r_data = load_fid_data_recursive()
+    plot_fid(m_data, r_data)

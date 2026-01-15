@@ -427,6 +427,7 @@ def parse_args_and_config():
     parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
                         help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
     parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
+    parser.add_argument("--enable_random", action='store_true', help="Enable random retransmission baseline.")
 
     args = parser.parse_args()
     
@@ -440,6 +441,7 @@ def parse_args_and_config():
     config.retrans_gamma = args.retrans_gamma  # Configに追加
     config.retrans_basis = args.retrans_basis
     config.resume_index = args.resume_index
+    config.enable_random = args.enable_random
     
     cond_config = Config(config.getattr('diffcom_series'))
     conditioning_method = Config(cond_config.getattr(config.conditioning_method))
@@ -549,6 +551,7 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}, ExpFactor: {config.expansion_factor}')
     logger.info(f'【Config】: Retransmission Basis: {config.retrans_basis} (Using ViT: {config.retrans_basis in ["semantic", "both"]})')
+    logger.info(f'【Config】: Random Baseline Enabled: {config.enable_random}')
     
     config_modes = config.diffcom_series['uncertainty_mode']
     logger.info(f"Target Uncertainty Modes: {config_modes}")
@@ -789,7 +792,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 batch_record["modes"][u_mode] = mode_result
 
             # Random Baseline
-            if config.retrans_mode != 'oracle':
+            if config.retrans_mode != 'oracle' and config.enable_random:
                  meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
                      operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value,
                      expansion_factor=config.expansion_factor

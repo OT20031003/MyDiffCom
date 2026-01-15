@@ -109,6 +109,7 @@ if __name__ == "__main__":
     # 1. データセット ("imagenet" or "ffhq_demo")
     DATASET = "ffhq_demo" 
     #DATASET = "imagenet"
+    MODE = "semantic"
     # 2. SNR リスト
     # ここに計算したいSNRをすべて列挙します
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
@@ -117,8 +118,8 @@ if __name__ == "__main__":
     RATE = 0.1
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 2.0
-    GAMMA = 0.3
+    EXP_FACTOR = 1.0
+    GAMMA = 0.0
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     
     for snr_label in SNR_LABELS:
         snr_folder = f"awgn_{snr_label}dB"
-        exp_folder = f"Retrans_rate_{RATE}_Comparison_both_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
+        exp_folder = f"Retrans_rate_{RATE}_Comparison_{MODE}_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
         
         target_results_path = os.path.join(
             ROOT_DIR, 

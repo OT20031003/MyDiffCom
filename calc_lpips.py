@@ -66,19 +66,20 @@ def calculate_lpips_for_snr(target_path, device):
         json.dump(final_results, f, indent=4)
 
 if __name__ == "__main__":
-    DATASET = "imagenet"
+    DATASET = "ffhq_demo"
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
     RATE = 0.1
-    EXP_FACTOR = 5.0
-    GAMMA = 0.7
+    EXP_FACTOR = 1.0
+    GAMMA = 0.0
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"
     ZETA = 0.3
     SEED = 22
+    MODE = "semantic"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     for snr_label in SNR_LABELS:
         folder = f"awgn_{snr_label}dB"
-        exp = f"Retrans_rate_{RATE}_Comparison_both_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
+        exp = f"Retrans_rate_{RATE}_Comparison_{MODE}_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
         calculate_lpips_for_snr(os.path.join(ROOT_DIR, DATASET, METHOD_PATH, folder, exp), device)
