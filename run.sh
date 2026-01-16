@@ -8,7 +8,7 @@ TEMPLATE_YAML="configs/diffcom_0.yaml"
 PYTHON_SCRIPT="main_diffcom_retransmission.py"
 RETRANS_MODE="rate"
 RETRANS_VALUE=0.1
-RETRANS_BASIS="edge"  # semanticで固定
+RETRANS_BASIS="semantic"  # semanticで固定
 
 # configsディレクトリが存在しない場合は作成
 if [ ! -d "configs" ]; then
@@ -73,8 +73,8 @@ run_experiment_step() {
 # 実験1: Unc の挙動を確認するためだけ (eta=1.0, gamma=0.0)
 # ==============================================================================
 SNRS_EXP1=(-6 -4 -2 -8 -5 -3 -7)
-ETA_1=1.0
-GAMMA_1=0.0
+ETA_1=2.0
+GAMMA_1=0.5
 LABEL_1="Pure Unc Behavior (eta=1.0, gamma=0.0)"
 
 echo "########################################################"
@@ -90,18 +90,18 @@ done
 # 実験2: ViTのみだけ (eta=10.0, gamma=1.0)
 # ==============================================================================
 SNRS_EXP1=(-6 -4 -2 -8 -5 -3 -7)
-ETA_2=10.0
-GAMMA_2=1.0
-LABEL_2="ViT Only (eta=10.0, gamma=1.0)"
-
+ETA_2=3.0
+GAMMA_2=0.3
+#LABEL_2="ViT Only (eta=10.0, gamma=1.0)"
+LABEL_2="Sem (eta=3.0, gamma=0.3)"
 echo ""
 echo "########################################################"
 echo "### START Experiment 2: $LABEL_2 ###"
 echo "########################################################"
 
-# for SNR in "${SNRS_EXP2[@]}"; do
-#     run_experiment_step $SNR $ETA_2 $GAMMA_2 "$LABEL_2"
-# done
+for SNR in "${SNRS_EXP2[@]}"; do
+    run_experiment_step $SNR $ETA_2 $GAMMA_2 "$LABEL_2"
+done
 
 echo ""
 echo "========================================================"

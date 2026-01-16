@@ -6,24 +6,31 @@ from PIL import Image
 from tqdm import tqdm
 import json
 
-def calculate_fids_from_disk(base_path, device):
+def calculate_fids_from_disk(base_path, device, mode):
     """
     保存済みの画像から手法ごとのFIDを計算する
+    mode: 設定されているモード (例: 'edge', 'semantic' 等)
     """
     if not os.path.exists(base_path):
         print(f"[Skip] Path not found: {base_path}")
         return
 
+    # モード名の先頭を大文字にする (例: edge -> Edge)
+    # ファイル名が '3_P2_perturbation_raw_Edge.png' となっているため
+    mode_cap = mode.capitalize()
+
     # 計算対象の手法（ファイル名の接頭辞）を定義
+    # MODEに合わせて動的にファイル名を指定します
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
-        '3_P2_perturbation_raw_Unc',
-        '3_P2_perturbation_raw_Sem',
-        # '3_P2_temporal_raw_Unc',
-        # '3_P2_temporal_raw_Sem',
+        f'3_P2_perturbation_raw_{mode_cap}', # ここを動的に変更
         '3_P2_Random'
     ]
+    
+    # 必要であれば古い定義（Unc/Sem）も残すか、完全に置き換えるか選択できますが、
+    # エラーログを見る限りEdgeモードではEdgeファイルしか生成されていないようなので
+    # 上記のようにリストを構成しています。
 
     # FIDメトリクスの初期化 (手法ごと)
     # 毎回リセットして初期化
@@ -51,7 +58,7 @@ def calculate_fids_from_disk(base_path, device):
         transforms.ToTensor(), # [0, 255] -> [0.0, 1.0]
     ])
 
-    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)}")
+    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)} (Mode: {mode_cap})")
 
     for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
@@ -109,7 +116,10 @@ if __name__ == "__main__":
     # 1. データセット ("imagenet" or "ffhq_demo")
     DATASET = "ffhq_demo" 
     #DATASET = "imagenet"
-    MODE = "semantic"
+    
+    # MODE設定 (ここが "edge" の場合、ファイル名は ...raw_Edge.png となる想定)
+    MODE = "edge"
+    
     # 2. SNR リスト
     # ここに計算したいSNRをすべて列挙します
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
@@ -118,8 +128,8 @@ if __name__ == "__main__":
     RATE = 0.1
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 10.0
-    GAMMA = 1.0
+    EXP_FACTOR = 1.0
+    GAMMA = 0.0
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
@@ -147,4 +157,5 @@ if __name__ == "__main__":
             exp_folder
         )
         
-        calculate_fids_from_disk(target_results_path, device)
+        # MODEを引数として渡す
+        calculate_fids_from_disk(target_results_path, device, MODE)

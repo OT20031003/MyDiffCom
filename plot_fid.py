@@ -63,7 +63,8 @@ COMPARISON_CONFIGS = [
 BASELINE_KEYS = [
     "1_JSCC_Init",
     "2_Phase1_Recon",
-    "3_P2_Random"
+    "3_P2_Random",
+    "3_P2_perturbation_raw_Edge" # ★ここに追加しました
 ]
 
 # (B) 比較対象 (パラメータ設定ごとに線を引く手法)
@@ -80,6 +81,7 @@ METHOD_LABELS = {
     
     "3_P2_perturbation_raw_Unc": "Perturb (Unc)",
     "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
+    "3_P2_perturbation_raw_Edge": "Perturb (Edge)", # ★ラベルを追加
 }
 
 # 8. スタイル設定 (ベースライン用のデフォルト)
@@ -87,6 +89,9 @@ STYLE_CONFIG = {
     "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
     "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
+    
+    # ★Edge用のスタイルを追加 (例: オレンジ色, 逆三角)
+    "3_P2_perturbation_raw_Edge": {"color": "orange", "linestyle": "-.", "marker": "v"},
 
     # ここでの設定は COMPARISON_CONFIGS に指定がない場合のフォールバックとして使われます
     "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},

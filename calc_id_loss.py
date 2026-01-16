@@ -29,25 +29,34 @@ def preprocess_for_facenet(img_tensor):
     
     return img_normalized
 
-def calculate_id_loss_for_snr(target_path, id_model, device):
+def calculate_id_loss_for_snr(target_path, id_model, device, mode):
     """
     指定されたパス内の画像からID Loss (1 - CosineSimilarity) を計算し保存する。
-    UncとSemの手法間の差分トップ3もログに出力する。
+    UncとSemの手法間の差分トップ3もログに出力する（ファイルが存在する場合のみ）。
     """
     if not os.path.exists(target_path):
         print(f"[Skip] Path not found: {target_path}")
         return
 
-    # 手法定義
-    methods = [
-        '1_JSCC_Init',
-        '2_Phase1_Recon',
-        '3_P2_perturbation_raw_Unc',
-        '3_P2_perturbation_raw_Sem',
-        # '3_P2_temporal_raw_Unc',
-        # '3_P2_temporal_raw_Sem',
-        '3_P2_Random'
-    ]
+    # モードに応じた手法定義
+    if mode.lower() == 'edge':
+        # Edgeモード: ファイル名は ...raw_Edge.png を想定
+        mode_cap = mode.capitalize()
+        methods = [
+            '1_JSCC_Init',
+            '2_Phase1_Recon',
+            f'3_P2_perturbation_raw_{mode_cap}', # 例: 3_P2_perturbation_raw_Edge
+            '3_P2_Random'
+        ]
+    else:
+        # Semantic (Default) モード: UncとSemが存在する想定
+        methods = [
+            '1_JSCC_Init',
+            '2_Phase1_Recon',
+            '3_P2_perturbation_raw_Unc',
+            '3_P2_perturbation_raw_Sem',
+            '3_P2_Random'
+        ]
 
     # 結果コンテナ
     id_scores = {m: [] for m in methods}     # Cosine Similarity
@@ -55,8 +64,7 @@ def calculate_id_loss_for_snr(target_path, id_model, device):
 
     # 差分トラッキング用 [ (batch_id, diff, loss_unc, loss_sem), ... ]
     diff_records_perturbation = []
-    diff_records_temporal = []
-
+    
     visuals_dir = os.path.join(target_path, 'visuals')
     if not os.path.exists(visuals_dir):
         print(f"[Skip] No visuals directory in {target_path}")
@@ -73,7 +81,7 @@ def calculate_id_loss_for_snr(target_path, id_model, device):
 
     to_tensor = transforms.ToTensor()
 
-    print(f"Processing {len(batch_dirs)} samples in {os.path.basename(target_path)}...")
+    print(f"Processing {len(batch_dirs)} samples in {os.path.basename(target_path)} (Mode: {mode})")
 
     for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
@@ -121,27 +129,21 @@ def calculate_id_loss_for_snr(target_path, id_model, device):
                     current_batch_losses[m] = None
 
             # --- Calculate Differences for Top 3 Tracking ---
-            
-            # 1. Perturbation: Unc vs Sem
+            # UncとSemの両方が存在する場合のみ計算 (Edgeモード等はスキップされる)
             unc_key_p = '3_P2_perturbation_raw_Unc'
             sem_key_p = '3_P2_perturbation_raw_Sem'
-            if current_batch_losses.get(unc_key_p) is not None and current_batch_losses.get(sem_key_p) is not None:
+            
+            if (unc_key_p in current_batch_losses and 
+                sem_key_p in current_batch_losses and
+                current_batch_losses[unc_key_p] is not None and 
+                current_batch_losses[sem_key_p] is not None):
+                
                 u_val = current_batch_losses[unc_key_p]
                 s_val = current_batch_losses[sem_key_p]
                 diff = abs(u_val - s_val)
                 diff_records_perturbation.append( (b_dir, diff, u_val, s_val) )
 
-            # 2. Temporal: Unc vs Sem (もしmethodsに含まれていれば)
-            unc_key_t = '3_P2_temporal_raw_Unc'
-            sem_key_t = '3_P2_temporal_raw_Sem'
-            if current_batch_losses.get(unc_key_t) is not None and current_batch_losses.get(sem_key_t) is not None:
-                u_val = current_batch_losses[unc_key_t]
-                s_val = current_batch_losses[sem_key_t]
-                diff = abs(u_val - s_val)
-                diff_records_temporal.append( (b_dir, diff, u_val, s_val) )
-
         except Exception as e:
-            # print(f"Error processing batch {b_dir}: {e}")
             pass
 
     # --- [Summarize & Save] ---
@@ -181,8 +183,8 @@ def calculate_id_loss_for_snr(target_path, id_model, device):
             b_id, diff, u_l, s_l = r
             print(f"{b_id:<10} | {diff:.4f}     | {u_l:.4f}     | {s_l:.4f}")
 
+    # EdgeモードではUnc/Semの差分リストは空になるため表示されません
     print_top3(diff_records_perturbation, "Perturbation (Raw)")
-    # print_top3(diff_records_temporal, "Temporal (Raw)")
 
     # Save results to JSON
     output_json = os.path.join(target_path, "post_process_id_loss.json")
@@ -195,14 +197,17 @@ if __name__ == "__main__":
     # 設定エリア
     # ==========================================
     DATASET = "ffhq_demo"
-    MODE = "semantic"
-    #MODE = "both"
+    
+    # ★ここを edge に変更
+    MODE = "edge"
+    # MODE = "semantic"
+    
     # ★ 複数のSNRをリストで指定
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
     
     RATE = 0.1
-    EXP_FACTOR = 10.0
-    GAMMA = 1.0
+    EXP_FACTOR = 1.0 # Edge実験に合わせてパラメータも調整してください（例: 1.0）
+    GAMMA = 0.0      # Edge実験に合わせてパラメータも調整してください（例: 0.0）
     
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"
@@ -230,5 +235,5 @@ if __name__ == "__main__":
         
         target_path = os.path.join(ROOT_DIR, DATASET, METHOD_PATH, snr_folder, exp_folder)
         
-        # モデルを引数として渡して計算
-        calculate_id_loss_for_snr(target_path, id_model, device)
+        # モデルとMODEを引数として渡して計算
+        calculate_id_loss_for_snr(target_path, id_model, device, MODE)
