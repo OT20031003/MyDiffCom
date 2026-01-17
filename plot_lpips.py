@@ -18,13 +18,13 @@ ROOT_DIR = os.path.join(BASE_DIR, DATASET)
 TARGET_FILENAME = "post_process_lpips.json"
 
 # 3. プロットしたいSNRのリスト
-TARGET_SNRS = [-8, -6, -7, -5, -4, -3, -2]
+TARGET_SNRS = [-8, -7, -6, -5, -4, -3, -2]
 
 # 4. プロットしたい再送率 (Retrans_rate) のリスト
 TARGET_RATES = [0.1]
 
 # ★ 5. 比較したいパラメータ設定のリスト (exp, gamma)
-# 【修正箇所】各設定に color と marker を追加しました
+# 【修正箇所】各設定に color と marker を追加
 COMPARISON_CONFIGS = [
     # 設定1: 緑, ダイヤ, 実線
     {
@@ -45,7 +45,7 @@ COMPARISON_CONFIGS = [
         "color": "red",     # ★追加
         "marker": "s"       # ★追加
     },
-    # 設定C: 比較2 (紫・三角・一点鎖線)
+    # 設定3: 紫・三角・一点鎖線
     {
         "exp": 10.0, 
         "gamma": 1.0, 
@@ -62,7 +62,8 @@ COMPARISON_CONFIGS = [
 BASELINE_KEYS = [
     "1_JSCC_Init",
     "2_Phase1_Recon",
-    "3_P2_Random"
+    "3_P2_Random",
+    "3_P2_perturbation_raw_Edge" # ★ここに追加しました (plot_fidに合わせて追加)
 ]
 
 # (B) 比較対象 (パラメータ設定ごとに線を引く手法)
@@ -79,6 +80,7 @@ METHOD_LABELS = {
     
     "3_P2_perturbation_raw_Unc": "Perturb (Unc)",
     "3_P2_perturbation_raw_Sem": "Perturb (Sem)",
+    "3_P2_perturbation_raw_Edge": "Perturb (Edge)", # ★ラベルを追加
 }
 
 # 8. スタイル設定 (ベースライン用のデフォルト)
@@ -86,6 +88,9 @@ STYLE_CONFIG = {
     "1_JSCC_Init":               {"color": "black", "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":            {"color": "blue",  "linestyle": "-",  "marker": "o"},
     "3_P2_Random":               {"color": "gray",  "linestyle": "-.", "marker": "d"},
+    
+    # ★Edge用のスタイルを追加 (例: オレンジ色, 逆三角)
+    "3_P2_perturbation_raw_Edge": {"color": "orange", "linestyle": "-.", "marker": "v"},
     
     # ここでの設定は COMPARISON_CONFIGS に指定がない場合のフォールバックとして使われます
     "3_P2_perturbation_raw_Unc": {"color": "red",   "marker": "s"},
@@ -115,8 +120,6 @@ def load_data_recursive():
     regex_params = re.compile(r"Retrans_rate_(\d+(?:\.\d+)?)_Comparison_.*_exp(\d+(?:\.\d+)?)_gam(\d+(?:\.\d+)?)_")
 
     for fpath in files:
-        dirname = os.path.dirname(fpath)
-        
         # 1. SNRの抽出
         match_snr = regex_snr.search(fpath)
         if not match_snr: continue
@@ -192,7 +195,7 @@ def plot_lpips(main_data, baseline_data):
         ax = plt.gca()
         has_data = False
         
-        # 1. ベースライン (JSCC, Phase1, Random) のプロット
+        # 1. ベースライン (JSCC, Phase1, Random, Edge) のプロット
         if rate in baseline_data:
             snr_list = sorted(baseline_data[rate].keys())
             
@@ -212,7 +215,7 @@ def plot_lpips(main_data, baseline_data):
                     label = METHOD_LABELS.get(method, method)
                     ax.plot(x_vals, y_vals, label=label, **style)
 
-        # 2. 比較対象 (Perturbation Unc/Sem) のプロット
+        # 2. 比較対象 (Perturbation Unc/Sem など) のプロット
         for conf_idx, config in enumerate(COMPARISON_CONFIGS):
             if conf_idx not in main_data or rate not in main_data[conf_idx]:
                 continue
@@ -234,12 +237,11 @@ def plot_lpips(main_data, baseline_data):
                 if x_vals:
                     has_data = True
                     
-                    # 【修正箇所】スタイル決定ロジック
+                    # スタイル決定ロジック (plot_fidと同様)
                     # 1. まず手法のデフォルトスタイルを取得
                     base_style = STYLE_CONFIG.get(method, {})
                     
-                    # 2. Configに指定があればそれを優先、なければデフォルトを使う
-                    #    これにより、COMPARISON_CONFIGS で指定した色・マーカーが反映されます
+                    # 2. Configに指定があればそれを優先 (色、マーカー、線種)
                     color = config.get("color", base_style.get("color", "black"))
                     marker = config.get("marker", base_style.get("marker", "o"))
                     linestyle = config.get("linestyle", base_style.get("linestyle", "-"))
@@ -247,7 +249,7 @@ def plot_lpips(main_data, baseline_data):
                     method_name = METHOD_LABELS.get(method, method)
                     config_label = config.get("label", "")
                     
-                    # 凡例ラベルの構築: MethodName [config]
+                    # 凡例ラベルの構築
                     full_label = f"{method_name} [{config_label}]"
                     
                     ax.plot(x_vals, y_vals, 

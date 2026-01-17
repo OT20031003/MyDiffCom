@@ -68,42 +68,43 @@ run_experiment_step() {
         --resume_index "$RESUME_IDX"
 }
 
+# ==============================================================================
+# 1. 優先タスク: 実験2の残り (SNR -3, -7)
+# 設定: eta=3.0, gamma=0.3
+# ==============================================================================
+SNRS_PRIORITY=(-3 -7)
+ETA_PRIORITY=3.0
+GAMMA_PRIORITY=0.3
+LABEL_PRIORITY="Priority Task: Finish Exp 2 (eta=3.0, gamma=0.3)"
 
-# # ==============================================================================
-# # 実験1: Unc の挙動を確認するためだけ (eta=1.0, gamma=0.0)
-# # ==============================================================================
-# SNRS_EXP1=(-6 -4 -2 -8 -5 -3 -7)
-# ETA_1=2.0
-# GAMMA_1=0.5
-# LABEL_1="Pure Unc Behavior (eta=1.0, gamma=0.0)"
+echo "########################################################"
+echo "### START PRIORITY TASK: $LABEL_PRIORITY ###"
+echo "########################################################"
 
-# echo "########################################################"
-# echo "### START Experiment 1: $LABEL_1 ###"
-# echo "########################################################"
-
-# for SNR in "${SNRS_EXP1[@]}"; do
-#     run_experiment_step $SNR $ETA_1 $GAMMA_1 "$LABEL_1"
+# for SNR in "${SNRS_PRIORITY[@]}"; do
+#     run_experiment_step $SNR $ETA_PRIORITY $GAMMA_PRIORITY "$LABEL_PRIORITY"
 # done
 
 
 # ==============================================================================
-# 実験2: ViTのみだけ (eta=10.0, gamma=1.0)
+# 2. 新規実験: Gamma Sweep
+# 設定: SNR=-4 (固定), eta=2.0, gamma=(0.0 0.6 0.9 1.0)
 # ==============================================================================
-SNRS_EXP2=(-6 -4 -2 -8 -5 -3 -7)
-ETA_2=3.0
-GAMMA_2=0.3
-#LABEL_2="ViT Only (eta=10.0, gamma=1.0)"
-LABEL_2="Sem (eta=3.0, gamma=0.3)"
+FIXED_SNR=-5
+FIXED_ETA=4.0
+GAMMAS_NEW=(0.0 0.6 0.9 1.0)
+LABEL_NEW="New Experiment: Gamma Sweep (SNR=-4, eta=2.0)"
+
 echo ""
 echo "########################################################"
-echo "### START Experiment 2: $LABEL_2 ###"
+echo "### START NEW EXPERIMENT: $LABEL_NEW ###"
 echo "########################################################"
 
-for SNR in "${SNRS_EXP2[@]}"; do
-    run_experiment_step $SNR $ETA_2 $GAMMA_2 "$LABEL_2"
+for GAMMA in "${GAMMAS_NEW[@]}"; do
+    run_experiment_step $FIXED_SNR $FIXED_ETA $GAMMA "$LABEL_NEW"
 done
 
 echo ""
 echo "========================================================"
-echo "All experiments completed successfully."
+echo "All requested experiments completed successfully."
 echo "========================================================"

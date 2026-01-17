@@ -19,4 +19,7 @@ hg_*.txt
 *.pyc
 *Zone*
 *.pdf
-diffcomdiffcom/
+diffcom
+diffcom/
+Graduation
+Graduation/*

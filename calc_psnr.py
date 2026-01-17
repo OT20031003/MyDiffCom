@@ -6,31 +6,38 @@ from torchmetrics import PeakSignalNoiseRatio
 from PIL import Image
 from tqdm import tqdm
 
-def calculate_psnr_for_snr(target_path, device):
+def calculate_psnr_from_disk(base_path, device, mode):
     """
-    指定されたパス内の画像からPSNRを計算し保存する
+    保存済みの画像から手法ごとのPSNRを計算する
+    mode: 設定されているモード (例: 'edge', 'semantic' 等)
     """
-    if not os.path.exists(target_path):
-        print(f"[Skip] Path not found: {target_path}")
+    if not os.path.exists(base_path):
+        print(f"[Skip] Path not found: {base_path}")
         return
 
-    # 手法定義
+    # モード名の先頭を大文字にする (例: edge -> Edge)
+    mode_cap = mode.capitalize()
+
+    # ★修正: Semanticの場合はファイル名の末尾が 'Sem' になるため分岐処理
+    suffix = mode_cap
+    if mode == "semantic":
+        suffix = "Sem"
+
+    # 計算対象の手法
+    # ファイル名: 3_P2_perturbation_raw_Sem.png 等に対応
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
-        '3_P2_perturbation_raw_Unc',
-        '3_P2_perturbation_raw_Sem',
-        # '3_P2_temporal_raw_Unc',
-        # '3_P2_temporal_raw_Sem',
+        f'3_P2_perturbation_raw_{suffix}', # 動的変更
         '3_P2_Random'
     ]
 
     # メトリクス初期化
     psnr_metric = PeakSignalNoiseRatio(data_range=1.0).to(device)
     
-    visuals_dir = os.path.join(target_path, 'visuals')
+    visuals_dir = os.path.join(base_path, 'visuals')
     if not os.path.exists(visuals_dir):
-        print(f"[Skip] No visuals directory in {target_path}")
+        print(f"[Skip] No visuals directory in {base_path}")
         return
 
     batch_dirs = sorted([
@@ -46,7 +53,7 @@ def calculate_psnr_for_snr(target_path, device):
     # 手法ごとのスコア累積用
     method_scores = {m: [] for m in methods}
 
-    print(f"Processing {len(batch_dirs)} samples in {os.path.basename(target_path)}...")
+    print(f"Processing PSNR for {len(batch_dirs)} samples from: {os.path.basename(base_path)} (Mode: {mode_cap} -> Suffix: {suffix})")
 
     for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
@@ -72,7 +79,7 @@ def calculate_psnr_for_snr(target_path, device):
 
     # 平均算出
     final_results = {}
-    print(f"--- PSNR Results ({os.path.basename(target_path)}) ---")
+    print(f"--- PSNR Results ({os.path.basename(base_path)}) ---")
     for m in methods:
         if len(method_scores[m]) > 0:
             avg_score = sum(method_scores[m]) / len(method_scores[m])
@@ -82,26 +89,45 @@ def calculate_psnr_for_snr(target_path, device):
             print(f"{m:25s}: N/A (0 samples)")
 
     # 保存
-    output_json = os.path.join(target_path, "post_process_psnr.json")
+    output_json = os.path.join(base_path, "post_process_psnr.json")
     with open(output_json, 'w') as f:
         json.dump(final_results, f, indent=4)
     print(f"Saved: {output_json}\n")
 
+    return final_results
+
 if __name__ == "__main__":
     # ==========================================
-    # 設定エリア
+    # 設定エリア (Configuration)
     # ==========================================
-    DATASET = "ffhq_demo"
-    SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
-    RATE = 0.1
+    
+    # 1. データセット ("imagenet" or "ffhq_demo")
+    DATASET = "ffhq_demo" 
+    
+    # MODE設定 ("semantic" or "edge")
+    # ★修正: 前回の実行に合わせて semantic に変更しています
     MODE = "semantic"
-    EXP_FACTOR = 10.0
+    
+    # 2. SNR リスト
+    # 必要に応じてコメントアウトを解除または変更してください
+    SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
+    SNR_LABELS = ["-4"] 
+    
+    # 3. 再送率 (Retrans_rate)
+    RATE = 0.1
+
+    # 4. HPRSパラメータ
+    # ★修正: 前回の実行に合わせて 2.0 に変更しています
+    EXP_FACTOR = 2.0
     GAMMA = 1.0
+
+    # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"
     ZETA = 0.3
     SEED = 22
     
+    # デバイス設定
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
@@ -112,5 +138,12 @@ if __name__ == "__main__":
         snr_folder = f"awgn_{snr_label}dB"
         exp_folder = f"Retrans_rate_{RATE}_Comparison_{MODE}_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
         
-        target_path = os.path.join(ROOT_DIR, DATASET, METHOD_PATH, snr_folder, exp_folder)
-        calculate_psnr_for_snr(target_path, device)
+        target_path = os.path.join(
+            ROOT_DIR, 
+            DATASET, 
+            METHOD_PATH, 
+            snr_folder, 
+            exp_folder
+        )
+        
+        calculate_psnr_from_disk(target_path, device, MODE)

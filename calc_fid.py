@@ -16,24 +16,22 @@ def calculate_fids_from_disk(base_path, device, mode):
         return
 
     # モード名の先頭を大文字にする (例: edge -> Edge)
-    # ファイル名が '3_P2_perturbation_raw_Edge.png' となっているため
     mode_cap = mode.capitalize()
 
+    # ★修正箇所: Semanticの場合はファイル名の末尾が 'Sem' になるため分岐処理
+    suffix = mode_cap
+    if mode == "semantic":
+        suffix = "Sem"
+
     # 計算対象の手法（ファイル名の接頭辞）を定義
-    # MODEに合わせて動的にファイル名を指定します
     methods = [
         '1_JSCC_Init',
         '2_Phase1_Recon',
-        f'3_P2_perturbation_raw_{mode_cap}', # ここを動的に変更
+        f'3_P2_perturbation_raw_{suffix}', # ここが動的に変わります (例: ..._Sem, ..._Edge)
         '3_P2_Random'
     ]
     
-    # 必要であれば古い定義（Unc/Sem）も残すか、完全に置き換えるか選択できますが、
-    # エラーログを見る限りEdgeモードではEdgeファイルしか生成されていないようなので
-    # 上記のようにリストを構成しています。
-
     # FIDメトリクスの初期化 (手法ごと)
-    # 毎回リセットして初期化
     fid_metrics = {
         m: FrechetInceptionDistance(feature=2048, normalize=True).to(device) 
         for m in methods
@@ -58,7 +56,7 @@ def calculate_fids_from_disk(base_path, device, mode):
         transforms.ToTensor(), # [0, 255] -> [0.0, 1.0]
     ])
 
-    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)} (Mode: {mode_cap})")
+    print(f"Processing {len(batch_dirs)} samples from: {os.path.basename(base_path)} (Mode: {mode_cap} -> Suffix: {suffix})")
 
     for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
@@ -117,19 +115,20 @@ if __name__ == "__main__":
     DATASET = "ffhq_demo" 
     #DATASET = "imagenet"
     
-    # MODE設定 (ここが "edge" の場合、ファイル名は ...raw_Edge.png となる想定)
-    MODE = "edge"
+    # MODE設定 ("semantic" or "edge" 等)
+    MODE = "semantic"
     
     # 2. SNR リスト
     # ここに計算したいSNRをすべて列挙します
-    SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
-    
+    # SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
+    SNR_LABELS = ["-4"]
+
     # 3. 再送率 (Retrans_rate)
     RATE = 0.1
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 1.0
-    GAMMA = 0.0
+    EXP_FACTOR = 2.0
+    GAMMA = 0.3 # ログを見ると0.0ではなく0.3のパスを読みたいようでしたので適宜確認してください
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"
@@ -137,7 +136,7 @@ if __name__ == "__main__":
     ZETA = 0.3
     SEED = 22
     
-    # デバイス設定 (ループの外で一度だけ取得)
+    # デバイス設定
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
@@ -147,6 +146,9 @@ if __name__ == "__main__":
     
     for snr_label in SNR_LABELS:
         snr_folder = f"awgn_{snr_label}dB"
+        
+        # ログでPath not foundと言われたフォルダ名に合わせてパラメータを設定する必要があります
+        # 例: exp2.0_gam0.3_zeta0.3_seed22
         exp_folder = f"Retrans_rate_{RATE}_Comparison_{MODE}_exp{EXP_FACTOR}_gam{GAMMA}_zeta{ZETA}_seed{SEED}"
         
         target_results_path = os.path.join(
