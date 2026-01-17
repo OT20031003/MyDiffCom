@@ -114,12 +114,12 @@ if __name__ == "__main__":
     SNR_LABELS = ["-4"] 
     
     # 3. 再送率 (Retrans_rate)
-    RATE = 0.1
+    RATE = 0.2
 
     # 4. HPRSパラメータ
     # ★修正: 前回の実行に合わせて 2.0 に変更しています
-    EXP_FACTOR = 2.0
-    GAMMA = 1.0
+    EXP_FACTOR = 1.0
+    GAMMA = 0.6
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"

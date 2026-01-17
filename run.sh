@@ -27,13 +27,21 @@ run_experiment_step() {
     local LABEL=$4
 
     CONFIG_FILE="configs/diffcom_${SNR}.yaml"
-    RESUME_IDX=0
+    
+    # ▼▼▼ 修正箇所: GAMMA=0.0のときだけResume Indexを50にする ▼▼▼
+    if [ "$GAMMA" == "0.0" ]; then
+        RESUME_IDX=0
+    else
+        RESUME_IDX=0
+    fi
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     echo ""
     echo "--------------------------------------------------------"
     echo "Experiment: $LABEL"
     echo "Processing SNR = $SNR"
     echo "Params: Basis=$RETRANS_BASIS, Val=$RETRANS_VALUE, Eta=$EXP_FACTOR, Gamma=$GAMMA"
+    echo "Resume Index: $RESUME_IDX"
     echo "--------------------------------------------------------"
 
     # 設定ファイル生成ロジック (テンプレート利用)
@@ -90,9 +98,9 @@ echo "########################################################"
 # 2. 新規実験: Gamma Sweep
 # 設定: SNR=-4 (固定), eta=2.0, gamma=(0.0 0.6 0.9 1.0)
 # ==============================================================================
-FIXED_SNR=-5
-FIXED_ETA=4.0
-GAMMAS_NEW=(0.0 0.6 0.9 1.0)
+FIXED_SNR=-4
+FIXED_ETA=2.0
+GAMMAS_NEW=(0.0 0.3 0.9 1.0)
 LABEL_NEW="New Experiment: Gamma Sweep (SNR=-4, eta=2.0)"
 
 echo ""

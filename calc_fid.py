@@ -124,11 +124,11 @@ if __name__ == "__main__":
     SNR_LABELS = ["-4"]
 
     # 3. 再送率 (Retrans_rate)
-    RATE = 0.1
+    RATE = 0.20
 
     # 4. HPRSパラメータ
-    EXP_FACTOR = 2.0
-    GAMMA = 0.3 # ログを見ると0.0ではなく0.3のパスを読みたいようでしたので適宜確認してください
+    EXP_FACTOR = 1.0
+    GAMMA = 0.6  # ログを見ると0.0ではなく0.3のパスを読みたいようでしたので適宜確認してください
 
     # 5. その他の固定パラメータ
     ROOT_DIR = "results_retrans_comparison"

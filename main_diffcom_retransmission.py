@@ -1,4 +1,3 @@
-
 import argparse
 import logging
 import os
@@ -262,12 +261,16 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
                        The rest (1.0 - gamma) is used for Random Structural Sampling.
         basis (str): 'uncertainty', 'semantic', 'both', 'edge', 'variance'
     """
+    # ▼▼▼ デバッグ用プリント (確認後削除してください) ▼▼▼
+    # print(f"[DEBUG] Simulate Retrans: Mode={mode}, Gamma={gamma}, ExpFactor={expansion_factor}, Basis={basis}")
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     device = input_image.device
     channel_wrapper = operator.channel
+    cand_mask_vis = None # 可視化用変数の初期化
     
     if not hasattr(channel_wrapper, 'shuffled_indices') or channel_wrapper.shuffled_indices is None:
         if logger: logger.warning("Channel indices not found. Is this run after observe? Skipping.")
-        return measurement, 0.0, None, None
+        return measurement, 0.0, None, None, None
 
     saved_indices = channel_wrapper.shuffled_indices.to(device)
     saved_avg_pwr = channel_wrapper.avg_pwr
@@ -355,7 +358,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             u_map = u_map.to(device)
         else:
             if uncertainty_map is None:
-                return measurement, 0.0, None, None
+                return measurement, 0.0, None, None, None
             u_map = uncertainty_map.to(device)
 
         u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
@@ -377,6 +380,12 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             # 不確実性が高い順に候補インデックスを取得
             # cand_indices: [B, k_cand]
             _, cand_indices = torch.topk(u_flat, k_cand, dim=1)
+
+            # 【追加】候補領域マスクの生成 (可視化用)
+            cand_mask_flat = torch.zeros_like(u_flat)
+            cand_mask_flat.scatter_(1, cand_indices, 1.0) # 候補ピクセルを1にする
+            cand_mask_lat = cand_mask_flat.view(B, 1, latent_H, latent_W)
+            cand_mask_vis = F.interpolate(cand_mask_lat, size=input_image.shape[-2:], mode='nearest')
 
             # === Step 2 (Tx): 予算分割 (Budget Split) ===
             k_sem = int(k_total * gamma)
@@ -472,19 +481,19 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
     new_measurement['retrans_sig'] = y_high
     new_measurement['retrans_mask'] = mask_for_y
     
-    return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial
+    return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial, cand_mask_vis
 
 def parse_args_and_config():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--opt", type=str, default='./configs/diffcom.yaml', help="Path to option YMAL file.")
+    parser.add_argument("--opt", type=str, default='./configs/diffcom_-4.yaml', help="Path to option YMAL file.")
     parser.add_argument("--retrans_mode", type=str, default='rate', choices=['rate', 'threshold', 'oracle'])
     parser.add_argument("--retrans_value", type=float, default=0.1)
     parser.add_argument("--expansion_factor", type=float, default=2.0, help="Expansion factor for candidate mask generation.")
     # --- [HPRS用に追加] ---
-    parser.add_argument("--retrans_gamma", type=float, default=0.3, 
+    parser.add_argument("--retrans_gamma", type=float, default=0.9, 
                         help="Ratio of budget allocated to semantic priority. Remaining is used for random structural sampling.")
     # ----------------------
-    parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both', 'edge', 'variance'],
+    parser.add_argument("--retrans_basis", type=str, default='semantic', choices=['uncertainty', 'semantic', 'both', 'edge', 'variance'],
                         help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), 'both', 'edge' (Sobel), or 'variance'.")
     parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
     parser.add_argument("--enable_random", action='store_true', help="Enable random retransmission baseline.")
@@ -810,13 +819,14 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                     for v_map_arg, strategy_name in strategies:
                         # 候補提示型再送シミュレーション (expansion_factorを渡す)
                         # basis引数にconfig.retrans_basisを渡すことで、関数内で分岐する
-                        meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
+                        meas_p2, ratio, mask_vis, _, cand_vis = simulate_semantic_retransmission(
                             operator, input_image, measurement_phase1, 
                             u_map_tensor, 
                             mode=config.retrans_mode, value=config.retrans_value,
                             vit_importance_map=v_map_arg,
                             expansion_factor=config.expansion_factor,
-                            basis=config.retrans_basis  # 追加
+                            basis=config.retrans_basis,  # 追加
+                            gamma=config.retrans_gamma
                         )
                         
                         base_key = f"{u_mode}_{sub_key}_{strategy_name}"
@@ -845,6 +855,10 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         if mask_vis is not None:
                             plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
                         
+                        # 候補領域 (Candidate Pool) の保存
+                        if cand_vis is not None:
+                            plt.imsave(os.path.join(save_dir, f'Candidate_Pool_{base_key}.png'), cand_vis[0, 0].cpu().numpy(), cmap='gray')
+                        
                         if strategy_name == "Sem" and v_map_arg is not None:
                             p_map = u_map_tensor.to(device) * v_map_arg.to(device)
                             p_vis = p_map[0, 0].cpu().numpy()
@@ -866,7 +880,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
             # Random Baseline
             if config.retrans_mode != 'oracle' and config.enable_random:
-                 meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
+                 meas_rnd, ratio_rnd, mask_vis_rnd, _, _ = simulate_semantic_retransmission(
                      operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value,
                      expansion_factor=config.expansion_factor
                  )
