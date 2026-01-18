@@ -142,6 +142,59 @@ class ViTSaliencyExtractor:
         
         return importance_normalized
 
+def compute_heuristic_importance_map(images, method='edge'):
+    """
+    画像処理ベースの単純な重要度マップを計算するヘルパー関数
+    Args:
+        images: Tensor [B, 3, H, W] (0~1)
+        method: 'edge' (Sobel) or 'variance' (Local Variance)
+    Returns:
+        Tensor [B, 1, H, W] (normalized 0~1)
+    """
+    B, C, H, W = images.shape
+    device = images.device
+
+    # グレースケール変換 (Rec. 601)
+    # [B, 3, H, W] -> [B, 1, H, W]
+    gray = 0.299 * images[:, 0:1] + 0.587 * images[:, 1:2] + 0.114 * images[:, 2:3]
+
+    if method == 'edge':
+        # Sobelフィルタによるエッジ検出
+        kernel_x = torch.tensor([[-1., 0., 1.], [-2., 0., 2.], [-1., 0., 1.]], device=device).view(1, 1, 3, 3)
+        kernel_y = torch.tensor([[-1., -2., -1.], [0., 0., 0.], [1., 2., 1.]], device=device).view(1, 1, 3, 3)
+
+        # パディングして畳み込み
+        gx = F.conv2d(gray, kernel_x, padding=1)
+        gy = F.conv2d(gray, kernel_y, padding=1)
+
+        # 勾配強度
+        feat_map = torch.sqrt(gx**2 + gy**2 + 1e-8)
+    
+    elif method == 'variance':
+        # 局所分散 (3x3近傍)
+        # E[x^2] - (E[x])^2
+        kernel_size = 3
+        padding = kernel_size // 2
+        
+        # Average Poolingを使って局所平均を計算
+        mean = F.avg_pool2d(gray, kernel_size=kernel_size, stride=1, padding=padding)
+        mean_sq = F.avg_pool2d(gray**2, kernel_size=kernel_size, stride=1, padding=padding)
+        
+        feat_map = mean_sq - mean**2
+        # 数値誤差で負になるのを防ぐ
+        feat_map = torch.clamp(feat_map, min=0.0)
+
+    else:
+        raise ValueError(f"Unknown heuristic method: {method}")
+
+    # Min-Max Normalize per image
+    flat = feat_map.flatten(2) # [B, 1, H*W]
+    v_min = flat.min(2, keepdim=True)[0].unsqueeze(-1)
+    v_max = flat.max(2, keepdim=True)[0].unsqueeze(-1)
+    
+    normalized_map = (feat_map - v_min) / (v_max - v_min + 1e-8)
+    return normalized_map
+
 def reconstruct_full_summary(history):
     """
     全履歴データ(list of dict)から、全データの平均値(summary)を再計算する。
@@ -199,20 +252,25 @@ def reconstruct_full_summary(history):
 
 def simulate_semantic_retransmission(operator, input_image, measurement, uncertainty_map, 
                                      mode='rate', value=0.1, logger=None, vit_importance_map=None,
-                                     expansion_factor=2.0, gamma=0.6):
+                                     expansion_factor=2.0, gamma=0.6, basis='uncertainty'):
     """
     Hybrid-Priority Retransmission Simulation (HPRS)
     
     Args:
         gamma (float): Ratio of budget for Semantic Priority (0.0 ~ 1.0). 
                        The rest (1.0 - gamma) is used for Random Structural Sampling.
+        basis (str): 'uncertainty', 'semantic', 'both', 'edge', 'variance'
     """
+    # ▼▼▼ デバッグ用プリント (確認後削除してください) ▼▼▼
+    # print(f"[DEBUG] Simulate Retrans: Mode={mode}, Gamma={gamma}, ExpFactor={expansion_factor}, Basis={basis}")
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     device = input_image.device
     channel_wrapper = operator.channel
+    cand_mask_vis = None # 可視化用変数の初期化
     
     if not hasattr(channel_wrapper, 'shuffled_indices') or channel_wrapper.shuffled_indices is None:
         if logger: logger.warning("Channel indices not found. Is this run after observe? Skipping.")
-        return measurement, 0.0, None, None
+        return measurement, 0.0, None, None, None
 
     saved_indices = channel_wrapper.shuffled_indices.to(device)
     saved_avg_pwr = channel_wrapper.avg_pwr
@@ -291,13 +349,18 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_for_y = mask_shuffled.view(y_dirty.shape)
 
     # ---------------------------------------------------------------------
-    # Mode 3: Hybrid-Priority Retransmission (HPRS) - 提案法
+    # Mode 3: Hybrid-Priority Retransmission (HPRS) - 提案法 & ヒューリスティック
     # ---------------------------------------------------------------------
     else:
-        if uncertainty_map is None:
-            return measurement, 0.0, None, None
+        # basisに応じてマップを切り替え
+        if basis in ['edge', 'variance']:
+            u_map = compute_heuristic_importance_map(input_image, method=basis)
+            u_map = u_map.to(device)
+        else:
+            if uncertainty_map is None:
+                return measurement, 0.0, None, None, None
+            u_map = uncertainty_map.to(device)
 
-        u_map = uncertainty_map.to(device)
         u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
         
         if mode == 'rate':
@@ -317,6 +380,12 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             # 不確実性が高い順に候補インデックスを取得
             # cand_indices: [B, k_cand]
             _, cand_indices = torch.topk(u_flat, k_cand, dim=1)
+
+            # 【追加】候補領域マスクの生成 (可視化用)
+            cand_mask_flat = torch.zeros_like(u_flat)
+            cand_mask_flat.scatter_(1, cand_indices, 1.0) # 候補ピクセルを1にする
+            cand_mask_lat = cand_mask_flat.view(B, 1, latent_H, latent_W)
+            cand_mask_vis = F.interpolate(cand_mask_lat, size=input_image.shape[-2:], mode='nearest')
 
             # === Step 2 (Tx): 予算分割 (Budget Split) ===
             k_sem = int(k_total * gamma)
@@ -412,21 +481,22 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
     new_measurement['retrans_sig'] = y_high
     new_measurement['retrans_mask'] = mask_for_y
     
-    return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial
+    return new_measurement, retransmission_ratio, mask_vis, mask_lat_spatial, cand_mask_vis
 
 def parse_args_and_config():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--opt", type=str, default='./configs/diffcom.yaml', help="Path to option YMAL file.")
+    parser.add_argument("--opt", type=str, default='./configs/diffcom_-4.yaml', help="Path to option YMAL file.")
     parser.add_argument("--retrans_mode", type=str, default='rate', choices=['rate', 'threshold', 'oracle'])
     parser.add_argument("--retrans_value", type=float, default=0.1)
     parser.add_argument("--expansion_factor", type=float, default=2.0, help="Expansion factor for candidate mask generation.")
     # --- [HPRS用に追加] ---
-    parser.add_argument("--retrans_gamma", type=float, default=0.3, 
+    parser.add_argument("--retrans_gamma", type=float, default=0.9, 
                         help="Ratio of budget allocated to semantic priority. Remaining is used for random structural sampling.")
     # ----------------------
-    parser.add_argument("--retrans_basis", type=str, default='both', choices=['uncertainty', 'semantic', 'both'],
-                        help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), or 'both'.")
+    parser.add_argument("--retrans_basis", type=str, default='semantic', choices=['uncertainty', 'semantic', 'both', 'edge', 'variance'],
+                        help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), 'both', 'edge' (Sobel), or 'variance'.")
     parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
+    parser.add_argument("--enable_random", action='store_true', help="Enable random retransmission baseline.")
 
     args = parser.parse_args()
     
@@ -440,6 +510,7 @@ def parse_args_and_config():
     config.retrans_gamma = args.retrans_gamma  # Configに追加
     config.retrans_basis = args.retrans_basis
     config.resume_index = args.resume_index
+    config.enable_random = args.enable_random
     
     cond_config = Config(config.getattr('diffcom_series'))
     conditioning_method = Config(cond_config.getattr(config.conditioning_method))
@@ -549,6 +620,7 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
     logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}, ExpFactor: {config.expansion_factor}')
     logger.info(f'【Config】: Retransmission Basis: {config.retrans_basis} (Using ViT: {config.retrans_basis in ["semantic", "both"]})')
+    logger.info(f'【Config】: Random Baseline Enabled: {config.enable_random}')
     
     config_modes = config.diffcom_series['uncertainty_mode']
     logger.info(f"Target Uncertainty Modes: {config_modes}")
@@ -580,7 +652,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         except Exception as e:
             logger.warning(f"[ViT] Initialization Failed: {e}. Falling back to standard uncertainty if possible.")
     else:
-        logger.info("[ViT] Saliency Extractor Skipped (Basis is 'uncertainty' only).")
+        logger.info("[ViT] Saliency Extractor Skipped (Basis is 'uncertainty' only or heuristic).")
 
     results_meters = {}
     fid_meters = {}
@@ -729,22 +801,32 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
                 if config.retrans_mode != 'oracle':
                     strategies = []
-                    if config.retrans_basis in ['uncertainty', 'both']:
-                        strategies.append((None, "Unc"))
-                    if config.retrans_basis in ['semantic', 'both']:
-                        if vit_map is not None:
-                            strategies.append((vit_map, "Sem"))
-                        else:
-                            logger.warning("Skipping Semantic mode because ViT map is missing.")
+                    
+                    # Basisに応じて戦略を分岐
+                    if config.retrans_basis in ['edge', 'variance']:
+                        # ヒューリスティック系 (Uncertainty Mapは無視されるためDummyとして渡す)
+                        strategies.append((None, config.retrans_basis.capitalize()))
+                    else:
+                        # 既存のUncertainty/Semantic系
+                        if config.retrans_basis in ['uncertainty', 'both']:
+                            strategies.append((None, "Unc"))
+                        if config.retrans_basis in ['semantic', 'both']:
+                            if vit_map is not None:
+                                strategies.append((vit_map, "Sem"))
+                            else:
+                                logger.warning("Skipping Semantic mode because ViT map is missing.")
 
                     for v_map_arg, strategy_name in strategies:
                         # 候補提示型再送シミュレーション (expansion_factorを渡す)
-                        meas_p2, ratio, mask_vis, _ = simulate_semantic_retransmission(
+                        # basis引数にconfig.retrans_basisを渡すことで、関数内で分岐する
+                        meas_p2, ratio, mask_vis, _, cand_vis = simulate_semantic_retransmission(
                             operator, input_image, measurement_phase1, 
                             u_map_tensor, 
                             mode=config.retrans_mode, value=config.retrans_value,
                             vit_importance_map=v_map_arg,
-                            expansion_factor=config.expansion_factor
+                            expansion_factor=config.expansion_factor,
+                            basis=config.retrans_basis,  # 追加
+                            gamma=config.retrans_gamma
                         )
                         
                         base_key = f"{u_mode}_{sub_key}_{strategy_name}"
@@ -773,11 +855,19 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                         if mask_vis is not None:
                             plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
                         
+                        # 候補領域 (Candidate Pool) の保存
+                        if cand_vis is not None:
+                            plt.imsave(os.path.join(save_dir, f'Candidate_Pool_{base_key}.png'), cand_vis[0, 0].cpu().numpy(), cmap='gray')
+                        
                         if strategy_name == "Sem" and v_map_arg is not None:
                             p_map = u_map_tensor.to(device) * v_map_arg.to(device)
                             p_vis = p_map[0, 0].cpu().numpy()
                             p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
                             plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
+                        
+                        # ヒューリスティックの場合は生成したマップを保存したいが、
+                        # simulate_semantic_retransmission内部で作っているためここではu_map_tensorを表示
+                        # 厳密には不確実性マップが表示されるが、ファイル名で区別可能
                         else:
                             u_vis = u_map_tensor[0, 0].cpu().numpy()
                             u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
@@ -789,8 +879,8 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 batch_record["modes"][u_mode] = mode_result
 
             # Random Baseline
-            if config.retrans_mode != 'oracle':
-                 meas_rnd, ratio_rnd, mask_vis_rnd, _ = simulate_semantic_retransmission(
+            if config.retrans_mode != 'oracle' and config.enable_random:
+                 meas_rnd, ratio_rnd, mask_vis_rnd, _, _ = simulate_semantic_retransmission(
                      operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value,
                      expansion_factor=config.expansion_factor
                  )

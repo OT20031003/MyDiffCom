@@ -39,6 +39,44 @@ from guided_diffusion.script_util import model_and_diffusion_defaults, create_mo
 from utils.util import Config, MetricWrapper, DictAverageMeter
 from utils import util, utils_logger, utils_model
 
+# ==============================================================================
+# --- [修正] 比較実験用スイート定義 (グローバル設定) ---
+# ==============================================================================
+EXPERIMENT_SUITE = [
+    # 1. Random Baseline (R=0.2)
+    #   - フィードバックなし、ランダム決定
+    {
+        "name": "1_Random_Baseline",
+        "mode": "random", "value": 0.2, "expansion": 10.0, "gamma": 0.0, "basis": "semantic" # dummy
+    },
+    # 2. Uncertainty Only (R=0.1)
+    #   - フィードバックあり
+    #   - gamma=0.0: 予算全てを不確実性リスト(候補)から上から順に選択 (実質Uncertainty Only)
+    {
+        "name": "2_Uncertainty_Only",
+        "mode": "rate", "value": 0.1, "expansion": 1.0, "gamma": 0.0, "basis": "semantic"
+    },
+    # 3. Importance Only (R=0.2)
+    #   - フィードバックなし
+    #   - gamma=1.0: 不確実性を無視してViTスコア上位のみを選択
+    {
+        "name": "3_Importance_Only",
+        "mode": "rate", "value": 0.2, "expansion": 5.0, "gamma": 1.0, "basis": "semantic"
+    },
+    # 4. Edge Baseline (R=0.2)
+    #   - フィードバックなし、Sobelフィルタ
+    {
+        "name": "4_Edge_Baseline",
+        "mode": "rate", "value": 0.2, "expansion": 1.0, "gamma": 0.0, "basis": "edge"
+    },
+    # 5. Proposed Method (R=0.1)
+    #   - フィードバックあり、提案手法
+    {
+        "name": "5_Proposed_Method",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
+    }
+]
+
 # --- JSON保存用カスタムエンコーダー ---
 class NumpyEncoder(json.JSONEncoder):
     """
@@ -198,19 +236,18 @@ def compute_heuristic_importance_map(images, method='edge'):
 def reconstruct_full_summary(history):
     """
     全履歴データ(list of dict)から、全データの平均値(summary)を再計算する。
-    Historyのネスト構造を、Summaryのフラットなキー構造(phase1_recon, perturbation_raw_Uncなど)に変換して集計する。
+    Historyの構造変更(comparison_results内)に対応して集計を行う。
     """
     if not history:
         return {}
 
-    # 集計用辞書: { "metric_key": { "psnr": [val, val...], "lpips": [val...] } }
+    # 集計用辞書: { "metric_key": { "psnr": [val...], "lpips": [val...] } }
     accumulator = {}
 
     def add_values(meter_key, metrics_dict):
         if meter_key not in accumulator:
             accumulator[meter_key] = {}
         for m_name, m_val in metrics_dict.items():
-            # 数値型のみ集計対象にする
             if isinstance(m_val, (int, float)):
                 if m_name not in accumulator[meter_key]:
                     accumulator[meter_key][m_name] = []
@@ -221,24 +258,26 @@ def reconstruct_full_summary(history):
         if 'jscc_init' in record:
             add_values('jscc_init', record['jscc_init'])
         
-        # 2. phase1 -> Summaryキーは 'phase1_recon'
+        # 2. phase1_recon
         if 'phase1' in record:
             add_values('phase1_recon', record['phase1'])
             
-        # 3. random
-        if 'random' in record:
-            add_values('random', record['random'])
-            
-        # 4. modes (再送モード) -> Summaryキーは 'perturbation_raw_Unc' 等の形式
-        # record['modes'] = { "perturbation": { "results": { "raw": { "Unc": {...}, "Sem": {...} } } } }
+        # 3. comparison_results (スイート実行結果)
+        if 'comparison_results' in record:
+            for method_name, content in record['comparison_results'].items():
+                if 'metrics' in content:
+                    add_values(method_name, content['metrics'])
+        
+        # 4. (Legacy support) modes / random
         if 'modes' in record:
             for u_mode, u_content in record['modes'].items():
                 if 'results' in u_content:
                     for sub_key, strat_dict in u_content['results'].items():
                         for strat_name, metrics in strat_dict.items():
-                            # キーの構築: 例 "perturbation_raw_Unc"
                             meter_key = f"{u_mode}_{sub_key}_{strat_name}"
                             add_values(meter_key, metrics)
+        if 'random' in record:
+            add_values('random', record['random'])
 
     # 平均値の計算
     final_summary = {}
@@ -255,15 +294,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
                                      expansion_factor=2.0, gamma=0.6, basis='uncertainty'):
     """
     Hybrid-Priority Retransmission Simulation (HPRS)
-    
-    Args:
-        gamma (float): Ratio of budget for Semantic Priority (0.0 ~ 1.0). 
-                       The rest (1.0 - gamma) is used for Random Structural Sampling.
-        basis (str): 'uncertainty', 'semantic', 'both', 'edge', 'variance'
     """
-    # ▼▼▼ デバッグ用プリント (確認後削除してください) ▼▼▼
-    # print(f"[DEBUG] Simulate Retrans: Mode={mode}, Gamma={gamma}, ExpFactor={expansion_factor}, Basis={basis}")
-    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     device = input_image.device
     channel_wrapper = operator.channel
     cand_mask_vis = None # 可視化用変数の初期化
@@ -305,7 +336,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         C_feat = s_raw.shape[1] // (latent_H * latent_W)
 
     # ---------------------------------------------------------------------
-    # Mode 1: Oracle (正解との差分に基づく理想的な再送)
+    # Mode 1: Oracle
     # ---------------------------------------------------------------------
     if mode == 'oracle':
         if y_dirty.shape != y_clean.shape:
@@ -320,7 +351,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_vis = torch.zeros(B, 1, input_image.shape[2], input_image.shape[3]).to(device)
 
     # ---------------------------------------------------------------------
-    # Mode 2: Random (ランダム再送 - ベースライン)
+    # Mode 2: Random
     # ---------------------------------------------------------------------
     elif mode == 'random':
         u_map_lat = torch.rand(B, 1, latent_H, latent_W, device=device)
@@ -349,7 +380,7 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
         mask_for_y = mask_shuffled.view(y_dirty.shape)
 
     # ---------------------------------------------------------------------
-    # Mode 3: Hybrid-Priority Retransmission (HPRS) - 提案法 & ヒューリスティック
+    # Mode 3: Hybrid-Priority Retransmission (HPRS)
     # ---------------------------------------------------------------------
     else:
         # basisに応じてマップを切り替え
@@ -358,94 +389,76 @@ def simulate_semantic_retransmission(operator, input_image, measurement, uncerta
             u_map = u_map.to(device)
         else:
             if uncertainty_map is None:
+                if logger: logger.warning("Uncertainty map is None in non-random mode!")
                 return measurement, 0.0, None, None, None
             u_map = uncertainty_map.to(device)
 
         u_map_lat = F.adaptive_avg_pool2d(u_map, output_size=(latent_H, latent_W))
         
         if mode == 'rate':
-            # === Step 1 (Rx): 候補マスク生成 (Candidate Generation) ===
+            # === Step 1: 候補マスク生成 ===
             u_flat = u_map_lat.view(B, -1)
             total_pixels = u_flat.shape[1]
             
-            # 再送総予算 (Total Budget)
             k_total = int(total_pixels * value)
             if k_total < 1: k_total = 1
             
-            # フィードバック候補数 (expansion_factor倍)
             k_cand = int(total_pixels * value * expansion_factor)
             k_cand = min(k_cand, total_pixels)
-            if k_cand < k_total: k_cand = k_total  # 予算より候補が少ない場合は合わせる
+            if k_cand < k_total: k_cand = k_total
 
             # 不確実性が高い順に候補インデックスを取得
-            # cand_indices: [B, k_cand]
             _, cand_indices = torch.topk(u_flat, k_cand, dim=1)
 
-            # 【追加】候補領域マスクの生成 (可視化用)
+            # 候補領域マスク (可視化用)
             cand_mask_flat = torch.zeros_like(u_flat)
-            cand_mask_flat.scatter_(1, cand_indices, 1.0) # 候補ピクセルを1にする
+            cand_mask_flat.scatter_(1, cand_indices, 1.0)
             cand_mask_lat = cand_mask_flat.view(B, 1, latent_H, latent_W)
             cand_mask_vis = F.interpolate(cand_mask_lat, size=input_image.shape[-2:], mode='nearest')
 
-            # === Step 2 (Tx): 予算分割 (Budget Split) ===
+            # === Step 2: 予算分割 ===
             k_sem = int(k_total * gamma)
             k_struct = k_total - k_sem
             
-            # ViTマップの準備 (Semantic Guide)
+            # ViTマップの準備
             if vit_importance_map is not None:
                 vit_lat = F.adaptive_avg_pool2d(vit_importance_map.to(device), output_size=(latent_H, latent_W))
                 vit_flat = vit_lat.view(B, -1)
             else:
-                # ViTがない場合は、不確実性マップそのものを重要度として代用
+                # ViTがない場合やgamma=0の場合に不整合が起きないよう、u_flatを代用
                 vit_flat = u_flat
 
-            # === Step 3 (Selection): 候補内での選別 ===
-            # 候補領域内の「意味的重要性 (ViT)」を取得
-            # gathered_vit: [B, k_cand]
+            # === Step 3: 候補内での選別 ===
             gathered_vit = torch.gather(vit_flat, 1, cand_indices)
 
             # --- Step 3-A: Semantic枠 (上位 k_sem) ---
-            # 候補の中でViT値が高い順にソート
-            # sort_idx_local: [B, k_cand] (0 ~ k_cand-1 の範囲)
             _, sort_idx_local = torch.sort(gathered_vit, descending=True, dim=1)
-            
-            # Semantic枠のローカルインデックス
             idx_sem_local = sort_idx_local[:, :k_sem]
 
             # --- Step 3-B: Structural枠 (残りからランダム k_struct) ---
             if k_struct > 0:
-                # Semantic枠で選ばれなかった残りのインデックス群
                 idx_remain_local = sort_idx_local[:, k_sem:]
-                
-                # 残り候補数
                 n_remain = idx_remain_local.shape[1]
                 
                 if n_remain > 0:
-                    # ランダム順列を生成して先頭 k_struct 個を取得
                     rand_perm = torch.rand(B, n_remain, device=device).argsort(dim=1)
                     idx_rand_local = torch.gather(idx_remain_local, 1, rand_perm[:, :k_struct])
-                    
-                    # 結合: Semantic枠 + Random枠
                     final_local_indices = torch.cat([idx_sem_local, idx_rand_local], dim=1)
                 else:
-                    # まれなケース: 候補数 == 予算数 の場合など
                     final_local_indices = idx_sem_local
             else:
                 final_local_indices = idx_sem_local
 
             # === Step 4: グローバルインデックスへのマッピング ===
-            # local (0~k_cand) -> global (0~TotalPixels)
             final_global_indices = torch.gather(cand_indices, 1, final_local_indices)
 
             # マスクの作成
             mask_flat_spatial = torch.zeros_like(u_flat)
-            # scatterで1を立てる
             mask_flat_spatial.scatter_(1, final_global_indices, 1.0)
-            
             mask_lat_spatial = mask_flat_spatial.view(B, 1, latent_H, latent_W)
 
         else:
-            # 従来のThresholdモード (フォールバック)
+            # 従来のThresholdモード
             mask_lat_spatial = (u_map_lat > value).float()
 
         # マスクの整形と適用
@@ -488,15 +501,15 @@ def parse_args_and_config():
     parser.add_argument("--opt", type=str, default='./configs/diffcom_-4.yaml', help="Path to option YMAL file.")
     parser.add_argument("--retrans_mode", type=str, default='rate', choices=['rate', 'threshold', 'oracle'])
     parser.add_argument("--retrans_value", type=float, default=0.1)
-    parser.add_argument("--expansion_factor", type=float, default=2.0, help="Expansion factor for candidate mask generation.")
-    # --- [HPRS用に追加] ---
-    parser.add_argument("--retrans_gamma", type=float, default=0.9, 
-                        help="Ratio of budget allocated to semantic priority. Remaining is used for random structural sampling.")
-    # ----------------------
-    parser.add_argument("--retrans_basis", type=str, default='semantic', choices=['uncertainty', 'semantic', 'both', 'edge', 'variance'],
-                        help="Basis for retransmission: 'uncertainty' (U only), 'semantic' (U * ViT), 'both', 'edge' (Sobel), or 'variance'.")
-    parser.add_argument("--resume_index", type=int, default=50, help="Index to resume processing from (0-based).")
+    parser.add_argument("--expansion_factor", type=float, default=2.0)
+    parser.add_argument("--retrans_gamma", type=float, default=0.9)
+    parser.add_argument("--retrans_basis", type=str, default='semantic', choices=['uncertainty', 'semantic', 'both', 'edge', 'variance'])
+    parser.add_argument("--resume_index", type=int, default=0, help="Index to resume processing from (0-based).")
     parser.add_argument("--enable_random", action='store_true', help="Enable random retransmission baseline.")
+    
+    # --- [修正] 比較実験スイート用フラグの追加 ---
+    parser.add_argument("--run_suite", action='store_true', help="Run the full comparison suite (Phase 1 once, multiple Phase 2).")
+    # ---------------------------------------------
 
     args = parser.parse_args()
     
@@ -507,10 +520,11 @@ def parse_args_and_config():
     config.retrans_mode = args.retrans_mode
     config.retrans_value = args.retrans_value
     config.expansion_factor = args.expansion_factor
-    config.retrans_gamma = args.retrans_gamma  # Configに追加
+    config.retrans_gamma = args.retrans_gamma
     config.retrans_basis = args.retrans_basis
     config.resume_index = args.resume_index
     config.enable_random = args.enable_random
+    config.run_suite = args.run_suite # Configに追加
     
     cond_config = Config(config.getattr('diffcom_series'))
     conditioning_method = Config(cond_config.getattr(config.conditioning_method))
@@ -520,7 +534,6 @@ def parse_args_and_config():
     config.sigma = np.sqrt(1.0 / (2 * 10 ** (config.CSNR / 10)))
 
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
-    
     config.testsets = os.path.join(config.cwd, 'testsets')
     config.results = os.path.join(config.cwd, 'results_retrans_comparison')
     config.results = os.path.join(config.results, config.testset_name)
@@ -531,12 +544,17 @@ def parse_args_and_config():
     
     config.results = os.path.join(config.results, f'{config.channel_type}_{config.CSNR.__str__().zfill(2)}dB')
     
-    u_mode = cond_config.uncertainty_mode
-    u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
-    
-    config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
-    # ファイル名にgammaも含めて実験条件を明記
-    config.result_name += f'_exp{config.expansion_factor}_gam{config.retrans_gamma}_zeta{conditioning_method.zeta}_seed{config.seed}'
+    # --- [修正] 出力ディレクトリ/ファイル名の設定ロジック ---
+    if config.run_suite:
+        # スイート実行時は専用のフォルダ名・ファイル名にする
+        config.result_name = f'Suite_Comparison_SNR{config.CSNR}_seed{config.seed}'
+    else:
+        # 既存の単体実行用ロジック
+        u_mode = cond_config.uncertainty_mode
+        u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
+        config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
+        config.result_name += f'_exp{config.expansion_factor}_gam{config.retrans_gamma}_zeta{conditioning_method.zeta}_seed{config.seed}'
+    # -----------------------------------------------------
     
     config.model_path = os.path.join(config.model_zoo, config.model_name + '.pt')
     config.testsets_path = os.path.join(config.testsets, config.testset_name)
@@ -618,41 +636,49 @@ def run_diffusion_process(config, noise_schedule, unet, diffusion, operator, con
     return x_recon.detach(), final_uncertainty_maps
 
 def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method, dataloader, device, logger):
-    logger.info(f'【Config】: Retransmission Mode: {config.retrans_mode}, Value: {config.retrans_value}, ExpFactor: {config.expansion_factor}')
-    logger.info(f'【Config】: Retransmission Basis: {config.retrans_basis} (Using ViT: {config.retrans_basis in ["semantic", "both"]})')
-    logger.info(f'【Config】: Random Baseline Enabled: {config.enable_random}')
+    # --- [修正] 実行対象の実験リストを構築 ---
+    if config.run_suite:
+        target_experiments = EXPERIMENT_SUITE
+        logger.info(f"Running Experiment Suite with {len(target_experiments)} methods.")
+    else:
+        # 単体実行 (Legacy mode)
+        target_experiments = [{
+            "name": "Single_Run",
+            "mode": config.retrans_mode,
+            "value": config.retrans_value,
+            "expansion": config.expansion_factor,
+            "gamma": config.retrans_gamma,
+            "basis": config.retrans_basis
+        }]
+    # -----------------------------------------
     
-    config_modes = config.diffcom_series['uncertainty_mode']
-    logger.info(f"Target Uncertainty Modes: {config_modes}")
-
     metric_wrapper = MetricWrapper().to(device)
     loss_wrapper = ConsistencyLoss(config, device)
     
-    # --- [修正: 文字列と数値を安全にフォーマットするヘルパー] ---
     def format_metrics(m):
         s = f"PSNR: {m.get('psnr', 0):.2f}dB"
         if 'lpips' in m: s += f" | LPIPS: {m['lpips']:.4f}"
-        if 'dists' in m: s += f" | DISTS: {m['dists']:.4f}"
-        if 'fid' in m:   
-            val = m['fid']
-            # 数値型ならフォーマット、文字列(エラーメッセージ)ならそのまま表示
-            if isinstance(val, (int, float)):
-                s += f" | FID: {val:.4f}"
-            else:
-                s += f" | FID: {val}"
-        if 'corr' in m:  s += f" | Corr: {m['corr']:.3f}"
+        if 'fid' in m:   s += f" | FID: {m['fid']}"
         return s
-    # --------------------------------------------------------
 
+    # --- [修正] ViTの初期化判断 ---
+    # スイート内のいずれかの実験で semantic/both があればViTをロードする
+    use_vit = False
+    for exp in target_experiments:
+        if exp['basis'] in ['semantic', 'both']:
+            use_vit = True
+            break
+    
     vit_extractor = None
-    if config.retrans_basis in ['semantic', 'both']:
+    if use_vit:
         try:
             vit_extractor = ViTSaliencyExtractor(device=device)
-            logger.info("[ViT] Saliency Extractor Initialized Successfully (DINOv3).")
+            logger.info("[ViT] Saliency Extractor Initialized Successfully.")
         except Exception as e:
-            logger.warning(f"[ViT] Initialization Failed: {e}. Falling back to standard uncertainty if possible.")
+            logger.warning(f"[ViT] Init Failed: {e}. Semantic modes may fail.")
     else:
-        logger.info("[ViT] Saliency Extractor Skipped (Basis is 'uncertainty' only or heuristic).")
+        logger.info("[ViT] Saliency Extractor Skipped (No semantic methods in suite).")
+    # -----------------------------
 
     results_meters = {}
     fid_meters = {}
@@ -666,12 +692,7 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         global IS_TORCHMETRICS_AVAILABLE
         if not IS_TORCHMETRICS_AVAILABLE: return
         if key not in fid_meters:
-            try:
-                fid_meters[key] = FrechetInceptionDistance(feature=2048, normalize=True).to(device)
-            except (ModuleNotFoundError, ImportError, RuntimeError) as e:
-                logger.warning(f"\n[Warning] FID init failed: {e}. FID disabled.")
-                IS_TORCHMETRICS_AVAILABLE = False
-                return
+            fid_meters[key] = FrechetInceptionDistance(feature=2048, normalize=True).to(device)
         real_norm = torch.clamp(real_img, 0, 1)
         fake_norm = torch.clamp(fake_img, 0, 1)
         fid_meters[key].update(real_norm, real=True)
@@ -681,32 +702,25 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         kwargs['loss_wrapper'] = loss_wrapper
         return cond_method(*args, **kwargs)
 
-    json_filename = f"SNR{config.CSNR}_{config.result_name}.json"
+    json_filename = f"{config.result_name}.json"
     json_path = os.path.join(config.save_path, json_filename)
     import gc
 
     all_results_history = []
     
-    # indexが指定されており、かつファイルが存在する場合は読み込む
+    # 履歴読み込み
     if config.resume_index > 0 and os.path.exists(json_path):
-        logger.info(f"Found existing JSON at {json_path}. Loading history to resume...")
         try:
             with open(json_path, 'r') as f:
                 existing_data = json.load(f)
                 all_results_history = existing_data.get('history', [])
-            logger.info(f"Loaded {len(all_results_history)} previous records from history.")
+            logger.info(f"Loaded {len(all_results_history)} previous records.")
         except Exception as e:
-            logger.warning(f"Failed to load existing JSON: {e}. Starting with empty history.")
+            logger.warning(f"Failed to load existing JSON: {e}.")
 
-    # --- [シグナルハンドリングの定義] ---
     def handle_sigterm(signum, frame):
-        """killコマンド(SIGTERM)を受け取った時に例外を投げてfinallyブロックへ誘導する"""
-        logger.info(f"Received Signal {signum}. Raising KeyboardInterrupt to save results...")
         raise KeyboardInterrupt
-
-    # SIGTERM (killデフォルト) をキャッチ
     signal.signal(signal.SIGTERM, handle_sigterm)
-    # ------------------------------------
 
     try:
         for idx, batch in enumerate(dataloader):
@@ -717,20 +731,23 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             input_image = input_image.to(device)
             config.batch_size = input_image.shape[0]
 
+            # --- [修正] ViTマップの一括計算 (バッチ先頭で1回だけ) ---
             vit_map = None
             if vit_extractor is not None:
                 try:
                     vit_map = vit_extractor.get_importance_map(input_image).detach()
                 except Exception as e:
-                    logger.warning(f"Batch {idx}: ViT map calculation failed ({e}).")
+                    logger.warning(f"Batch {idx}: ViT calculation failed ({e}).")
+            # -----------------------------------------------------
             
+            # --- Phase 1 (共通処理): 1回だけ実行 ---
             torch.manual_seed(config.seed + idx)
             measurement_phase1 = operator.observe_and_transpose(input_image)
             
             metrics_jscc_p1 = metric_wrapper(measurement_phase1['x_mse'].detach(), input_image)
             get_meter('jscc_init').update(metrics_jscc_p1)
             
-            log_msg_jscc = f"Batch {idx+1}/{len(dataloader)} | [Base JSCC] Init | {format_metrics(metrics_jscc_p1)}"
+            log_msg_jscc = f"Batch {idx+1}/{len(dataloader)} | [Phase 1 Init] | {format_metrics(metrics_jscc_p1)}"
             logger.info(log_msg_jscc)
 
             save_dir = os.path.join(config.save_path, 'visuals', str(idx))
@@ -746,10 +763,9 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
                 "batch_idx": idx + 1,
                 "filename": names[0],
                 "jscc_init": {k: float(v) for k, v in metrics_jscc_p1.items()},
-                "modes": {}
+                "comparison_results": {} # 結果格納用コンテナ
             }
 
-            # Phase 1
             torch.manual_seed(config.seed + idx)
             diffcom_module.latest_uncertainty_map = {} 
 
@@ -761,213 +777,124 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
             metrics_p1 = metric_wrapper(x_recon_p1.detach(), input_image)
             get_meter('phase1_recon').update(metrics_p1)
             batch_record['phase1'] = {k: float(v) for k, v in metrics_p1.items()}
-
             update_fid('phase1', input_image, x_recon_p1.detach())
 
-            log_msg_p1 = f"  -> Phase 1        | {format_metrics(metrics_p1)}"
-            logger.info(log_msg_p1)
-
+            logger.info(f"  -> Phase 1 Done | {format_metrics(metrics_p1)}")
             torchvision.utils.save_image(x_recon_p1[0].cpu(), os.path.join(save_dir, f'2_Phase1_Recon.png'))
             
-            error_map = torch.abs(x_recon_p1 - input_image).mean(dim=1, keepdim=True)
-            e_flat = error_map.detach().cpu().flatten().numpy()
-
-            # Phase 2 Loop
-            available_modes = list(uncertainty_container_p1.keys()) if uncertainty_container_p1 else []
-            if not available_modes and config.retrans_mode != 'oracle':
-                 logger.warning("No uncertainty maps found!")
-
-            for u_mode in available_modes:
-                mode_maps = uncertainty_container_p1[u_mode]
-                mode_result = {"correlation": {}, "results": {}}
+            # Phase 1 の不確実性マップを抽出 (最初のモードを使用)
+            raw_uncertainty_map = None
+            if uncertainty_container_p1:
+                first_key = list(uncertainty_container_p1.keys())[0]
+                raw_uncertainty_map = uncertainty_container_p1[first_key].get('raw')
+            
+            # --- [修正] Phase 2 ループ (オンメモリ連続実行) ---
+            for exp in target_experiments:
+                exp_name = exp["name"]
                 
-                u_map_tensor = mode_maps.get('raw')
-                if u_map_tensor is None: continue
+                # パラメータ展開
+                c_mode = exp["mode"]
+                c_val = exp["value"]
+                c_exp = exp["expansion"]
+                c_gam = exp["gamma"]
+                c_basis = exp["basis"]
                 
-                sub_key = 'raw'
+                # ViTマップを使うかどうかの判定 (basisがsemantic/bothの場合)
+                # ※ Uncertainty Only (gamma=0) の場合は basis='semantic' だが gamma=0 で無視される
+                current_vit = vit_map if c_basis in ['semantic', 'both'] else None
 
-                if u_map_tensor.shape[-2:] != error_map.shape[-2:]:
-                        u_raw_resized = F.interpolate(u_map_tensor, size=error_map.shape[-2:], mode='bilinear')
-                        u_flat_val = u_raw_resized.flatten().cpu().numpy()
-                else:
-                        u_flat_val = u_map_tensor.flatten().cpu().numpy()
+                # シミュレーション実行 (Phase 1 の measurement と uncertainty を再利用)
+                meas_p2, ratio, mask_vis, _, cand_vis = simulate_semantic_retransmission(
+                    operator, input_image, measurement_phase1, 
+                    raw_uncertainty_map, 
+                    mode=c_mode, 
+                    value=c_val,
+                    vit_importance_map=current_vit,
+                    expansion_factor=c_exp,
+                    basis=c_basis,
+                    gamma=c_gam
+                )
+
+                # Phase 2 拡散過程
+                # seedを固定して再現性を担保
+                torch.manual_seed(config.seed + idx)
+                p2_phase_name = f"P2_{exp_name}"
                 
-                if np.isnan(u_flat_val).any() or np.isnan(e_flat).any():
-                    corr = 0.0
-                else:
-                    corr, _ = pearsonr(u_flat_val, e_flat)
+                x_recon_p2, _ = run_diffusion_process(
+                    config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
+                    meas_p2, input_image, device, phase_name=p2_phase_name
+                )
                 
-                mode_result["correlation"][sub_key] = corr
-
-                if config.retrans_mode != 'oracle':
-                    strategies = []
-                    
-                    # Basisに応じて戦略を分岐
-                    if config.retrans_basis in ['edge', 'variance']:
-                        # ヒューリスティック系 (Uncertainty Mapは無視されるためDummyとして渡す)
-                        strategies.append((None, config.retrans_basis.capitalize()))
-                    else:
-                        # 既存のUncertainty/Semantic系
-                        if config.retrans_basis in ['uncertainty', 'both']:
-                            strategies.append((None, "Unc"))
-                        if config.retrans_basis in ['semantic', 'both']:
-                            if vit_map is not None:
-                                strategies.append((vit_map, "Sem"))
-                            else:
-                                logger.warning("Skipping Semantic mode because ViT map is missing.")
-
-                    for v_map_arg, strategy_name in strategies:
-                        # 候補提示型再送シミュレーション (expansion_factorを渡す)
-                        # basis引数にconfig.retrans_basisを渡すことで、関数内で分岐する
-                        meas_p2, ratio, mask_vis, _, cand_vis = simulate_semantic_retransmission(
-                            operator, input_image, measurement_phase1, 
-                            u_map_tensor, 
-                            mode=config.retrans_mode, value=config.retrans_value,
-                            vit_importance_map=v_map_arg,
-                            expansion_factor=config.expansion_factor,
-                            basis=config.retrans_basis,  # 追加
-                            gamma=config.retrans_gamma
-                        )
-                        
-                        base_key = f"{u_mode}_{sub_key}_{strategy_name}"
-
-                        torch.manual_seed(config.seed + idx)
-                        x_recon_p2, _ = run_diffusion_process(
-                            config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                            meas_p2, input_image, device, phase_name=f"P2_{base_key}"
-                        )
-                        
-                        metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
-                        metrics_p2['corr'] = float(corr)
-                        get_meter(base_key).update(metrics_p2)
-                        update_fid(base_key, input_image, x_recon_p2.detach())
-                        
-                        if sub_key not in mode_result["results"]:
-                            mode_result["results"][sub_key] = {}
-                        
-                        mode_result["results"][sub_key][strategy_name] = {k: float(v) for k, v in metrics_p2.items()}
-                        mode_result["results"][sub_key][strategy_name]['ratio'] = ratio
-                        
-                        log_msg_p2 = f"    [{u_mode[:4]}-{sub_key:6s}-{strategy_name:3s}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)}"
-                        logger.info(log_msg_p2)
-
-                        torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_P2_{base_key}.png'))
-                        if mask_vis is not None:
-                            plt.imsave(os.path.join(save_dir, f'Mask_{base_key}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
-                        
-                        # 候補領域 (Candidate Pool) の保存
-                        if cand_vis is not None:
-                            plt.imsave(os.path.join(save_dir, f'Candidate_Pool_{base_key}.png'), cand_vis[0, 0].cpu().numpy(), cmap='gray')
-                        
-                        if strategy_name == "Sem" and v_map_arg is not None:
-                            p_map = u_map_tensor.to(device) * v_map_arg.to(device)
-                            p_vis = p_map[0, 0].cpu().numpy()
-                            p_vis = (p_vis - p_vis.min()) / (p_vis.max() - p_vis.min() + 1e-8)
-                            plt.imsave(os.path.join(save_dir, f'Priority_{base_key}.png'), p_vis, cmap='jet')
-                        
-                        # ヒューリスティックの場合は生成したマップを保存したいが、
-                        # simulate_semantic_retransmission内部で作っているためここではu_map_tensorを表示
-                        # 厳密には不確実性マップが表示されるが、ファイル名で区別可能
-                        else:
-                            u_vis = u_map_tensor[0, 0].cpu().numpy()
-                            u_vis = (u_vis - u_vis.min()) / (u_vis.max() - u_vis.min() + 1e-8)
-                            plt.imsave(os.path.join(save_dir, f'Uncertainty_{base_key}.png'), u_vis, cmap='jet')
-                        
-                        del meas_p2, x_recon_p2
-                        torch.cuda.empty_cache()
-
-                batch_record["modes"][u_mode] = mode_result
-
-            # Random Baseline
-            if config.retrans_mode != 'oracle' and config.enable_random:
-                 meas_rnd, ratio_rnd, mask_vis_rnd, _, _ = simulate_semantic_retransmission(
-                     operator, input_image, measurement_phase1, None, mode='random', value=config.retrans_value,
-                     expansion_factor=config.expansion_factor
-                 )
-                 
-                 torch.manual_seed(config.seed + idx)
-                 x_recon_rnd, _ = run_diffusion_process(
-                     config, noise_schedule, unet, diffusion, operator, wrapped_cond_method,
-                     meas_rnd, input_image, device, phase_name="P2_Random"
-                 )
-                 metrics_rnd = metric_wrapper(x_recon_rnd.detach(), input_image)
-                 get_meter('random').update(metrics_rnd)
-                 update_fid('random', input_image, x_recon_rnd.detach())
-
-                 batch_record['random'] = {k: float(v) for k, v in metrics_rnd.items()}
-                 batch_record['random']['ratio'] = ratio_rnd
-                 
-                 log_msg_rnd = f"    [Random             ] Ratio: {ratio_rnd:.2%} | {format_metrics(metrics_rnd)}"
-                 logger.info(log_msg_rnd)
-
-                 torchvision.utils.save_image(x_recon_rnd[0].cpu(), os.path.join(save_dir, '3_P2_Random.png'))
-                 if mask_vis_rnd is not None:
-                     plt.imsave(os.path.join(save_dir, 'Mask_Random.png'), mask_vis_rnd[0, 0].cpu().numpy(), cmap='gray')
+                # 評価と保存
+                metrics_p2 = metric_wrapper(x_recon_p2.detach(), input_image)
+                get_meter(exp_name).update(metrics_p2)
+                update_fid(exp_name, input_image, x_recon_p2.detach())
                 
-                 del meas_rnd, x_recon_rnd
-                 torch.cuda.empty_cache()
+                # 結果保存
+                batch_record["comparison_results"][exp_name] = {
+                    "metrics": {k: float(v) for k, v in metrics_p2.items()},
+                    "ratio": ratio,
+                    "params": exp
+                }
+
+                logger.info(f"    [{exp_name}] Ratio: {ratio:.2%} | {format_metrics(metrics_p2)}")
+                
+                # 画像保存
+                torchvision.utils.save_image(x_recon_p2[0].cpu(), os.path.join(save_dir, f'3_{exp_name}.png'))
+                if mask_vis is not None:
+                    plt.imsave(os.path.join(save_dir, f'Mask_{exp_name}.png'), mask_vis[0, 0].cpu().numpy(), cmap='gray')
+                if cand_vis is not None:
+                    plt.imsave(os.path.join(save_dir, f'Cand_{exp_name}.png'), cand_vis[0, 0].cpu().numpy(), cmap='gray')
+
+                # メモリ解放
+                del meas_p2, x_recon_p2
+                torch.cuda.empty_cache()
+            
+            # -----------------------------------------------------
 
             all_results_history.append(batch_record)
             logger.info('-' * 80)
             
-            del input_image, measurement_phase1
-            if 'x_recon_p1' in locals(): del x_recon_p1
-            if 'uncertainty_container_p1' in locals(): del uncertainty_container_p1
-            if 'vit_map' in locals(): del vit_map
-            
+            del input_image, measurement_phase1, x_recon_p1, uncertainty_container_p1
             gc.collect() 
             torch.cuda.empty_cache() 
 
     except KeyboardInterrupt:
-        logger.info("\n[!] Process Interrupted by User (Ctrl+C or kill). Saving current results...")
+        logger.info("\n[!] Process Interrupted by User. Saving current results...")
     except Exception as e:
-        logger.error(f"\n[!] Unexpected Error Occurred: {e}. Saving current results...")
+        logger.error(f"\n[!] Unexpected Error: {e}. Saving current results...")
         import traceback
         traceback.print_exc()
     finally:
-        # サマリー作成 (全履歴から再計算)
+        # サマリー作成 & 保存
         current_session_summary = {}
         for k, meter in results_meters.items():
             current_session_summary[k] = meter.avg
         
-        # --- [修正: FID計算中の二重割り込み(KeyboardInterrupt)をガード] ---
+        # FID計算
         if IS_TORCHMETRICS_AVAILABLE and len(fid_meters) > 0:
-            logger.info("Calculating FID scores... (might take a while)")
-            
-            # FID計算全体を try ブロックで囲む
+            logger.info("Calculating FID scores...")
             try:
                 for k, fid_obj in fid_meters.items():
                     if k not in current_session_summary: current_session_summary[k] = {}
                     try:
-                        # 計算試行
                         score = fid_obj.compute().item()
                         current_session_summary[k]['fid'] = score
                         logger.info(f"  -> FID [{k}]: {score:.4f}")
-                    except KeyboardInterrupt:
-                         # ここで再度のCtrl+Cをキャッチしてループを抜ける
-                        logger.warning(f"FID calculation for {k} interrupted by user!")
-                        current_session_summary[k]['fid'] = "Interrupted_User"
-                        raise KeyboardInterrupt # 外側のexceptへ飛ばす
                     except Exception as e:
-                        # 計算エラーなどは個別に記録
-                        logger.warning(f"Failed to compute FID for {k} (Error): {e}")
-                        current_session_summary[k]['fid'] = f"Error: {str(e)}"
-            
+                        logger.warning(f"FID Error {k}: {e}")
             except KeyboardInterrupt:
-                logger.warning("\n[!] FID calculation interrupted. Skipping remaining FIDs to save data immediately.")
-        # ------------------------------------
+                logger.warning("FID calc interrupted.")
         
-        # 履歴がある場合は、全履歴からSummaryを再構築する
+        # 履歴とのマージ
         if len(all_results_history) > 0:
-            logger.info(f"Recalculating global summary from {len(all_results_history)} total records...")
+            logger.info("Recalculating global summary...")
             final_summary = reconstruct_full_summary(all_results_history)
             
-            # FIDなど履歴に含まれない情報をマージ
+            # SessionだけのFIDをマージ
             for k, v in current_session_summary.items():
                 if 'fid' in v and k in final_summary:
                     final_summary[k]['fid'] = v['fid']
-                elif k not in final_summary: # 万が一履歴にないが今回計測されたもの
-                    final_summary[k] = v
         else:
             final_summary = current_session_summary
 
@@ -976,23 +903,11 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
         if len(all_results_history) > 0:
             with open(json_path, 'w') as f:
                 json.dump(output_data, f, indent=4, cls=NumpyEncoder)
-            logger.info(f"Saved {len(all_results_history)} results to {json_path}")
-        else:
-            logger.warning("No complete results to save.")
+            logger.info(f"Saved results to {json_path}")
         
-        # 最終ログ表示
+        # 最終ログ
         logger.info("=== Final Comparison Summary ===")
-        
-        if 'jscc_init' in final_summary:
-            logger.info(f"Init (Base)  | {format_metrics(final_summary['jscc_init'])}")
-        if 'phase1_recon' in final_summary:
-            logger.info(f"Phase 1      | {format_metrics(final_summary['phase1_recon'])}")
-        if 'random' in final_summary:
-            logger.info(f"Random       | {format_metrics(final_summary['random'])}")
-
         for k in sorted(final_summary.keys()):
-            if k in ['jscc_init', 'random', 'phase1_recon', 'random_jscc']: continue
-            if 'jscc' in k: continue 
             logger.info(f"{k:30s} | {format_metrics(final_summary[k])}")
 
     return results_meters
@@ -1008,8 +923,6 @@ def main():
     
     dataloader = get_test_loader(config.testsets_path, batch_size=config.batch_size, shuffle=False)
     
-    
-    # モデル名に応じた設定の分岐
     if config.model_name == 'ffhq_10m':
         model_config = dict(
             model_path=config.model_path,
@@ -1017,25 +930,22 @@ def main():
             num_res_blocks=1,
             attention_resolutions="16",
         )
-    # ▼▼▼ LSUN Bedroom用設定を追加 (ファイル名は適宜合わせてください) ▼▼▼
     elif config.model_name == 'lsun_uncond_100M_1200K_bs128': 
         model_config = dict(
             model_path=config.model_path,
             image_size=256,
-            num_channels=128,           # LSUNモデルの仕様
-            num_res_blocks=2,           # LSUNモデルの仕様
-            num_heads=1,                # LSUNモデルの仕様
-            learn_sigma=True,           # LSUNモデルの仕様
-            use_scale_shift_norm=False, # LSUNモデルの仕様
-            attention_resolutions="16", # LSUNモデルの仕様
-            diffusion_steps=1000,       # DiffComの標準に合わせるかモデルに合わせる
-            noise_schedule="linear",    # LSUNモデルはlinear
+            num_channels=128,
+            num_res_blocks=2,
+            num_heads=1,
+            learn_sigma=True,
+            use_scale_shift_norm=False,
+            attention_resolutions="16",
+            diffusion_steps=1000,
+            noise_schedule="linear",
             rescale_learned_sigmas=False,
             rescale_timesteps=False,
         )
-    # ▲▲▲ 追加ここまで ▲▲▲
     else:
-        # ImageNet等のデフォルト設定
         model_config = dict(
             model_path=config.model_path,
             num_channels=256,
