@@ -160,11 +160,11 @@ if __name__ == "__main__":
     SNR_LABELS = ["-8","-7", "-6", "-5" ,"-4", "-3","-2"]
     SNR_LABELS = ["-4"]
     
-    RATE = 0.20
+    RATE = 0.08
     
     # ★修正: 前回の成功例に合わせて設定
-    EXP_FACTOR = 1.0 
-    GAMMA = 0.6
+    EXP_FACTOR = 3.0 
+    GAMMA = 0.3
     
     ROOT_DIR = "results_retrans_comparison"
     METHOD_PATH = "diffcom/djscc_2"

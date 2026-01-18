@@ -14,7 +14,7 @@ PYTHON_SCRIPT="main_diffcom_retransmission.py"
 
 # 実験固定パラメータ
 FIXED_SNR=-4
-FIXED_GAMMA=0.5
+FIXED_GAMMA=0.3
 RETRANS_BASIS="semantic"
 RESUME_IDX=0  # 全バッチを実行 (必要に応じて変更してください)
 
@@ -85,16 +85,16 @@ echo "### START TABLE EXPERIMENT: Rate vs Eta (SNR=-4, Gamma=0.5) ###"
 echo "########################################################"
 
 # Case 1: R=0.06, Eta=8.0
-run_experiment_case 0.06 8.0
+run_experiment_case 0.1333 1.0
 
 # Case 2: R=0.10, Eta=4.0
-run_experiment_case 0.10 4.0
+run_experiment_case 0.1 2.0
 
 # Case 3: R=0.15, Eta=2.0
-run_experiment_case 0.15 2.0
+run_experiment_case 0.08 3.0
 
 # Case 4: R=0.20, Eta=1.0
-run_experiment_case 0.20 1.0
+run_experiment_case 0.6666 4.0
 
 echo ""
 echo "########################################################"
