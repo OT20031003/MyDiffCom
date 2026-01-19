@@ -47,34 +47,34 @@ EXPERIMENT_SUITE = [
     #   - フィードバックなし、ランダム決定
     {
         "name": "1_Random_Baseline",
-        "mode": "random", "value": 0.2, "expansion": 10.0, "gamma": 0.0, "basis": "semantic" # dummy
+        "mode": "random", "value": 0.1, "expansion": 10.0, "gamma": 0.0, "basis": "semantic" # dummy
     },
-    # 2. Uncertainty Only (R=0.1)
-    #   - フィードバックあり
-    #   - gamma=0.0: 予算全てを不確実性リスト(候補)から上から順に選択 (実質Uncertainty Only)
-    {
-        "name": "2_Uncertainty_Only",
-        "mode": "rate", "value": 0.1, "expansion": 1.0, "gamma": 0.0, "basis": "semantic"
-    },
+    # # 2. Uncertainty Only (R=0.1)
+    # #   - フィードバックあり
+    # #   - gamma=0.0: 予算全てを不確実性リスト(候補)から上から順に選択 (実質Uncertainty Only)
+    # {
+    #     "name": "2_Uncertainty_Only",
+    #     "mode": "rate", "value": 0.1, "expansion": 1.0, "gamma": 0.0, "basis": "semantic"
+    # },
     # 3. Importance Only (R=0.2)
     #   - フィードバックなし
     #   - gamma=1.0: 不確実性を無視してViTスコア上位のみを選択
     {
         "name": "3_Importance_Only",
-        "mode": "rate", "value": 0.2, "expansion": 5.0, "gamma": 1.0, "basis": "semantic"
+        "mode": "rate", "value": 0.1, "expansion": 5.0, "gamma": 1.0, "basis": "semantic"
     },
     # 4. Edge Baseline (R=0.2)
     #   - フィードバックなし、Sobelフィルタ
     {
         "name": "4_Edge_Baseline",
-        "mode": "rate", "value": 0.2, "expansion": 1.0, "gamma": 0.0, "basis": "edge"
-    },
-    # 5. Proposed Method (R=0.1)
-    #   - フィードバックあり、提案手法
-    {
-        "name": "5_Proposed_Method",
-        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
+        "mode": "rate", "value": 0.1, "expansion": 1.0, "gamma": 0.0, "basis": "edge"
     }
+    # # 5. Proposed Method (R=0.1)
+    # #   - フィードバックあり、提案手法
+    # {
+    #     "name": "5_Proposed_Method",
+    #     "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
+    # }
 ]
 
 # --- JSON保存用カスタムエンコーダー ---
@@ -535,7 +535,7 @@ def parse_args_and_config():
 
     config.model_zoo = os.path.join(config.cwd, 'model_zoo')
     config.testsets = os.path.join(config.cwd, 'testsets')
-    config.results = os.path.join(config.cwd, 'results_retrans_comparison')
+    config.results = os.path.join(config.cwd, 'results_retrans_comparison_v2')
     config.results = os.path.join(config.results, config.testset_name)
     config.results = os.path.join(config.results, config.conditioning_method)
 
@@ -547,7 +547,7 @@ def parse_args_and_config():
     u_mode = cond_config.uncertainty_mode
     u_mode_str = "Comparison" if isinstance(u_mode, list) else str(u_mode)
     
-    config.result_name = f'Retrans_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
+    config.result_name = f'Retrans_v2_{config.retrans_mode}_{config.retrans_value}_{u_mode_str}_{config.retrans_basis}'
     # ファイル名にgammaも含めて実験条件を明記
     config.result_name += f'_exp{config.expansion_factor}_gam{config.retrans_gamma}_zeta{conditioning_method.zeta}_seed{config.seed}'
     
