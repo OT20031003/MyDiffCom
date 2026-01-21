@@ -77,9 +77,9 @@ def calculate_lpips_from_disk(base_path, device, target_methods):
                         with torch.no_grad():
                             score = lpips_metric(m_img, gt_img).item()
                         method_scores[m].append(score)
-                    except Exception as e:
+                    except Exception:
                         pass
-        except Exception as e:
+        except Exception:
             pass
 
     # 最終的なスコアの集計 (平均値)
@@ -96,7 +96,7 @@ def calculate_lpips_from_disk(base_path, device, target_methods):
             final_results[display_name] = avg
             print(f"{display_name:30s}: {avg:.4f}")
         else:
-            print(f"{display_name:30s}: N/A (Error or too few samples)")
+            print(f"{display_name:30s}: N/A (0 samples)")
             
     # 結果をJSONとして保存
     output_json = os.path.join(base_path, "post_process_lpips.json")
@@ -111,13 +111,11 @@ if __name__ == "__main__":
     # 設定エリア (Configuration)
     # ==========================================
     
-    # ★ バージョン選択 ('v1' または 'v2') ★
-    #  - v1: main_diffcom_retransmission.py に対応
-    #  - v2: main_diffcom_retransmission_v2.py に対応
-    VERSION = "v1" 
+    # ★ バージョン選択 ('v1', 'v2', 'v3') ★
+    VERSION = "v3"
     
     # 共通設定
-    DATASET = "ffhq_demo"   # "imagenet" or "ffhq_demo"
+    DATASET = "ffhq_demo"   
     SNR_LABELS = ["-8", "-7", "-6", "-5", "-4", "-3", "-2"]
     
     # 固定パラメータ
@@ -126,19 +124,34 @@ if __name__ == "__main__":
     SEED = 22
     
     # --- バージョン依存パラメータの設定 ---
-    if VERSION == "v2":
-        # v2用の設定 (main_diffcom_retransmission_v2.py)
+    if VERSION == "v3":
+        # v3用の設定 (results_retrans_comparison_v3)
+        ROOT_DIR = "results_retrans_comparison_v3"
+        PREFIX = "Retrans_" 
+        
+        # フォルダ名パラメータ
+        RATE = 0.1
+        MODE = "rate"
+        BASIS = "semantic"
+        EXP_FACTOR = 2.0
+        GAMMA = 0.9 
+        
+        # 新しい実験スイート (6, 7)
+        TARGET_METHODS = [
+            "6_Importance_Random",
+            "7_Edge_Random"
+        ]
+
+    elif VERSION == "v2":
+        # v2用の設定
         ROOT_DIR = "results_retrans_comparison_v2"
         PREFIX = "Retrans_v2_"
-        
-        # v2スクリプトのデフォルト値
         RATE = 0.1
-        MODE = "rate"          # v2 default
-        BASIS = "semantic"     # v2 default
-        EXP_FACTOR = 2.0       # v2 args default
-        GAMMA = 0.9            # v2 args default
+        MODE = "rate"
+        BASIS = "semantic"
+        EXP_FACTOR = 2.0
+        GAMMA = 0.9
         
-        # EXPERIMENT_SUITE に対応する名前リスト
         TARGET_METHODS = [
             "1_Random_Baseline",
             "3_Importance_Only",
@@ -146,18 +159,16 @@ if __name__ == "__main__":
         ]
         
     else:
-        # v1用の設定 (main_diffcom_retransmission.py)
-        ROOT_DIR = "results_retrans_comparison"
+        # v1用の設定 (results_retrans_comparison_v1)
+        ROOT_DIR = "results_retrans_comparison_v1"
         PREFIX = "Retrans_"
         
-        # v1スクリプトでよく使われていた設定
         RATE = 0.1
         MODE = "rate"
         BASIS = "semantic"
         EXP_FACTOR = 2.0
-        GAMMA = 0.9 # mainのデフォルト値
+        GAMMA = 0.9 
         
-        # EXPERIMENT_SUITE に対応する名前リスト
         TARGET_METHODS = [
             "1_Random_Baseline",
             "2_Uncertainty_Only",

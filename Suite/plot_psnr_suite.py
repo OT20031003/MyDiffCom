@@ -9,24 +9,26 @@ import numpy as np
 # 設定エリア (Configuration)
 # ==========================================
 
-# ★バージョン選択 ("v1" or "v2")
+# ★バージョン選択 ("v1", "v2", "v3")
 # v1: "results_retrans_comparison" 内の全データをプロット
-# v2: "results_retrans_comparison_v2" のデータ + v1 の "Uncertainty" & "Proposed" をプロット
-VERSION = "v2"
+# v2: "results_retrans_comparison_v2" + v1 (Uncertainty & Proposed)
+# v3: "results_retrans_comparison_v3" + v1 (Uncertainty & Proposed)
+VERSION = "v3"
 
 # 共通設定
 DATASET = "ffhq_demo"
 SNR_LABELS = [-8, -7, -6, -5, -4, -3, -2] # プロットしたいSNR範囲
 
 # データのルートディレクトリ定義
-ROOT_V1 = os.path.join("results_retrans_comparison", DATASET)
+ROOT_V1 = os.path.join("results_retrans_comparison_v1", DATASET)
 ROOT_V2 = os.path.join("results_retrans_comparison_v2", DATASET)
+ROOT_V3 = os.path.join("results_retrans_comparison_v3", DATASET)
 
 # フォルダ名のパターン指定 (正規表現)
-# ユーザー指定のパラメータ: exp2.0_gam0.9_zeta0.3_seed22
-# 多少の変動許容のため正規表現を使用しますが、基本はこの設定を狙い撃ちします
+# v1/v3は同じ命名規則、v2はprefix付き
 PATTERN_V1 = r"Retrans_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3_seed22"
 PATTERN_V2 = r"Retrans_v2_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3_seed22"
+PATTERN_V3 = r"Retrans_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3_seed22"
 
 # ==========================================
 # 手法とデータソースの定義
@@ -34,13 +36,20 @@ PATTERN_V2 = r"Retrans_v2_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3
 
 # 全ての手法の表示名とスタイル定義
 STYLE_CONFIG = {
-    # "1_JSCC_Init":       {"label": "JSCC (Initial)",  "color": "black",  "linestyle": ":",  "marker": "x"},
-    # "2_Phase1_Recon":    {"label": "Phase 1 Recon",   "color": "blue",   "linestyle": "--", "marker": "o"},
-    "1_Random_Baseline": {"label": "Random Baseline", "color": "gray",   "linestyle": "-.", "marker": "v"},
-    "2_Uncertainty_Only":{"label": "Uncertainty Only","color": "orange", "linestyle": "-",  "marker": "s"},
-    "3_Importance_Only": {"label": "Importance Only", "color": "purple", "linestyle": "-",  "marker": "^"},
-    "4_Edge_Baseline":   {"label": "Edge Baseline",   "color": "brown",  "linestyle": "-",  "marker": "d"},
-    "5_Proposed_Method": {"label": "Proposed Method", "color": "red",    "linestyle": "-",  "marker": "*", "linewidth": 2.5},
+    # Phase 1 & Common
+    "1_Random_Baseline":   {"label": "Random Baseline",   "color": "gray",   "linestyle": "-.", "marker": "v"},
+    
+    # Existing Baselines
+    "2_Uncertainty_Only":  {"label": "Uncertainty Only",  "color": "orange", "linestyle": "-",  "marker": "s"},
+    "3_Importance_Only":   {"label": "Importance Only",   "color": "purple", "linestyle": "-",  "marker": "^"},
+    "4_Edge_Baseline":     {"label": "Edge Baseline",     "color": "brown",  "linestyle": "-",  "marker": "d"},
+    
+    # Proposed
+    "5_Proposed_Method":   {"label": "Proposed Method",   "color": "red",    "linestyle": "-",  "marker": "*", "linewidth": 2.5},
+    
+    # New Hybrid Baselines (v3)
+    "6_Importance_Random": {"label": "Imp + Random",      "color": "cyan",   "linestyle": "-",  "marker": "o"},
+    "7_Edge_Random":       {"label": "Edge + Random",     "color": "lime",   "linestyle": "-",  "marker": "h"},
 }
 
 def get_target_methods_and_sources(version):
@@ -51,9 +60,12 @@ def get_target_methods_and_sources(version):
         folder_patterns: { source_root_path: regex_pattern }
     """
     targets = {}
+    
+    # ルートディレクトリと検索パターンの紐づけ
     patterns = {
         ROOT_V1: PATTERN_V1,
-        ROOT_V2: PATTERN_V2
+        ROOT_V2: PATTERN_V2,
+        ROOT_V3: PATTERN_V3
     }
 
     if version == "v1":
@@ -67,9 +79,7 @@ def get_target_methods_and_sources(version):
             targets[m] = ROOT_V1
 
     elif version == "v2":
-        # v2: 基本は v2 フォルダだが、特定の手法だけ v1 から取得（混合）
-        
-        # v2から取得するもの
+        # v2: v2データ + v1のUncertainty/Proposed
         v2_methods = [
             "1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline",
             "3_Importance_Only", "4_Edge_Baseline"
@@ -77,10 +87,23 @@ def get_target_methods_and_sources(version):
         for m in v2_methods:
             targets[m] = ROOT_V2
             
-        # v1から取得するもの (Uncertainty, Proposed)
-        v1_imports = [
-            "2_Uncertainty_Only", "5_Proposed_Method"
+        v1_imports = ["2_Uncertainty_Only", "5_Proposed_Method"]
+        for m in v1_imports:
+            targets[m] = ROOT_V1
+
+    elif version == "v3":
+        # v3: v3データ(Hybrid Random等) + v1のUncertainty/Proposed
+        
+        # v3フォルダから取得するもの
+        v3_methods = [
+            "1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline", # ベースラインもv3で再計算されている前提
+            "6_Importance_Random", "7_Edge_Random"
         ]
+        for m in v3_methods:
+            targets[m] = ROOT_V3
+        
+        # v1フォルダから取得するもの（比較対象として重要）
+        v1_imports = ["2_Uncertainty_Only", "5_Proposed_Method"]
         for m in v1_imports:
             targets[m] = ROOT_V1
 
@@ -98,14 +121,17 @@ def load_psnr_data(targets, patterns):
     data_store = {m: {} for m in targets.keys()}
     
     # 探索対象のルートディレクトリごとにファイルをスキャン
-    # 重複してスキャンしないようにセット化
     roots_to_scan = set(targets.values())
     
-    file_cache = {} # path -> json_content
+    file_cache = {} # path -> (snr, json_content)
 
     regex_snr = re.compile(r"awgn_(-?\d+(?:\.\d+)?)dB")
 
     for root in roots_to_scan:
+        if not os.path.exists(root):
+            print(f"Warning: Directory not found -> {root}")
+            continue
+
         print(f"Scanning directory: {root} ...")
         pattern_str = patterns[root]
         regex_folder = re.compile(pattern_str)
@@ -115,15 +141,12 @@ def load_psnr_data(targets, patterns):
         found_files = glob.glob(search_path, recursive=True)
         
         for fpath in found_files:
-            # フォルダ名がパターンにマッチするか確認
-            # fpathの親ディレクトリ名を取得
+            # フォルダ名チェック
             dirname = os.path.basename(os.path.dirname(fpath))
-            
             if not regex_folder.search(dirname):
                 continue
                 
-            # SNRを取得
-            # フルパスから awgn_XdB を探す
+            # SNRチェック
             match_snr = regex_snr.search(fpath)
             if not match_snr:
                 continue
@@ -140,12 +163,19 @@ def load_psnr_data(targets, patterns):
             except Exception as e:
                 print(f"Error loading {fpath}: {e}")
 
-    # 収集したキャッシュから必要なデータを抽出して data_store に格納
+    # データ格納
     print("Aggregating data...")
     for method, source_root in targets.items():
-        # source_root に属するファイルキャッシュを走査
         for fpath, (snr, content) in file_cache.items():
-            if fpath.startswith(source_root):
+            # そのファイルのパスが、指定されたsource_rootから始まっているか確認
+            # (正規化して比較することでパス区切りの違いを吸収)
+            if os.path.abspath(fpath).startswith(os.path.abspath(source_root)):
+                # JSON内のキー名が、指定されたmethod名を含むかチェック
+                # NOTE: calc_psnr_suite.py は "3_" などを削除して保存しているため
+                # ここでは正確なキーマッチングを行う
+                
+                # キー名の揺らぎ吸収 (prefix削除後の名前で保存されているため)
+                # STYLE_CONFIGのキー (例: "1_Random_Baseline") と JSONキー (例: "1_Random_Baseline")
                 if method in content:
                     data_store[method][snr] = content[method]
     
@@ -159,8 +189,7 @@ def plot_graph(data_store):
     plt.figure(figsize=(10, 7))
     ax = plt.gca()
     
-    # スタイル定義順、あるいはデータが存在する順にプロット
-    # キーをソートして凡例の順番を固定する（STYLE_CONFIGの定義順を優先）
+    # STYLE_CONFIGの定義順にプロット
     sorted_methods = [k for k in STYLE_CONFIG.keys() if k in data_store]
     
     has_plot = False
@@ -168,10 +197,9 @@ def plot_graph(data_store):
     for method in sorted_methods:
         snr_dict = data_store[method]
         if not snr_dict:
-            print(f"No data for: {method}")
+            # print(f"No data for: {method}")
             continue
             
-        # SNRでソートしてリスト化
         sorted_snrs = sorted(snr_dict.keys())
         x_vals = sorted_snrs
         y_vals = [snr_dict[s] for s in sorted_snrs]
@@ -188,13 +216,9 @@ def plot_graph(data_store):
         has_plot = True
 
     # グラフ装飾
-    title_suffix = "(Hybrid)" if VERSION == "v2" else "(Single Run)"
-    #ax.set_title(f"PSNR Comparison {title_suffix} - {DATASET}", fontsize=15, fontweight='bold')
     ax.set_xlabel("SNR (dB)", fontsize=12)
     ax.set_ylabel("PSNR (dB)", fontsize=12)
     ax.grid(True, linestyle='--', alpha=0.6)
-    
-    # 軸の目盛り設定
     ax.set_xticks(SNR_LABELS)
     
     if has_plot:
@@ -204,10 +228,15 @@ def plot_graph(data_store):
 
     plt.tight_layout()
     
-    filename = f"Suite/psnr_comparison_suite_{VERSION}.png"
+    # ディレクトリ作成
+    save_dir = "Suite"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    filename = f"{save_dir}/psnr_comparison_suite_{VERSION}.png"
     plt.savefig(filename, dpi=300)
     print(f"\nGraph saved to: {filename}")
-    plt.show()
+    # plt.show() # 必要に応じてコメントアウト解除
 
 # ==========================================
 # メイン実行
@@ -219,9 +248,10 @@ if __name__ == "__main__":
     # 1. 対象の決定
     targets, patterns = get_target_methods_and_sources(VERSION)
     
-    print("Target Methods & Sources:")
+    print("\nTarget Methods & Sources:")
     for m, src in targets.items():
-        print(f"  - {m:20s} from {src}")
+        print(f"  - {m:25s} <- {src}")
+    print("-" * 50)
 
     # 2. データ読み込み
     data = load_psnr_data(targets, patterns)

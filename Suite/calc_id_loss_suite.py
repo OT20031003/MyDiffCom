@@ -65,11 +65,12 @@ def calculate_id_loss_for_snr(target_path, id_model, device, target_methods):
     ])
 
     if len(batch_dirs) == 0:
+        print(f"No batch directories found in {visuals_dir}")
         return
 
     to_tensor = transforms.ToTensor()
 
-    print(f"Processing {len(batch_dirs)} samples in {os.path.basename(target_path)}")
+    print(f"Processing ID Loss for {len(batch_dirs)} samples in {os.path.basename(target_path)}")
 
     for b_dir in tqdm(batch_dirs, leave=False):
         path = os.path.join(visuals_dir, b_dir)
@@ -111,7 +112,7 @@ def calculate_id_loss_for_snr(target_path, id_model, device, target_methods):
                 else:
                     pass
 
-        except Exception as e:
+        except Exception:
             pass
 
     # --- [Summarize & Save] ---
@@ -153,13 +154,11 @@ if __name__ == "__main__":
     # 設定エリア (Configuration)
     # ==========================================
     
-    # ★ バージョン選択 ('v1' または 'v2') ★
-    #  - v1: main_diffcom_retransmission.py に対応
-    #  - v2: main_diffcom_retransmission_v2.py に対応
-    VERSION = "v1" 
+    # ★ バージョン選択 ('v1', 'v2', 'v3') ★
+    VERSION = "v3"
     
     # 共通設定
-    DATASET = "ffhq_demo"   # "imagenet" or "ffhq_demo"
+    DATASET = "ffhq_demo"   
     SNR_LABELS = ["-8", "-7", "-6", "-5", "-4", "-3", "-2"]
     
     # 固定パラメータ
@@ -168,19 +167,34 @@ if __name__ == "__main__":
     SEED = 22
     
     # --- バージョン依存パラメータの設定 ---
-    if VERSION == "v2":
-        # v2用の設定 (main_diffcom_retransmission_v2.py)
+    if VERSION == "v3":
+        # v3用の設定 (results_retrans_comparison_v3)
+        ROOT_DIR = "results_retrans_comparison_v3"
+        PREFIX = "Retrans_" 
+        
+        # フォルダ名パラメータ
+        RATE = 0.1
+        MODE = "rate"
+        BASIS = "semantic"
+        EXP_FACTOR = 2.0
+        GAMMA = 0.9 
+        
+        # 新しい実験スイート (6, 7)
+        TARGET_METHODS = [
+            "6_Importance_Random",
+            "7_Edge_Random"
+        ]
+
+    elif VERSION == "v2":
+        # v2用の設定
         ROOT_DIR = "results_retrans_comparison_v2"
         PREFIX = "Retrans_v2_"
-        
-        # v2スクリプトのデフォルト値
         RATE = 0.1
-        MODE = "rate"          # v2 default
-        BASIS = "semantic"     # v2 default
-        EXP_FACTOR = 2.0       # v2 args default
-        GAMMA = 0.9            # v2 args default
+        MODE = "rate"
+        BASIS = "semantic"
+        EXP_FACTOR = 2.0
+        GAMMA = 0.9
         
-        # EXPERIMENT_SUITE に対応する名前リスト
         TARGET_METHODS = [
             "1_Random_Baseline",
             "3_Importance_Only",
@@ -188,18 +202,16 @@ if __name__ == "__main__":
         ]
         
     else:
-        # v1用の設定 (main_diffcom_retransmission.py)
-        ROOT_DIR = "results_retrans_comparison"
+        # v1用の設定 (results_retrans_comparison_v1)
+        ROOT_DIR = "results_retrans_comparison_v1"
         PREFIX = "Retrans_"
         
-        # v1スクリプトでよく使われていた設定
         RATE = 0.1
         MODE = "rate"
         BASIS = "semantic"
         EXP_FACTOR = 2.0
-        GAMMA = 0.9 # mainのデフォルト値
+        GAMMA = 0.9 
         
-        # EXPERIMENT_SUITE に対応する名前リスト
         TARGET_METHODS = [
             "1_Random_Baseline",
             "2_Uncertainty_Only",
@@ -216,6 +228,7 @@ if __name__ == "__main__":
     # --- [Load Model Once] ---
     print("Loading Face Recognition Model (InceptionResnetV1)...")
     try:
+        # 事前学習済みモデルのロード
         id_model = InceptionResnetV1(pretrained='vggface2').eval().to(device)
     except Exception as e:
         print(f"Failed to load model: {e}")
@@ -227,7 +240,7 @@ if __name__ == "__main__":
     for snr_label in SNR_LABELS:
         snr_folder = f"awgn_{snr_label}dB"
         
-        # フォルダ名の構築ロジック (mainスクリプトと一致させる)
+        # フォルダ名の構築ロジック
         u_mode_str = "Comparison" 
         
         exp_folder_name = (

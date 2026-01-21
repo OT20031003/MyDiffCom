@@ -60,7 +60,7 @@ def calculate_psnr_from_disk(base_path, device, target_methods):
             gt_img = transform(Image.open(gt_path).convert('RGB')).unsqueeze(0).to(device)
             
             for m in all_methods:
-                # 画像ファイル名: "1_JSCC_Init.png", "3_1_Random_Baseline.png" 等
+                # 画像ファイル名: "1_JSCC_Init.png", "3_6_Importance_Random.png" 等
                 m_path = os.path.join(path, f'{m}.png')
                 if os.path.exists(m_path):
                     try:
@@ -76,7 +76,7 @@ def calculate_psnr_from_disk(base_path, device, target_methods):
     final_results = {}
     print(f"--- PSNR Results ({os.path.basename(base_path)}) ---")
     for m in all_methods:
-        # 表示名をきれいにする (例: 3_1_Random_Baseline -> 1_Random_Baseline)
+        # 表示名をきれいにする (例: 3_6_Importance_Random -> 6_Importance_Random)
         display_name = m
         if m.startswith("3_"):
             display_name = m[2:]
@@ -101,13 +101,11 @@ if __name__ == "__main__":
     # 設定エリア (Configuration)
     # ==========================================
     
-    # ★ バージョン選択 ('v1' または 'v2') ★
-    # 無印の出力パス (results_retrans_comparison) を対象にするため v1 を選択
-    VERSION = "v1" 
+    # ★ バージョン選択 ('v1', 'v2', 'v3') ★
+    VERSION = "v1"
     
     # 共通設定
     DATASET = "ffhq_demo"   
-    # ログに合わせてSNR範囲を拡張しました
     SNR_LABELS = ["-8", "-7", "-6", "-5", "-4", "-3", "-2"]
     
     # 固定パラメータ
@@ -116,7 +114,27 @@ if __name__ == "__main__":
     SEED = 22
     
     # --- バージョン依存パラメータの設定 ---
-    if VERSION == "v2":
+    if VERSION == "v3":
+        # v3用の設定 (results_retrans_comparison_v3)
+        ROOT_DIR = "results_retrans_comparison_v3"
+        PREFIX = "Retrans_" # パスを見る限り通常のRetrans_
+        
+        # フォルダ名パラメータ
+        # パス: Retrans_rate_0.1_Comparison_semantic_exp2.0_gam0.9_zeta0.3_seed22
+        RATE = 0.1
+        MODE = "rate"
+        BASIS = "semantic"
+        EXP_FACTOR = 2.0
+        GAMMA = 0.9 
+        
+        # 新しい実験スイート (6, 7)
+        TARGET_METHODS = [
+            "6_Importance_Random",
+            "7_Edge_Random"
+        ]
+
+    elif VERSION == "v2":
+        # v2用の設定
         ROOT_DIR = "results_retrans_comparison_v2"
         PREFIX = "Retrans_v2_"
         RATE = 0.1
@@ -132,22 +150,16 @@ if __name__ == "__main__":
         ]
         
     else:
-        # v1用の設定 (無印)
-        ROOT_DIR = "results_retrans_comparison"
+        # v1用の設定 (results_retrans_comparison_v1)
+        ROOT_DIR = "results_retrans_comparison_v1"
         PREFIX = "Retrans_"
         
         RATE = 0.1
-        MODE = "rate"     # ログのフォルダ名に含まれています
-        BASIS = "semantic" # ログのフォルダ名に含まれています
+        MODE = "rate"
+        BASIS = "semantic"
         EXP_FACTOR = 2.0
-        
-        # ★ここを修正しました★
-        # 実際のフォルダ名 (..._gam0.9_...) に合わせる必要があります
-        # (mainスクリプトのデフォルト値が0.9のため)
         GAMMA = 0.9 
         
-        # EXPERIMENT_SUITE に対応する名前リスト
-        # フォルダ内に存在するであろう実験結果
         TARGET_METHODS = [
             "1_Random_Baseline",
             "2_Uncertainty_Only",

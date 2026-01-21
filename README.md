@@ -72,7 +72,7 @@ python main_diffcom_retransmission.py \
 ```bash
 # 実行権限を付与して実行
 chmod +x run_comparison.sh
-./run_comparison.sh
+nohup ./run_comparison.sh > run.log 2>&1 &
 ```
 
 ---
