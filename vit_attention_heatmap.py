@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
 from transformers import AutoModel
+import os
 
 # ---------------------------------------------------------
 # 1. 設定
@@ -82,12 +83,9 @@ def visualize_attention_heatmap(image_path):
     # 2. Query方向の平均 -> [1, Total_Tokens]
     patch_importance = torch.mean(attn_mat, dim=1)
     
-    # 3. 画像パッチのみを抽出 (ここを修正)
-    # 想定されるパッチ数
-    expected_patches = (IMG_SIZE // PATCH_SIZE) ** 2  # 14*14 = 196
+    # 3. 画像パッチのみを抽出
+    expected_patches = (IMG_SIZE // PATCH_SIZE) ** 2  # 196
     
-    # トークン数が多すぎる場合(Register Tokens等)、末尾からパッチ数分だけ取る
-    # shape: [Batch, Tokens]
     if patch_importance.shape[1] > expected_patches:
         print(f"Token count ({patch_importance.shape[1]}) > expected ({expected_patches}). Trimming special tokens.")
         patch_importance = patch_importance[:, -expected_patches:]
@@ -106,40 +104,47 @@ def visualize_attention_heatmap(image_path):
     # 正規化 (見やすくするため、最小値を0、最大値を1に)
     attn_map = (attn_map - attn_map.min()) / (attn_map.max() - attn_map.min() + 1e-8)
     
-    # リサイズ & カラーマップ
+    # リサイズ (元画像サイズに合わせる)
     attn_map_resized = cv2.resize(attn_map, (original_np.shape[1], original_np.shape[0]))
     
-    # ヒートマップの色付け
-    heatmap = cv2.applyColorMap(np.uint8(255 * attn_map_resized), cv2.COLORMAP_JET)
-    heatmap = np.float32(heatmap) / 255
+    # ---------------------------------------------------------
+    # 画像保存処理 (論文用に個別保存)
+    # ---------------------------------------------------------
+    base_name = os.path.splitext(os.path.basename(image_path))[0]
     
-    # 重ね合わせ (画像の明るさを少し落としてヒートマップを目立たせる)
-    cam = heatmap + np.float32(original_np) / 255 * 0.5
-    cam = cam / np.max(cam)
+    # 1. 元画像の保存 (Original)
+    # PILを使ってそのまま保存
+    save_path_orig = f"{base_name}_original.png"
+    Image.fromarray(original_np).save(save_path_orig)
+    print(f"Saved: {save_path_orig}")
+
+    # 2. アテンションヒートマップのみ保存 (Heatmap)
+    # plt.imsaveを使うと軸なし・余白なしでカラーマップ適用して保存できる
+    save_path_heat = f"{base_name}_heatmap.png"
+    plt.imsave(save_path_heat, attn_map_resized, cmap='jet')
+    print(f"Saved: {save_path_heat}")
+
+    # 3. 重ね合わせ画像の保存 (Overlay)
+    # カラーマップ適用 (BGRになる)
+    heatmap_bgr = cv2.applyColorMap(np.uint8(255 * attn_map_resized), cv2.COLORMAP_JET)
+    # RGBに変換 (Pillowで扱うため)
+    heatmap_rgb = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
     
-    # 表示・保存
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    # 重ね合わせ計算 (float計算)
+    heatmap_float = np.float32(heatmap_rgb) / 255
+    original_float = np.float32(original_np) / 255
     
-    axs[0].imshow(original_np)
-    axs[0].set_title("Original Image")
-    axs[0].axis('off')
+    # ブレンド率 (元画像を少し暗くしてヒートマップを目立たせる)
+    cam = heatmap_float + original_float * 0.5
+    cam = cam / np.max(cam) # 正規化
     
-    axs[1].imshow(attn_map_resized, cmap='jet')
-    axs[1].set_title(f"Mean Attention Map")
-    axs[1].axis('off')
-    
-    axs[2].imshow(np.uint8(255 * cam))
-    axs[2].set_title("Overlay")
-    axs[2].axis('off')
-    
-    save_name = "vit_attention_hf.png"
-    plt.savefig(save_name)
-    print(f"Saved visualization to {save_name}")
-    # plt.show()
+    # uint8に戻して保存
+    cam_uint8 = np.uint8(255 * cam)
+    save_path_overlay = f"{base_name}_overlay.png"
+    Image.fromarray(cam_uint8).save(save_path_overlay)
+    print(f"Saved: {save_path_overlay}")
 
 if __name__ == "__main__":
-    path = "testsets/ffhq_demo/69903.png"
-    path = "testsets/imagenet/ILSVRC2012_subset_00000000.png"
-    # path = "val2017/000000565776.jpg"
-    # path = "testsets/lsun_bedroom/bedroom_0000005.png"
+    path = "testsets/ffhq_demo/69906.png"
+    # path = "testsets/imagenet/ILSVRC2012_subset_00000000.png"
     visualize_attention_heatmap(path)

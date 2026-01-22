@@ -13,7 +13,7 @@ import numpy as np
 # v1: "results_retrans_comparison" 内の全データをプロット
 # v2: "results_retrans_comparison_v2" + v1 (Uncertainty & Proposed)
 # v3: "results_retrans_comparison_v3" + v1 (Uncertainty & Proposed)
-VERSION = "v3"
+VERSION = "v1"
 
 # 共通設定
 DATASET = "ffhq_demo"
@@ -37,6 +37,8 @@ PATTERN_V3 = r"Retrans_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3_se
 # 全ての手法の表示名とスタイル定義
 STYLE_CONFIG = {
     # Phase 1 & Common
+    "1_JSCC_Init":         {"label": "Deep JSCC",    "color": "black",  "linestyle": ":",  "marker": "x"},
+    "2_Phase1_Recon":      {"label": "DiffCom",     "color": "blue",   "linestyle": "--", "marker": "o"},
     "1_Random_Baseline":   {"label": "Random Baseline",   "color": "gray",   "linestyle": "-.", "marker": "v"},
     
     # Existing Baselines
