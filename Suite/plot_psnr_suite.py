@@ -13,11 +13,11 @@ import numpy as np
 # v1: "results_retrans_comparison" 内の全データをプロット
 # v2: "results_retrans_comparison_v2" + v1 (Uncertainty & Proposed)
 # v3: "results_retrans_comparison_v3" + v1 (Uncertainty & Proposed)
-VERSION = "v1"
+VERSION = "v2"
 
 # 共通設定
 DATASET = "ffhq_demo"
-SNR_LABELS = [-8, -7, -6, -5, -4, -3, -2] # プロットしたいSNR範囲
+SNR_LABELS = [-7, -6, -5, -4, -3, -2] # プロットしたいSNR範囲
 
 # データのルートディレクトリ定義
 ROOT_V1 = os.path.join("results_retrans_comparison_v1", DATASET)
@@ -37,14 +37,14 @@ PATTERN_V3 = r"Retrans_rate_0\.1_Comparison_semantic_exp2\.0_gam0\.9_zeta0\.3_se
 # 全ての手法の表示名とスタイル定義
 STYLE_CONFIG = {
     # Phase 1 & Common
-    "1_JSCC_Init":         {"label": "Deep JSCC",    "color": "black",  "linestyle": ":",  "marker": "x"},
+    # "1_JSCC_Init":         {"label": "Deep JSCC",    "color": "black",  "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":      {"label": "DiffCom",     "color": "blue",   "linestyle": "--", "marker": "o"},
     "1_Random_Baseline":   {"label": "Random Baseline",   "color": "gray",   "linestyle": "-.", "marker": "v"},
     
     # Existing Baselines
     "2_Uncertainty_Only":  {"label": "Uncertainty Only",  "color": "orange", "linestyle": "-",  "marker": "s"},
     "3_Importance_Only":   {"label": "Importance Only",   "color": "purple", "linestyle": "-",  "marker": "^"},
-    "4_Edge_Baseline":     {"label": "Edge Baseline",     "color": "brown",  "linestyle": "-",  "marker": "d"},
+    #"4_Edge_Baseline":     {"label": "Edge Baseline",     "color": "brown",  "linestyle": "-",  "marker": "d"},
     
     # Proposed
     "5_Proposed_Method":   {"label": "Proposed Method",   "color": "red",    "linestyle": "-",  "marker": "*", "linewidth": 2.5},

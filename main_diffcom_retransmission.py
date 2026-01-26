@@ -69,14 +69,19 @@ EXPERIMENT_SUITE = [
     #     "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
     # },
     # 6. Importance + Random (Global Hybrid)
+    # {
+    #     "name": "6_Importance_Random",
+    #     "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "semantic"
+    # },
+    # # 7. Edge + Random (Global Hybrid)
+    # {
+    #     "name": "7_Edge_Random",
+    #     "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "edge"
+    # },
+    # 8. Uncertainty + Random (Global Hybrid) [ADDED]
     {
-        "name": "6_Importance_Random",
-        "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "semantic"
-    },
-    # 7. Edge + Random (Global Hybrid)
-    {
-        "name": "7_Edge_Random",
-        "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "edge"
+        "name": "8_Uncertainty_Random",
+        "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.3, "basis": "uncertainty"
     }
 ]
 
@@ -552,6 +557,13 @@ def simulate_hybrid_global_random(operator, input_image, measurement, mode='hybr
     if basis in ['edge', 'variance']:
         map_spatial = compute_heuristic_importance_map(input_image, method=basis)
         map_spatial = map_spatial.to(device)
+    elif basis == 'uncertainty':
+        # [UPDATED] Handling uncertainty basis for hybrid random
+        if vit_importance_map is None:
+             if logger: logger.warning("Uncertainty map is None for hybrid_global uncertainty mode. Using random.")
+             map_spatial = torch.rand(B, 1, input_image.shape[2], input_image.shape[3], device=device)
+        else:
+             map_spatial = vit_importance_map.to(device)
     else:
         # basis='semantic'
         if vit_importance_map is None:
@@ -944,12 +956,19 @@ def p_sample_loop(config, noise_schedule, unet, diffusion, operator, cond_method
 
                 # Simulation Execution
                 if c_mode == 'hybrid_global':
+                    # Determine input map for hybrid_global function based on basis
+                    hybrid_input_map = None
+                    if c_basis == 'uncertainty':
+                        hybrid_input_map = raw_uncertainty_map
+                    elif c_basis in ['semantic', 'both']:
+                        hybrid_input_map = vit_map
+
                     # Call New Function
                     meas_p2, ratio, mask_vis, _, cand_vis = simulate_hybrid_global_random(
                         operator, input_image, measurement_phase1,
                         mode=c_mode,
                         value=c_val,
-                        vit_importance_map=current_vit,
+                        vit_importance_map=hybrid_input_map, # Pass selected map
                         gamma=c_gam,
                         basis=c_basis,
                         logger=logger
