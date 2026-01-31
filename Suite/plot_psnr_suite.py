@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # ==========================================
+# フォント設定 (Font Configuration)
+# ==========================================
+plt.rcParams['font.family'] = 'Times New Roman'
+
+# ==========================================
 # 設定エリア (Configuration)
 # ==========================================
 
@@ -39,7 +44,7 @@ STYLE_CONFIG = {
     # Phase 1 & Common
     # "1_JSCC_Init":         {"label": "Deep JSCC",    "color": "black",  "linestyle": ":",  "marker": "x"},
     "2_Phase1_Recon":      {"label": "DiffCom",     "color": "blue",   "linestyle": "--", "marker": "o"},
-    "1_Random_Baseline":   {"label": "Random Baseline",   "color": "gray",   "linestyle": "-.", "marker": "v"},
+    #"1_Random_Baseline":   {"label": "Random Baseline",   "color": "gray",   "linestyle": "-.", "marker": "v"},
     
     # Existing Baselines
     "2_Uncertainty_Only":  {"label": "Uncertainty Only",  "color": "orange", "linestyle": "-",  "marker": "s"},
