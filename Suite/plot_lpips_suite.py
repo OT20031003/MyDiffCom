@@ -13,7 +13,7 @@ import numpy as np
 # v1: "results_retrans_comparison_v1" 内の全データをプロット
 # v2: "results_retrans_comparison_v2" + v1 (Uncertainty & Proposed)
 # v3: "results_retrans_comparison_v3" + v1 (Uncertainty & Proposed)
-VERSION = "v1"
+VERSION = "v3"
 
 # 共通設定
 DATASET = "ffhq_demo"
@@ -51,6 +51,7 @@ STYLE_CONFIG = {
     # New Hybrid Baselines (v3)
     "6_Importance_Random": {"label": "Imp + Random",      "color": "cyan",   "linestyle": "-",  "marker": "o"},
     "7_Edge_Random":       {"label": "Edge + Random",     "color": "lime",   "linestyle": "-",  "marker": "h"},
+    "8_Uncertainty_Random":{"label": "Unc + Random",      "color": "magenta","linestyle": "-",  "marker": "D"}, # Added
 }
 
 def get_target_methods_and_sources(version):
@@ -97,8 +98,8 @@ def get_target_methods_and_sources(version):
         
         # v3フォルダから取得するもの
         v3_methods = [
-            "1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline", 
-            "6_Importance_Random", "7_Edge_Random"
+            #"1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline", 
+            "6_Importance_Random", "7_Edge_Random", "8_Uncertainty_Random"
         ]
         for m in v3_methods:
             targets[m] = ROOT_V3

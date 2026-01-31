@@ -54,6 +54,7 @@ STYLE_CONFIG = {
     # New Hybrid Baselines (v3)
     "6_Importance_Random": {"label": "Imp + Random",      "color": "cyan",   "linestyle": "-",  "marker": "o"},
     "7_Edge_Random":       {"label": "Edge + Random",     "color": "lime",   "linestyle": "-",  "marker": "h"},
+    "8_Uncertainty_Random":{"label": "Unc + Random",      "color": "magenta","linestyle": "-",  "marker": "D"}, # Added
 }
 
 def get_target_methods_and_sources(version):
@@ -100,8 +101,8 @@ def get_target_methods_and_sources(version):
         
         # v3フォルダから取得するもの
         v3_methods = [
-            "1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline", 
-            "6_Importance_Random", "7_Edge_Random"
+            #"1_JSCC_Init", "2_Phase1_Recon", "1_Random_Baseline", 
+            "6_Importance_Random", "7_Edge_Random", "8_Uncertainty_Random"
         ]
         for m in v3_methods:
             targets[m] = ROOT_V3
@@ -244,6 +245,45 @@ def plot_graph(data_store):
     print(f"\nGraph saved to: {filename}")
     # plt.show() # 必要に応じてコメントアウト解除
 
+def print_statistics(data_store):
+    """
+    集計されたID Lossデータをターミナルに表形式で出力する
+    """
+    print("\n" + "="*80)
+    print(f" ID Loss Numerical Results (Mode: {VERSION})")
+    print("="*80)
+    
+    # ヘッダー作成 (SNR)
+    # Method 名のスペース(25文字) + 各SNR(10文字)
+    header = f"{'Method':<25}" + "".join([f"{snr:>10}dB" for snr in SNR_LABELS])
+    print(header)
+    print("-" * len(header))
+    
+    # STYLE_CONFIG の順序に従って表示
+    sorted_methods = [k for k in STYLE_CONFIG.keys() if k in data_store]
+    
+    for method in sorted_methods:
+        snr_dict = data_store[method]
+        
+        # データが空の場合はスキップ
+        if not snr_dict:
+            continue
+            
+        label_name = STYLE_CONFIG[method]["label"]
+        row_str = f"{label_name:<25}"
+        
+        for snr in SNR_LABELS:
+            val = snr_dict.get(snr, None)
+            if val is not None:
+                # ID Lossは値が小さいので、必要なら桁数を増やす
+                row_str += f"{val:>10.4f}"
+            else:
+                row_str += f"{'N/A':>10}"
+        
+        print(row_str)
+    
+    print("="*80 + "\n")
+
 # ==========================================
 # メイン実行
 # ==========================================
@@ -262,5 +302,8 @@ if __name__ == "__main__":
     # 2. データ読み込み
     data = load_id_loss_data(targets, patterns)
     
-    # 3. プロット
+    # 3. データの表形式出力
+    print_statistics(data)
+    
+    # 4. プロット
     plot_graph(data)

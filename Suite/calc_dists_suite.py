@@ -135,10 +135,11 @@ if __name__ == "__main__":
         EXP_FACTOR = 2.0
         GAMMA = 0.9 
         
-        # 新しい実験スイート (6, 7)
+        # 新しい実験スイート (6, 7, 8)
         TARGET_METHODS = [
             "6_Importance_Random",
-            "7_Edge_Random"
+            "7_Edge_Random",
+            "8_Uncertainty_Random"
         ]
 
     elif VERSION == "v2":
