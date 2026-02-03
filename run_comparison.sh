@@ -6,7 +6,7 @@ set -e
 # ==============================================================================
 # グローバル設定
 # ==============================================================================
-PYTHON_SCRIPT="main_diffcom_retransmission.py"
+PYTHON_SCRIPT="main_diffcom_gamma_sweep.py"
 TEMPLATE_YAML="configs/diffcom_0.yaml" # テンプレートとして使用する既存のConfig
 
 # 指定された実行順序

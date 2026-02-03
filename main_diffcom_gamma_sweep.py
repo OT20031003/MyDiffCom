@@ -39,54 +39,39 @@ from guided_diffusion.script_util import model_and_diffusion_defaults, create_mo
 from utils.util import Config, MetricWrapper, DictAverageMeter
 from utils import util, utils_logger, utils_model
 
-# ==============================================================================
-# --- [Updated] Comparison Experiment Suite Definition (Global) ---
-# ==============================================================================
+# 提案手法(Proposed Method)において、Gamma(意味的重要度の重視割合)を変化させて比較する
 EXPERIMENT_SUITE = [
-    # # 1. Random Baseline (R=0.2)
-    # {
-    #     "name": "1_Random_Baseline",
-    #     "mode": "random", "value": 0.2, "expansion": 10.0, "gamma": 0.0, "basis": "semantic" # dummy
-    # },
-    # # 2. Uncertainty Only (R=0.1)
-    # {
-    #     "name": "2_Uncertainty_Only",
-    #     "mode": "rate", "value": 0.1, "expansion": 1.0, "gamma": 0.0, "basis": "semantic"
-    # },
-    # # 3. Importance Only (R=0.2)
-    # {
-    #     "name": "3_Importance_Only",
-    #     "mode": "rate", "value": 0.2, "expansion": 5.0, "gamma": 1.0, "basis": "semantic"
-    # },
-    # # 4. Edge Baseline (R=0.2)
-    # {
-    #     "name": "4_Edge_Baseline",
-    #     "mode": "rate", "value": 0.2, "expansion": 1.0, "gamma": 0.0, "basis": "edge"
-    # },
-    # 5. Proposed Method (R=0.1)
+    # 1. Gamma = 0.0
+    #   (候補領域内で不確実性のみを基準に選択)
     {
-        "name": "5_Proposed_Method",
-        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
+        "name": "Proposed_Gamma_0.0",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.0, "basis": "semantic"
     },
-    # 5. Proposed Method (R=0.1)
+    # 2. Gamma = 0.2
     {
-        "name": "9_Proposed_Method",
-        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.3, "basis": "semantic"
+        "name": "Proposed_Gamma_0.2",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.2, "basis": "semantic"
     },
-    # 6. Importance + Random (Global Hybrid)
-    # {
-    #     "name": "6_Importance_Random",
-    #     "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "semantic"
-    # },
-    # # 7. Edge + Random (Global Hybrid)
-    # {
-    #     "name": "7_Edge_Random",
-    #     "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.5, "basis": "edge"
-    # },
-    # 8. Uncertainty + Random (Global Hybrid) [ADDED]
+    # 3. Gamma = 0.4
     {
-        "name": "8_Uncertainty_Random",
-        "mode": "hybrid_global", "value": 0.1, "expansion": 1.0, "gamma": 0.3, "basis": "uncertainty"
+        "name": "Proposed_Gamma_0.4",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.4, "basis": "semantic"
+    },
+    # 4. Gamma = 0.6
+    {
+        "name": "Proposed_Gamma_0.6",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.6, "basis": "semantic"
+    },
+    # 5. Gamma = 0.8
+    {
+        "name": "Proposed_Gamma_0.8",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 0.8, "basis": "semantic"
+    },
+    # 6. Gamma = 1.0
+    #   (候補領域内で意味的重要性のみを基準に選択)
+    {
+        "name": "Proposed_Gamma_1.0",
+        "mode": "rate", "value": 0.1, "expansion": 2.0, "gamma": 1.0, "basis": "semantic"
     }
 ]
 
